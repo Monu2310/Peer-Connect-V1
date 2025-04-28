@@ -23,15 +23,24 @@ exports.getUserById = async (req, res) => {
 // Update user profile
 exports.updateProfile = async (req, res) => {
   try {
-    const { bio, major, year, interests, profilePicture } = req.body;
+    const { username, email, bio, location, interests, profilePicture, major, year } = req.body;
     
     // Build profile object
     const profileFields = {};
+    if (username !== undefined) profileFields.username = username;
+    if (email !== undefined) profileFields.email = email;
     if (bio !== undefined) profileFields.bio = bio;
+    if (location !== undefined) profileFields.location = location;
     if (major !== undefined) profileFields.major = major;
     if (year !== undefined) profileFields.year = year;
-    if (interests !== undefined) profileFields.interests = interests;
     if (profilePicture !== undefined) profileFields.profilePicture = profilePicture;
+    
+    // Handle interests specially - could be array or string
+    if (interests !== undefined) {
+      profileFields.interests = Array.isArray(interests) 
+        ? interests.join(',') 
+        : interests;
+    }
     
     // Update user
     const user = await User.findByIdAndUpdate(

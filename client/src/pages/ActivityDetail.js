@@ -244,7 +244,7 @@ const ActivityDetail = () => {
 
           <div className="flex items-center mt-2 mb-4">
             <img
-              src={activity.creator.profilePicture || 'https://via.placeholder.com/150'}
+              src={activity.creator.profilePicture || '../../../avatar.svg'}
               alt={activity.creator.username}
               className="h-10 w-10 rounded-full mr-3"
             />
@@ -314,7 +314,7 @@ const ActivityDetail = () => {
                 {friendsParticipating.map(friend => (
                   <div key={friend._id} className="flex items-center bg-blue-50 px-3 py-2 rounded-lg">
                     <img
-                      src={friend.profilePicture || 'https://via.placeholder.com/150'}
+                      src={friend.profilePicture || '../../../avatar.svg'}
                       alt={friend.username}
                       className="h-8 w-8 rounded-full mr-2 object-cover"
                     />
@@ -342,7 +342,7 @@ const ActivityDetail = () => {
                 <div key={participant._id} className="flex flex-col items-center bg-gray-50 p-3 rounded-lg shadow-sm">
                   <div className="relative">
                     <img
-                      src={participant.profilePicture || 'https://via.placeholder.com/150'}
+                      src={participant.profilePicture || '../../../avatar.svg'}
                       alt={participant.username}
                       className="h-16 w-16 rounded-full mb-2 object-cover"
                     />

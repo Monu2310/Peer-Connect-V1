@@ -21,11 +21,39 @@ export const getUserById = async (userId) => {
  */
 export const updateProfile = async (userData) => {
   try {
-    const response = await axios.put(`${API_URL}/api/users/profile`, userData);
+    // If userData.interests is an array, make sure it's properly formatted
+    let profileData = { ...userData };
+    
+    // Handle array data properly
+    if (Array.isArray(profileData.interests)) {
+      // The server expects either a string or array, but we'll ensure it's consistent
+      profileData.interests = [...profileData.interests]; // Make a copy to avoid mutation
+    }
+
+    const response = await axios.put(`${API_URL}/api/users/profile`, profileData);
     return response.data;
   } catch (error) {
     console.error('Error updating profile:', error);
     throw new Error(error.response?.data?.message || 'Failed to update profile');
+  }
+};
+
+/**
+ * Upload profile image
+ * @param {File} imageFile - The image file to upload
+ */
+export const uploadProfileImage = async (imageFile) => {
+  try {
+    const formData = new FormData();
+    formData.append('profileImage', imageFile);
+    
+    const response = await axios.post(`${API_URL}/api/users/upload-image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    throw new Error(error.response?.data?.message || 'Failed to upload image');
   }
 };
 

@@ -6,10 +6,14 @@ import { API_URL } from './config';
  */
 export const getFriends = async () => {
   try {
+    console.log('Fetching friends from API...');
     const response = await axios.get(`${API_URL}/api/friends`);
+    console.log('Friends API response:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error fetching friends:', error);
+    console.error('Response status:', error.response?.status);
+    console.error('Response data:', error.response?.data);
     throw new Error(error.response?.data?.message || 'Failed to fetch friends');
   }
 };

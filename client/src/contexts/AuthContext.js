@@ -222,7 +222,14 @@ export const AuthProvider = ({ children }) => {
     register,
     login,
     logout,
-    loadUser
+    loadUser,
+    // Add updateUserProfile function to keep auth state in sync with profile updates
+    updateUserProfile: (updatedUserData) => {
+      dispatch({
+        type: 'USER_LOADED',
+        payload: updatedUserData
+      });
+    }
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

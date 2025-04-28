@@ -1,142 +1,198 @@
-import { useTrail, animated, useSpring } from '@react-spring/web'
-import { useRef, useEffect, useCallback, useState } from 'react';
-
+import React, { useEffect, useState, useRef } from 'react';
 import './BlobCursor.css';
+import { useTheme } from '../../contexts/ThemeContext';
 
-const fast = { tension: 1200, friction: 40 };
-const slow = { mass: 10, tension: 200, friction: 50 };
-const trans = (x, y) => `translate3d(${x}px,${y}px,0) translate3d(-50%,-50%,0)`;
+const BlobCursor = ({ fillColor }) => {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [trailPositions, setTrailPositions] = useState([]);
+  const [clicked, setClicked] = useState(false);
+  const [hoveredLink, setHoveredLink] = useState(false);
+  const { isDarkMode } = useTheme();
+  const particlesRef = useRef([]);
+  const requestRef = useRef();
 
-export default function BlobCursor({ 
-  blobType = 'circle', 
-  fillColor = '#1a1a2e', // Dark blue-black color
-  hoverScale = 1.5,
-  showCursor = true 
-}) {
-  const [trail, api] = useTrail(3, i => ({
-    xy: [0, 0],
-    config: i === 0 ? fast : slow,
-  }));
-  
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [isMobile, setIsMobile] = useState(false);
-  const [isClicking, setIsClicking] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
+  // Dynamically determine cursor color based on theme
+  const cursorColor = isDarkMode 
+    ? 'rgba(66, 153, 225, 0.6)' // Blue for dark mode
+    : fillColor || 'rgba(34, 139, 230, 0.6)'; // Default blue for light mode
 
-  const ref = useRef();
-  
-  // Animation for click effect
-  const clickAnimation = useSpring({
-    transform: isClicking ? 'scale(0.8)' : 'scale(1)',
-    config: { tension: 300, friction: 10 }
-  });
-  
-  // Animation for hover effect
-  const hoverAnimation = useSpring({
-    transform: isHovering ? `scale(${hoverScale})` : 'scale(1)',
-    config: { tension: 200, friction: 15 }
-  });
-
-  // Check if device is mobile
   useEffect(() => {
-    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
-      setIsMobile(true);
-    }
+    // Set CSS variable for cursor color to be used in animations
+    document.documentElement.style.setProperty('--cursor-color', cursorColor);
     
-    // Add cursor-hidden class to body when cursor is shown
-    if (!isMobile && showCursor) {
-      document.body.classList.add('cursor-hidden');
-    }
+    const mouseMove = (e) => {
+      setPosition({ x: e.clientX, y: e.clientY });
+      
+      // Update trail positions
+      setTrailPositions(prev => {
+        const newPositions = [...prev, { x: e.clientX, y: e.clientY }];
+        // Keep only the last 5 positions for the trail
+        if (newPositions.length > 5) {
+          return newPositions.slice(newPositions.length - 5);
+        }
+        return newPositions;
+      });
+    };
+
+    const mouseDown = (e) => {
+      setClicked(true);
+      createParticles(e.clientX, e.clientY);
+      
+      setTimeout(() => {
+        setClicked(false);
+      }, 500);
+    };
+
+    const linkHoverIn = () => {
+      setHoveredLink(true);
+    };
+    
+    const linkHoverOut = () => {
+      setHoveredLink(false);
+    };
+    
+    // Add event listeners
+    window.addEventListener('mousemove', mouseMove);
+    window.addEventListener('mousedown', mouseDown);
+    
+    // Add event listeners to all links and buttons
+    const links = document.querySelectorAll('a, button, .cursor-pointer');
+    links.forEach((link) => {
+      link.addEventListener('mouseenter', linkHoverIn);
+      link.addEventListener('mouseleave', linkHoverOut);
+    });
     
     return () => {
-      document.body.classList.remove('cursor-hidden');
-    };
-  }, [isMobile, showCursor]);
-
-  // Direct mouse tracking
-  const handleMouseMove = useCallback((e) => {
-    const x = e.clientX;
-    const y = e.clientY;
-    setMousePos({ x, y });
-    api.start({ xy: [x, y] });
-    
-    // Check if hovering over clickable elements
-    const element = document.elementFromPoint(x, y);
-    const isClickable = element && (
-      element.tagName === 'BUTTON' || 
-      element.tagName === 'A' || 
-      element.onclick || 
-      element.closest('button') || 
-      element.closest('a') ||
-      window.getComputedStyle(element).cursor === 'pointer'
-    );
-    
-    setIsHovering(isClickable);
-  }, [api]);
-  
-  // Handle mouse down and up events
-  const handleMouseDown = useCallback(() => {
-    setIsClicking(true);
-  }, []);
-  
-  const handleMouseUp = useCallback(() => {
-    setIsClicking(false);
-  }, []);
-
-  // Add global event listeners
-  useEffect(() => {
-    if (!isMobile) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mousedown', handleMouseDown);
-      window.addEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', mouseMove);
+      window.removeEventListener('mousedown', mouseDown);
       
-      return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mousedown', handleMouseDown);
-        window.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [handleMouseMove, handleMouseDown, handleMouseUp, isMobile]);
+      links.forEach((link) => {
+        link.removeEventListener('mouseenter', linkHoverIn);
+        link.removeEventListener('mouseleave', linkHoverOut);
+      });
 
-  // Don't render on mobile
-  if (isMobile || !showCursor) {
-    return null;
-  }
+      cancelAnimationFrame(requestRef.current);
+    };
+  }, [cursorColor]);
+  
+  useEffect(() => {
+    // Re-add event listeners when the DOM changes
+    const linkHoverIn = () => setHoveredLink(true);
+    const linkHoverOut = () => setHoveredLink(false);
+    
+    const observer = new MutationObserver(() => {
+      const links = document.querySelectorAll('a, button, .cursor-pointer');
+      links.forEach((link) => {
+        link.addEventListener('mouseenter', linkHoverIn);
+        link.addEventListener('mouseleave', linkHoverOut);
+      });
+    });
+    
+    observer.observe(document.body, { childList: true, subtree: true });
+    
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  // Create particles on click
+  const createParticles = (x, y) => {
+    const particleCount = 10;
+    const particles = [];
+    
+    for (let i = 0; i < particleCount; i++) {
+      // Random values for particle animation
+      const size = Math.random() * 8 + 3;
+      const speedX = (Math.random() - 0.5) * 80;
+      const speedY = (Math.random() - 0.5) * 80;
+      const opacity = Math.random() * 0.3 + 0.7;
+      
+      particles.push({
+        id: `particle-${Date.now()}-${i}`,
+        x,
+        y,
+        size,
+        speedX,
+        speedY,
+        opacity,
+        color: cursorColor,
+        createdAt: Date.now()
+      });
+    }
+    
+    particlesRef.current = [...particlesRef.current, ...particles];
+    
+    // Start animation if it's not already running
+    if (!requestRef.current) {
+      animateParticles();
+    }
+  };
+  
+  // Animate particles
+  const animateParticles = () => {
+    const now = Date.now();
+    particlesRef.current = particlesRef.current.filter(p => {
+      return now - p.createdAt < 1000; // Remove particles after 1 second
+    });
+    
+    requestRef.current = requestAnimationFrame(animateParticles);
+    
+    if (particlesRef.current.length === 0) {
+      cancelAnimationFrame(requestRef.current);
+      requestRef.current = undefined;
+    }
+  };
 
   return (
-    <div className='blob-cursor-container'>
-      <svg style={{ position: 'absolute', width: 0, height: 0 }}>
-        <defs>
-          <filter id="blob">
-            <feGaussianBlur in="SourceGraphic" result="blur" stdDeviation="10" />
-            <feColorMatrix
-              in="blur"
-              values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 30 -7"
-            />
-          </filter>
-        </defs>
-      </svg>
+    <>
+      {/* Main cursor blob */}
       <div
-        ref={ref}
-        className='blob-cursor-main'
-      >
-        {trail.map((props, index) => {
-          const isMainDot = index === 2;
-          
-          return (
-            <animated.div 
-              key={index} 
-              style={{
-                transform: props.xy.to(trans),
-                backgroundColor: fillColor,
-                borderRadius: blobType === 'circle' ? '50%' : '30%',
-                ...(isMainDot && isClicking ? clickAnimation : {}),
-                ...(isMainDot && isHovering ? hoverAnimation : {})
-              }} 
-            />
-          );
-        })}
+        className={`cursor-blob ${clicked ? 'expand' : ''} ${
+          hoveredLink ? 'hovering' : ''
+        }`}
+        style={{
+          left: `${position.x}px`,
+          top: `${position.y}px`,
+        }}
+      ></div>
+      
+      {/* Cursor trail */}
+      {trailPositions.map((pos, index) => (
+        <div
+          key={`trail-${index}`}
+          className="cursor-trail"
+          style={{
+            left: `${pos.x}px`,
+            top: `${pos.y}px`,
+            opacity: 0.5 - index * 0.1,
+            width: `${12 - index * 2}px`,
+            height: `${12 - index * 2}px`
+          }}
+        ></div>
+      ))}
+      
+      {/* Particles container */}
+      <div className="particles-container">
+        {particlesRef.current.map(particle => (
+          <div
+            key={particle.id}
+            className="particle"
+            style={{
+              left: `${particle.x}px`,
+              top: `${particle.y}px`,
+              width: `${particle.size}px`,
+              height: `${particle.size}px`,
+              opacity: particle.opacity,
+              backgroundColor: particle.color,
+              '--tx': `${particle.speedX}px`,
+              '--ty': `${particle.speedY}px`,
+              animation: 'floatParticle 1s ease-out forwards'
+            }}
+          ></div>
+        ))}
       </div>
-    </div>
+    </>
   );
-}
+};
+
+export default BlobCursor;

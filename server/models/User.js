@@ -24,7 +24,7 @@ const UserSchema = new mongoose.Schema({
   },
   profilePicture: {
     type: String,
-    default: 'https://via.placeholder.com/150'
+    default: '../../../avatar.svg'
   },
   bio: {
     type: String,

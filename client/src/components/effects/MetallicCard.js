@@ -1,6 +1,8 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
+import React from 'react';
+import { motion } from 'framer-motion';
 import { useEffect, useRef, useState } from "react";
 import './MetallicPaint.css';
 
@@ -582,22 +584,21 @@ export function MetallicPaint({
   );
 }
 
-// Create a wrapper component that uses the MetallicPaint component
-const MetallicCard = ({ 
-  imageData, 
-  children,
-  className = "",
-  paintParams = defaultParams
-}) => {
+const MetallicCard = ({ children, className = '' }) => {
   return (
-    <div className={`metallic-card ${className}`}>
-      <MetallicPaint imageData={imageData} params={paintParams} />
-      {children && (
-        <div className="metallic-card-content">
-          {children}
-        </div>
-      )}
-    </div>
+    <motion.div
+      className={`bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden ${className}`}
+      whileHover={{ 
+        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025)",
+      }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 200, 
+        damping: 25 
+      }}
+    >
+      {children}
+    </motion.div>
   );
 };
 

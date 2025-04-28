@@ -1,59 +1,91 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
+import DarkModeToggle from './DarkModeToggle';
 
 const Navbar = () => {
-  const { isAuthenticated, currentUser, logout } = useAuth();
-  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
-  const handleLogout = () => {
-    logout();
-    navigate('/'); // Navigate to home page after logout
-  };
-  
+  const [scrolled, setScrolled] = useState(false);
+  const { isAuthenticated, currentUser, logout } = useAuth();
+  const location = useLocation();
+
+  // Handle scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
-  
-  // Function to get the display name from user object
-  const getUserDisplayName = () => {
-    if (!currentUser) return "User";
-    return currentUser.username || 
-           currentUser.name || 
-           currentUser.displayName || 
-           currentUser.email || 
-           "User";
+
+  const handleLogout = () => {
+    logout();
   };
+
+  const getUserDisplayName = () => {
+    if (!currentUser) return '';
+    return currentUser.name || currentUser.username || '';
+  };
+
+  // Different styling for home page
+  const isHomePage = location.pathname === '/';
   
+  // Navbar styling variations
+  const navbarClasses = `fixed w-full z-10 transition-all duration-300 ease-in-out ${
+    scrolled 
+      ? 'bg-white dark:bg-dark-card shadow-md' 
+      : isHomePage 
+        ? 'bg-transparent' 
+        : 'bg-primary dark:bg-dark-card'
+  }`;
+
+  // Link styling variations
+  const linkClasses = `text-${scrolled || !isHomePage ? 'gray-700 dark:text-dark-text' : 'white'} hover:${scrolled || !isHomePage ? 'bg-gray-100 dark:bg-dark-light' : 'bg-primary/30'} nav-link`;
+
   return (
-    <nav className="bg-primary">
+    <nav className={navbarClasses}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <Link to="/" className="flex items-center">
-                <span className="text-white font-bold text-xl">PeerConnect</span>
+                <motion.span 
+                  className={`font-bold text-xl ${
+                    scrolled || !isHomePage 
+                      ? 'gradient-text' 
+                      : 'text-white'
+                  }`}
+                  whileHover={{ scale: 1.05 }}
+                >
+                  PeerConnect
+                </motion.span>
               </Link>
             </div>
             <div className="hidden md:block">
               <div className="ml-10 flex items-baseline space-x-4">
                 <Link
                   to="/dashboard"
-                  className="text-white hover:bg-primary-dark px-3 py-2 rounded-md font-medium"
+                  className={linkClasses}
                 >
                   Dashboard
                 </Link>
                 <Link
                   to="/activities"
-                  className="text-white hover:bg-primary-dark px-3 py-2 rounded-md font-medium"
+                  className={linkClasses}
                 >
                   Activities
                 </Link>
                 {isAuthenticated && (
                   <Link
-                    to="/create-activity"
-                    className="text-white hover:bg-primary-dark px-3 py-2 rounded-md font-medium"
+                    to="/activities/new"
+                    className={linkClasses}
                   >
                     Create Activity
                   </Link>
@@ -63,39 +95,72 @@ const Navbar = () => {
           </div>
           <div className="hidden md:block">
             <div className="ml-4 flex items-center md:ml-6">
+              {/* Dark Mode Toggle */}
+              <DarkModeToggle />
+              
               {isAuthenticated ? (
-                <div className="flex items-center space-x-4">
-                  <span className="text-white">{getUserDisplayName()}</span>
-                  <button
+                <div className="flex items-center space-x-4 ml-4">
+                  <motion.span 
+                    className={`${scrolled || !isHomePage ? 'text-gray-700 dark:text-dark-text' : 'text-white'}`}
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    {getUserDisplayName()}
+                  </motion.span>
+                  <motion.button
                     onClick={handleLogout}
-                    className="text-white bg-primary-dark hover:bg-primary-darker px-4 py-2 rounded-md font-medium"
+                    className={`${
+                      scrolled || !isHomePage 
+                        ? 'bg-primary text-white dark:bg-primary/80' 
+                        : 'bg-white text-primary'
+                    } px-4 py-2 rounded-md font-medium hover:opacity-90`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     Logout
-                  </button>
+                  </motion.button>
                 </div>
               ) : (
                 <div className="space-x-4">
-                  <Link
-                    to="/login"
-                    className="text-white hover:bg-primary-dark px-3 py-2 rounded-md font-medium"
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="text-white bg-primary-dark hover:bg-primary-darker px-4 py-2 rounded-md font-medium"
-                  >
-                    Sign Up
-                  </Link>
+                  <motion.span whileHover={{ scale: 1.05 }} className="inline-block">
+                    <Link
+                      to="/login"
+                      className={`${
+                        scrolled || !isHomePage 
+                          ? 'text-gray-700 dark:text-dark-text' 
+                          : 'text-white'
+                      } px-3 py-2 rounded-md font-medium hover:opacity-80`}
+                    >
+                      Login
+                    </Link>
+                  </motion.span>
+                  <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="inline-block">
+                    <Link
+                      to="/register"
+                      className={`${
+                        scrolled || !isHomePage
+                          ? 'bg-primary text-white dark:bg-primary/80' 
+                          : 'bg-white text-primary'
+                      } px-4 py-2 rounded-md font-medium hover:opacity-90`}
+                    >
+                      Sign Up
+                    </Link>
+                  </motion.span>
                 </div>
               )}
             </div>
           </div>
           <div className="-mr-2 flex md:hidden">
+            {/* Dark Mode Toggle for Mobile */}
+            <DarkModeToggle />
+            
             <button
               type="button"
               onClick={toggleMobileMenu}
-              className="bg-primary-dark inline-flex items-center justify-center p-2 rounded-md text-white hover:text-white hover:bg-primary-darker focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-primary focus:ring-white"
+              className={`inline-flex items-center justify-center p-2 rounded-md ${
+                scrolled || !isHomePage
+                  ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light' 
+                  : 'text-white hover:bg-primary/30'
+              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary`}
               aria-controls="mobile-menu"
               aria-expanded="false"
             >
@@ -140,68 +205,89 @@ const Navbar = () => {
 
       {/* Mobile menu */}
       <div
-        className={`${mobileMenuOpen ? 'block' : 'hidden'} md:hidden`}
+        className={`${
+          mobileMenuOpen ? 'block' : 'hidden'
+        } md:hidden transition-all duration-300 ease-in-out ${
+          scrolled || !isHomePage ? 'bg-white dark:bg-dark-card' : 'bg-primary/95'
+        }`}
         id="mobile-menu"
       >
         <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
           <Link
             to="/dashboard"
-            className="text-white hover:bg-primary-dark block px-3 py-2 rounded-md font-medium"
+            className={`block px-3 py-2 rounded-md font-medium ${
+              scrolled || !isHomePage
+                ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light'
+                : 'text-white hover:bg-primary/30'
+            }`}
             onClick={() => setMobileMenuOpen(false)}
           >
             Dashboard
           </Link>
           <Link
             to="/activities"
-            className="text-white hover:bg-primary-dark block px-3 py-2 rounded-md font-medium"
+            className={`block px-3 py-2 rounded-md font-medium ${
+              scrolled || !isHomePage
+                ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light'
+                : 'text-white hover:bg-primary/30'
+            }`}
             onClick={() => setMobileMenuOpen(false)}
           >
             Activities
           </Link>
           {isAuthenticated && (
             <Link
-              to="/create-activity"
-              className="text-white hover:bg-primary-dark block px-3 py-2 rounded-md font-medium"
+              to="/activities/new"
+              className={`block px-3 py-2 rounded-md font-medium ${
+                scrolled || !isHomePage
+                  ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light'
+                  : 'text-white hover:bg-primary/30'
+              }`}
               onClick={() => setMobileMenuOpen(false)}
             >
               Create Activity
             </Link>
           )}
-        </div>
-        <div className="pt-4 pb-3 border-t border-primary-dark">
-          <div className="px-2 space-y-1">
-            {isAuthenticated ? (
-              <>
-                <div className="text-white px-3 py-2">{getUserDisplayName()}</div>
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="text-white block w-full text-left px-3 py-2 rounded-md hover:bg-primary-dark"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="text-white hover:bg-primary-dark block px-3 py-2 rounded-md font-medium"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  className="text-white hover:bg-primary-dark block px-3 py-2 rounded-md font-medium"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Sign Up
-                </Link>
-              </>
-            )}
-          </div>
+          {isAuthenticated ? (
+            <button
+              onClick={() => {
+                handleLogout();
+                setMobileMenuOpen(false);
+              }}
+              className={`w-full text-left px-3 py-2 rounded-md font-medium ${
+                scrolled || !isHomePage
+                  ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light'
+                  : 'text-white hover:bg-primary/30'
+              }`}
+            >
+              Logout
+            </button>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className={`block px-3 py-2 rounded-md font-medium ${
+                  scrolled || !isHomePage
+                    ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light'
+                    : 'text-white hover:bg-primary/30'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Login
+              </Link>
+              <Link
+                to="/register"
+                className={`block px-3 py-2 rounded-md font-medium ${
+                  scrolled || !isHomePage
+                    ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light'
+                    : 'text-white hover:bg-primary/30'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Sign Up
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </nav>
