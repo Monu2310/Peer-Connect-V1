@@ -1,15 +1,20 @@
 import React, { createContext, useContext, useEffect, useReducer, useState } from 'react';
 import axios from 'axios';
-import { API_URL } from '../api/config';
+import { API_URL, setAuthToken } from '../api/config';
 
 // Create context
 const AuthContext = createContext();
 
-// Initial state for the reducer
+// Local storage keys
+const TOKEN_KEY = 'token';
+const USER_DATA_KEY = 'user_data';
+const AUTH_TIMESTAMP_KEY = 'auth_timestamp';
+
+// Initial state for the reducer - load from localStorage if available
 const initialState = {
-  user: null,
-  token: localStorage.getItem('token'),
-  isAuthenticated: false,
+  user: JSON.parse(localStorage.getItem(USER_DATA_KEY)) || null,
+  token: localStorage.getItem(TOKEN_KEY),
+  isAuthenticated: !!localStorage.getItem(TOKEN_KEY),
   loading: true
 };
 
@@ -17,6 +22,10 @@ const initialState = {
 const authReducer = (state, action) => {
   switch (action.type) {
     case 'USER_LOADED':
+      // Save user data to localStorage for persistence
+      localStorage.setItem(USER_DATA_KEY, JSON.stringify(action.payload));
+      localStorage.setItem(AUTH_TIMESTAMP_KEY, Date.now().toString());
+      
       return {
         ...state,
         isAuthenticated: true,
@@ -25,7 +34,14 @@ const authReducer = (state, action) => {
       };
     case 'LOGIN_SUCCESS':
     case 'REGISTER_SUCCESS':
-      localStorage.setItem('token', action.payload.token);
+      setAuthToken(action.payload.token);
+      
+      // Save user data to localStorage for persistence
+      if (action.payload.user) {
+        localStorage.setItem(USER_DATA_KEY, JSON.stringify(action.payload.user));
+      }
+      localStorage.setItem(AUTH_TIMESTAMP_KEY, Date.now().toString());
+      
       return {
         ...state,
         ...action.payload,
@@ -36,13 +52,24 @@ const authReducer = (state, action) => {
     case 'LOGIN_FAIL':
     case 'REGISTER_FAIL':
     case 'LOGOUT':
-      localStorage.removeItem('token');
+      setAuthToken(null);
+      
+      // Clear auth-related data from localStorage
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_DATA_KEY);
+      localStorage.removeItem(AUTH_TIMESTAMP_KEY);
+      
       return {
         ...state,
         token: null,
         isAuthenticated: false,
         loading: false,
         user: null
+      };
+    case 'SET_LOADING':
+      return {
+        ...state,
+        loading: action.payload
       };
     default:
       return state;
@@ -53,37 +80,99 @@ const authReducer = (state, action) => {
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const [error, setError] = useState('');
+  const [authInitialized, setAuthInitialized] = useState(false);
+
+  // Save token to localStorage when it changes
+  useEffect(() => {
+    if (state.token) {
+      localStorage.setItem(TOKEN_KEY, state.token);
+      setAuthToken(state.token);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+      setAuthToken(null);
+    }
+  }, [state.token]);
 
   // Load user data if token exists
   useEffect(() => {
-    const loadUser = async () => {
-      if (localStorage.token) {
+    const loadUserOnInit = async () => {
+      // Make sure we only try to load user data once during initialization
+      if (authInitialized) return;
+      setAuthInitialized(true);
+      
+      const token = localStorage.getItem(TOKEN_KEY);
+      const userData = localStorage.getItem(USER_DATA_KEY);
+      const timestamp = localStorage.getItem(AUTH_TIMESTAMP_KEY);
+      
+      // If we have cached user data and it's relatively fresh (< 24 hours), use it
+      const useCachedData = userData && timestamp && 
+                           (Date.now() - parseInt(timestamp) < 24 * 60 * 60 * 1000);
+      
+      if (token) {
         try {
+          dispatch({ type: 'SET_LOADING', payload: true });
           // Set auth token in axios headers
-          setAuthToken(localStorage.token);
+          setAuthToken(token);
           
-          // Get user data
-          const res = await axios.get(`${API_URL}/api/auth/me`, {
-            withCredentials: true // Important for cookie-based auth
-          });
-          
-          dispatch({
-            type: 'USER_LOADED',
-            payload: res.data
-          });
+          // Use cached data if available and fresh, otherwise fetch from API
+          if (useCachedData) {
+            console.log('Using cached user data');
+            dispatch({
+              type: 'USER_LOADED',
+              payload: JSON.parse(userData)
+            });
+          } else {
+            // Get user data from API
+            console.log('Fetching fresh user data');
+            const res = await axios.get(`${API_URL}/api/auth/me`, {
+              withCredentials: true,
+              timeout: 5000 // Add timeout to prevent hanging requests
+            });
+            
+            dispatch({
+              type: 'USER_LOADED',
+              payload: res.data
+            });
+          }
         } catch (err) {
           console.error('Error loading user:', err);
           console.error('Response data:', err.response?.data);
           console.error('Status:', err.response?.status);
-          dispatch({ type: 'AUTH_ERROR' });
+          
+          // If we have cached data, use it as fallback even if it might be stale
+          if (userData) {
+            console.log('Using cached user data as fallback');
+            dispatch({
+              type: 'USER_LOADED',
+              payload: JSON.parse(userData)
+            });
+          } else {
+            dispatch({ type: 'AUTH_ERROR' });
+          }
+          
+          // Ensure loading is set to false even if there's an error
+          dispatch({ type: 'SET_LOADING', payload: false });
         }
       } else {
         dispatch({ type: 'AUTH_ERROR' });
+        // Ensure loading is set to false if there's no token
+        dispatch({ type: 'SET_LOADING', payload: false });
       }
     };
 
-    loadUser();
-  }, []);
+    // Set a timeout to ensure loading state eventually ends
+    // This is a safety measure to prevent infinite loading
+    const timer = setTimeout(() => {
+      if (state.loading) {
+        console.warn("Auth loading took too long, forcing state to not loading");
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    }, 5000); // 5 seconds timeout
+
+    loadUserOnInit();
+
+    return () => clearTimeout(timer);
+  }, [authInitialized, state.loading]);
 
   // Register user
   const register = async (userData) => {
@@ -103,6 +192,19 @@ export const AuthProvider = ({ children }) => {
       
       // Load user after successful registration
       await loadUser();
+      
+      // Store preferences to local storage for quick access
+      if (userData.hobbies || userData.favoriteSubjects || userData.sports || 
+          userData.musicGenres || userData.movieGenres) {
+        localStorage.setItem('user_preferences', JSON.stringify({
+          hobbies: userData.hobbies || [],
+          favoriteSubjects: userData.favoriteSubjects || [],
+          sports: userData.sports || [],
+          musicGenres: userData.musicGenres || [],
+          movieGenres: userData.movieGenres || []
+        }));
+      }
+      
       return res.data;
     } catch (err) {
       console.error('Registration error details:', err);
@@ -124,33 +226,46 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('Attempting login at URL:', `${API_URL}/api/auth/login`);
       
-      // Add axios config to prevent redirect following and include credentials
-      const config = {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        withCredentials: true, // Important for cookie-based auth
-        maxRedirects: 0 // Prevent axios from following redirects
-      };
+      // Clear any previous errors or tokens
+      localStorage.removeItem(TOKEN_KEY);
+      setAuthToken(null);
       
-      const res = await axios.post(`${API_URL}/api/auth/login`, { email, password }, config);
+      // Simplify the login request
+      const res = await axios.post(
+        `${API_URL}/api/auth/login`, 
+        { email, password },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          withCredentials: true,
+          timeout: 8000 // Add timeout to prevent hanging requests
+        }
+      );
       
-      console.log('Login response received:', res.status);
-      console.log('Token received:', res.data?.token ? 'Yes' : 'No');
+      console.log('Login response:', res.status);
       
-      // Store token in localStorage and set it in axios headers
-      if (res.data && res.data.token) {
-        localStorage.setItem('token', res.data.token);
-        setAuthToken(res.data.token);
+      // Make sure we got a valid response with a token
+      if (!res.data || !res.data.token) {
+        throw new Error('Invalid response from server - no token received');
       }
       
+      // Store the token in localStorage and set in axios
+      setAuthToken(res.data.token);
+      
+      // Dispatch success action
       dispatch({
         type: 'LOGIN_SUCCESS',
         payload: res.data
       });
       
-      // Load user after successful login
-      await loadUser();
+      // Load user data after login
+      try {
+        await loadUser();
+      } catch (userErr) {
+        console.error('Error loading user after login:', userErr);
+        // Continue anyway since we have the token
+      }
       
       return res.data;
     } catch (err) {
@@ -158,7 +273,18 @@ export const AuthProvider = ({ children }) => {
       console.error('Response status:', err.response?.status);
       console.error('Response data:', err.response?.data);
       
-      const errorMessage = err.response?.data?.message || 'Invalid credentials';
+      // Clear any partial auth state
+      setAuthToken(null);
+      
+      // Get a better error message
+      let errorMessage = 'Login failed. Please check your email and password.';
+      
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message.includes('Network Error')) {
+        errorMessage = 'Cannot connect to server. Please check your internet connection.';
+      }
+      
       setError(errorMessage);
       
       dispatch({
@@ -171,18 +297,29 @@ export const AuthProvider = ({ children }) => {
 
   // Logout user
   const logout = () => {
+    // Clear any data that should not persist after logout
+    sessionStorage.clear(); // Clear all session storage data (joined activities, etc.)
+    
+    // Consider keeping some preferences in localStorage for better UX on future logins
+    // But remove any sensitive data
+    
     dispatch({ type: 'LOGOUT' });
   };
 
   // Load user data - helper function used by useEffect
   const loadUser = async () => {
-    if (localStorage.token) {
-      setAuthToken(localStorage.token);
+    if (!localStorage.token) {
+      dispatch({ type: 'SET_LOADING', payload: false });
+      return null;
     }
 
     try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      setAuthToken(localStorage.token);
+      
       const res = await axios.get(`${API_URL}/api/auth/me`, {
-        withCredentials: true // Important for cookie-based auth
+        withCredentials: true,
+        timeout: 5000 // Add timeout to prevent hanging requests
       });
       
       dispatch({
@@ -194,20 +331,21 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error('Error loading user:', err);
       console.error('Status:', err.response?.status);
+      
+      // Try to use cached user data if available
+      const userData = localStorage.getItem(USER_DATA_KEY);
+      if (userData) {
+        console.log('Using cached user data in loadUser');
+        const parsedUserData = JSON.parse(userData);
+        dispatch({
+          type: 'USER_LOADED',
+          payload: parsedUserData
+        });
+        return parsedUserData;
+      }
+      
       dispatch({ type: 'AUTH_ERROR' });
       return null;
-    }
-  };
-
-  // Set auth token in axios headers
-  const setAuthToken = (token) => {
-    if (token) {
-      // Set token in multiple formats to ensure compatibility
-      axios.defaults.headers.common['x-auth-token'] = token;
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-      delete axios.defaults.headers.common['x-auth-token'];
-      delete axios.defaults.headers.common['Authorization'];
     }
   };
 
@@ -225,10 +363,25 @@ export const AuthProvider = ({ children }) => {
     loadUser,
     // Add updateUserProfile function to keep auth state in sync with profile updates
     updateUserProfile: (updatedUserData) => {
+      // Update auth state
       dispatch({
         type: 'USER_LOADED',
         payload: updatedUserData
       });
+      
+      // Also update preferences in localStorage if they exist
+      const userPreferences = localStorage.getItem('user_preferences');
+      if (userPreferences) {
+        const parsedPreferences = JSON.parse(userPreferences);
+        localStorage.setItem('user_preferences', JSON.stringify({
+          ...parsedPreferences,
+          hobbies: updatedUserData.hobbies || parsedPreferences.hobbies || [],
+          favoriteSubjects: updatedUserData.favoriteSubjects || parsedPreferences.favoriteSubjects || [],
+          sports: updatedUserData.sports || parsedPreferences.sports || [],
+          musicGenres: updatedUserData.musicGenres || parsedPreferences.musicGenres || [],
+          movieGenres: updatedUserData.movieGenres || parsedPreferences.movieGenres || []
+        }));
+      }
     }
   };
 

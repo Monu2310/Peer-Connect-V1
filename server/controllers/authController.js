@@ -12,7 +12,18 @@ const cookieOptions = {
 // Register a new user
 exports.register = async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { 
+      username, 
+      email, 
+      password, 
+      major, 
+      graduationYear,
+      hobbies,
+      favoriteSubjects,
+      sports,
+      musicGenres,
+      movieGenres
+    } = req.body;
 
     // Check if user exists
     let user = await User.findOne({ email });
@@ -26,12 +37,30 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'Username is already taken' });
     }
 
-    // Create new user
+    // Create new user with preferences
     user = new User({
       username,
       email,
       password
     });
+    
+    // Add optional fields if provided
+    if (major) user.major = major;
+    if (graduationYear) user.year = graduationYear;
+    
+    // Add preference fields if provided
+    if (hobbies && Array.isArray(hobbies)) user.hobbies = hobbies;
+    if (favoriteSubjects && Array.isArray(favoriteSubjects)) user.favoriteSubjects = favoriteSubjects;
+    if (sports && Array.isArray(sports)) user.sports = sports;
+    if (musicGenres && Array.isArray(musicGenres)) user.musicGenres = musicGenres;
+    if (movieGenres && Array.isArray(movieGenres)) user.movieGenres = movieGenres;
+    
+    // Add all hobbies, sports, etc. to interests for compatibility with existing code
+    user.interests = [
+      ...(hobbies || []),
+      ...(sports || []),
+      ...(favoriteSubjects || [])
+    ];
 
     await user.save();
 
@@ -57,7 +86,12 @@ exports.register = async (req, res) => {
             id: user.id,
             username: user.username,
             email: user.email,
-            profilePicture: user.profilePicture
+            profilePicture: user.profilePicture,
+            hobbies: user.hobbies,
+            favoriteSubjects: user.favoriteSubjects,
+            sports: user.sports,
+            musicGenres: user.musicGenres,
+            movieGenres: user.movieGenres
           }
         });
       }
@@ -74,19 +108,29 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
     console.log(`Login attempt for email: ${email}`);
 
+    // Validate inputs
+    if (!email || !password) {
+      console.log('Missing email or password in request');
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
     // Check if user exists
     let user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
-
-    // Check password
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
+      console.log(`User not found with email: ${email}`);
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
     console.log(`User found: ${user.username} (${user._id})`);
+
+    // Check password
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      console.log(`Password mismatch for user: ${user._id}`);
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    console.log(`Password verified for user: ${user._id}`);
 
     // Generate JWT token
     const payload = {
@@ -95,18 +139,18 @@ exports.login = async (req, res) => {
 
     jwt.sign(
       payload,
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'default_secret_do_not_use_in_production',
       { expiresIn: '7d' },
       (err, token) => {
         if (err) {
           console.error('JWT signing error:', err);
-          throw err;
+          return res.status(500).json({ message: 'Error generating authentication token' });
         }
         
         // Set token in HTTP-only cookie
         res.cookie('token', token, cookieOptions);
         
-        console.log(`Token generated and cookie set`);
+        console.log(`Token generated and cookie set for user: ${user._id}`);
         
         // Also send token in response body
         res.json({ 
@@ -115,14 +159,20 @@ exports.login = async (req, res) => {
             id: user.id,
             username: user.username,
             email: user.email,
-            profilePicture: user.profilePicture
+            profilePicture: user.profilePicture,
+            // Include preference fields
+            hobbies: user.hobbies || [],
+            favoriteSubjects: user.favoriteSubjects || [],
+            sports: user.sports || [],
+            musicGenres: user.musicGenres || [],
+            movieGenres: user.movieGenres || []
           }
         });
       }
     );
   } catch (err) {
     console.error('Login error:', err.message);
-    res.status(500).send('Server error');
+    res.status(500).json({ message: 'Server error during login', error: err.message });
   }
 };
 

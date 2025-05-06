@@ -1,113 +1,118 @@
-import axios from 'axios';
+import api from './config';
 import { API_URL } from './config';
 
-/**
- * Get user by id
- * @param {string} userId - ID of the user to fetch
- */
-export const getUserById = async (userId) => {
-  try {
-    const response = await axios.get(`${API_URL}/api/users/${userId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching user:', error);
-    throw new Error(error.response?.data?.message || 'Failed to fetch user details');
-  }
+// Helper function to process image URLs consistently
+const processImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http')) return imagePath;
+  
+  // Use the explicit API_URL from config
+  return `${API_URL}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
 };
 
-/**
- * Update current user profile
- * @param {object} userData - User profile data to update
- */
-export const updateProfile = async (userData) => {
+// Get user profile
+export const getUserProfile = async (userId) => {
   try {
-    // If userData.interests is an array, make sure it's properly formatted
-    let profileData = { ...userData };
+    const response = await api.get(`/api/users/${userId}`);
     
-    // Handle array data properly
-    if (Array.isArray(profileData.interests)) {
-      // The server expects either a string or array, but we'll ensure it's consistent
-      profileData.interests = [...profileData.interests]; // Make a copy to avoid mutation
+    // Process profile picture URL if needed
+    if (response.data && response.data.profilePicture) {
+      response.data.profilePicture = processImageUrl(response.data.profilePicture);
     }
-
-    const response = await axios.put(`${API_URL}/api/users/profile`, profileData);
-    return response.data;
-  } catch (error) {
-    console.error('Error updating profile:', error);
-    throw new Error(error.response?.data?.message || 'Failed to update profile');
-  }
-};
-
-/**
- * Upload profile image
- * @param {File} imageFile - The image file to upload
- */
-export const uploadProfileImage = async (imageFile) => {
-  try {
-    const formData = new FormData();
-    formData.append('profileImage', imageFile);
     
-    const response = await axios.post(`${API_URL}/api/users/upload-image`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
     return response.data;
   } catch (error) {
-    console.error('Error uploading image:', error);
-    throw new Error(error.response?.data?.message || 'Failed to upload image');
+    console.error('Error fetching user profile:', error);
+    // Return a minimal valid profile to prevent UI crashes
+    return {
+      username: 'User',
+      email: '',
+      bio: '',
+      interests: [],
+      hobbies: [],
+      favoriteSubjects: [],
+      sports: [],
+      musicGenres: [],
+      movieGenres: []
+    };
   }
 };
 
-/**
- * Get activities created or joined by the current user
- */
-export const getUserActivities = async () => {
+// Update user profile
+export const updateUserProfile = async (profileData) => {
   try {
-    const response = await axios.get(`${API_URL}/api/users/activities`);
+    const response = await api.put('/api/users/profile', profileData);
+    
+    // Process profile picture URL if needed
+    if (response.data && response.data.profilePicture) {
+      response.data.profilePicture = processImageUrl(response.data.profilePicture);
+    }
+    
     return response.data;
   } catch (error) {
-    console.error('Error fetching user activities:', error);
-    throw new Error(error.response?.data?.message || 'Failed to fetch activities');
+    console.error('Error updating user profile:', error);
+    throw error;
   }
 };
 
-/**
- * Search for users by username or email
- * @param {string} query - Search query string
- */
+// Upload profile picture
+export const uploadProfilePicture = async (formData) => {
+  try {
+    const response = await api.post('/api/users/profile/picture', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    
+    // Process profile picture URL if needed
+    if (response.data && response.data.profilePicture) {
+      response.data.profilePicture = processImageUrl(response.data.profilePicture);
+    } else if (response.data && response.data.imageUrl) {
+      response.data.imageUrl = processImageUrl(response.data.imageUrl);
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error uploading profile picture:', error);
+    throw error;
+  }
+};
+
+// Search users
 export const searchUsers = async (query) => {
   try {
-    const response = await axios.get(`${API_URL}/api/users/search?q=${query}`);
+    const response = await api.get(`/api/users/search?q=${encodeURIComponent(query)}`);
+    
+    // Process profile pictures for all users in the results
+    if (response.data && Array.isArray(response.data)) {
+      response.data = response.data.map(user => {
+        if (user.profilePicture) {
+          user.profilePicture = processImageUrl(user.profilePicture);
+        }
+        return user;
+      });
+    }
+    
     return response.data;
   } catch (error) {
     console.error('Error searching users:', error);
-    throw new Error(error.response?.data?.message || 'Failed to search users');
+    throw error;
   }
 };
 
-/**
- * Update user password
- * @param {object} passwordData - Object containing current and new password
- */
-export const updatePassword = async (passwordData) => {
+// Find user by email
+export const findUserByEmail = async (email) => {
   try {
-    const response = await axios.put(`${API_URL}/api/users/password`, passwordData);
+    const response = await api.get(`/api/users/find-by-email?email=${encodeURIComponent(email)}`);
+    
+    // Process profile picture URL if needed
+    if (response.data && response.data.profilePicture) {
+      response.data.profilePicture = processImageUrl(response.data.profilePicture);
+    }
+    
     return response.data;
   } catch (error) {
-    console.error('Error updating password:', error);
-    throw new Error(error.response?.data?.message || 'Failed to update password');
-  }
-};
-
-/**
- * Get dashboard statistics for the current user
- * Including friend count, pending requests, activities count, and recent messages
- */
-export const getDashboardStats = async () => {
-  try {
-    const response = await axios.get(`${API_URL}/api/users/dashboard/stats`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching dashboard stats:', error);
-    throw new Error(error.response?.data?.message || 'Failed to fetch dashboard statistics');
+    console.error('Error finding user by email:', error);
+    throw error;
   }
 };

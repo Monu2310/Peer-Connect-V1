@@ -28,4 +28,14 @@ router.put('/:userId/read', auth, messageController.markAsRead);
 // @access  Private (only sender)
 router.delete('/:messageId', auth, messageController.deleteMessage);
 
+// @route   POST /api/messages/activity
+// @desc    Send a message to an activity group chat via REST API
+// @access  Private
+router.post('/activity', auth, messageController.sendActivityMessage);
+
+// @route   GET /api/messages/activity/:activityId
+// @desc    Get messages for an activity group chat via REST API
+// @access  Private
+router.get('/activity/:activityId', auth, messageController.getActivityMessages);
+
 module.exports = router;

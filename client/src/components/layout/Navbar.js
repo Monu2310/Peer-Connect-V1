@@ -33,7 +33,7 @@ const Navbar = () => {
     if (!currentUser) return '';
     return currentUser.name || currentUser.username || '';
   };
-
+  
   // Different styling for home page
   const isHomePage = location.pathname === '/';
   
@@ -57,7 +57,7 @@ const Navbar = () => {
             <div className="flex-shrink-0">
               <Link to="/" className="flex items-center">
                 <motion.span 
-                  className={`font-bold text-xl ${
+                  className={`font-bold text-xl text-black${
                     scrolled || !isHomePage 
                       ? 'gradient-text' 
                       : 'text-white'
@@ -83,12 +83,20 @@ const Navbar = () => {
                   Activities
                 </Link>
                 {isAuthenticated && (
-                  <Link
-                    to="/activities/new"
-                    className={linkClasses}
-                  >
-                    Create Activity
-                  </Link>
+                  <>
+                    <Link
+                      to="/activities/new"
+                      className={linkClasses}
+                    >
+                      Create Activity
+                    </Link>
+                    <Link
+                      to="/friends"
+                      className={linkClasses}
+                    >
+                      Friends
+                    </Link>
+                  </>
                 )}
               </div>
             </div>
@@ -203,16 +211,12 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile menu, show/hide based on menu state */}
       <div
-        className={`${
-          mobileMenuOpen ? 'block' : 'hidden'
-        } md:hidden transition-all duration-300 ease-in-out ${
-          scrolled || !isHomePage ? 'bg-white dark:bg-dark-card' : 'bg-primary/95'
-        }`}
+        className={`${mobileMenuOpen ? 'block' : 'hidden'} md:hidden`}
         id="mobile-menu"
       >
-        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white dark:bg-dark-card shadow-md">
           <Link
             to="/dashboard"
             className={`block px-3 py-2 rounded-md font-medium ${
@@ -236,17 +240,30 @@ const Navbar = () => {
             Activities
           </Link>
           {isAuthenticated && (
-            <Link
-              to="/activities/new"
-              className={`block px-3 py-2 rounded-md font-medium ${
-                scrolled || !isHomePage
-                  ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light'
-                  : 'text-white hover:bg-primary/30'
-              }`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Create Activity
-            </Link>
+            <>
+              <Link
+                to="/activities/new"
+                className={`block px-3 py-2 rounded-md font-medium ${
+                  scrolled || !isHomePage
+                    ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light'
+                    : 'text-white hover:bg-primary/30'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Create Activity
+              </Link>
+              <Link
+                to="/friends"
+                className={`block px-3 py-2 rounded-md font-medium ${
+                  scrolled || !isHomePage
+                    ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light'
+                    : 'text-white hover:bg-primary/30'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Friends
+              </Link>
+            </>
           )}
           {isAuthenticated ? (
             <button

@@ -89,8 +89,8 @@ const Activities = () => {
     show: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
+        staggerChildren: 0.05,  // Reduced from 0.1 for faster loading
+        delayChildren: 0.1,     // Reduced from 0.2 for faster initial display
       }
     }
   };
@@ -102,8 +102,8 @@ const Activities = () => {
       y: 0,
       transition: {
         type: "spring",
-        stiffness: 100,
-        damping: 12
+        stiffness: 200,  // Increased from 100 for faster animation
+        damping: 10      // Adjusted for smoother animation
       }
     }
   };
@@ -155,36 +155,45 @@ const Activities = () => {
 
   return (
     <PageTransition>
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
+      <div className="container mx-auto px-4 py-6 max-w-7xl ">
+        {/* Enhanced Header Section */}
         <motion.div 
-          className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6"
+          className="relative mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl overflow-hidden shadow-sm"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary to-indigo-500">
-              Discover Activities
-            </h1>
-            <p className="text-sm text-gray-600">Connect with peers through exciting activities</p>
-          </div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32"></div>
+          <div className="absolute bottom-0 left-0 w-40 h-40 bg-indigo-500/5 rounded-full -ml-20 -mb-20"></div>
           
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-            className="mt-4 md:mt-0"
-          >
-            <Link 
-              to="/activities/new" 
-              className="px-5 py-2 bg-gradient-to-r from-primary to-indigo-600 text-white rounded-lg shadow-lg inline-flex items-center hover:shadow-xl transition-all"
+          <div className="relative z-10 p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mt-12">
+            <div className="max-w-2xl">
+              <h1 className="text-4xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary via-blue-500 to-indigo-600">
+                Discover Activities
+              </h1>
+              <p className="text-gray-600 dark:text-gray-300 text-lg">
+                Connect with peers through exciting activities in your community
+              </p>
+            </div>
+            
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="self-start md:self-center"
+              transition={{ type: 'spring', stiffness: 400, damping: 10 }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Create New Activity
-            </Link>
-          </motion.div>
+              <Link 
+                to="/activities/new" 
+                className="px-6 py-3 bg-gradient-to-r from-primary to-indigo-600 text-white rounded-lg shadow-lg inline-flex items-center hover:shadow-xl transition-all font-medium"
+                aria-label="Create a new activity"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Create Activity
+              </Link>
+            </motion.div>
+          </div>
         </motion.div>
 
         {error && (
@@ -296,12 +305,15 @@ const Activities = () => {
             variants={containerVariants}
             initial="hidden"
             animate="show"
+            onAnimationStart={() => document.querySelectorAll('.activity-card').forEach(el => el.style.opacity = 1)}
           >
             {filteredActivities.map((activity) => (
               <motion.div 
                 key={activity._id} 
                 variants={itemVariants} 
                 whileHover={{ y: -5 }}
+                className="activity-card"
+                style={{ opacity: 1 }}
                 transition={{ type: 'spring', stiffness: 300 }}
               >
                 <div className="h-full overflow-hidden bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100">
@@ -314,6 +326,11 @@ const Activities = () => {
                           className="w-full h-full object-cover"
                           whileHover={{ scale: 1.05 }}
                           transition={{ duration: 0.5 }}
+                          onError={(e) => {
+                            console.error("Image failed to load:", activity.image);
+                            e.target.onerror = null;
+                            e.target.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5OTkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSIzIiB5PSIzIiB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHJ4PSIyIiByeT0iMiI+PC9yZWN0PjxjaXJjbGUgY3g9IjguNSIgY3k9IjguNSIgcj0iMS41Ij48L2NpcmNsZT48cG9seWxpbmUgcG9pbnRzPSIyMSAxNSAxNiAxMCA1IDIxIj48L3BvbHlsaW5lPjwvc3ZnPg==";
+                          }}
                         />
                       ) : (
                         <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-100 to-gray-200">

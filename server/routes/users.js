@@ -23,4 +23,9 @@ router.get('/search', auth, userController.searchUsers);
 // @access  Private
 router.get('/dashboard/stats', auth, userController.getDashboardStats);
 
+// @route   GET /api/users/find-by-email
+// @desc    Find user by email
+// @access  Private
+router.get('/find-by-email', auth, userController.findUserByEmail);
+
 module.exports = router;

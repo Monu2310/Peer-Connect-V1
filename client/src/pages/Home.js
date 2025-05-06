@@ -87,30 +87,47 @@ const Home = () => {
                 className="mt-8 sm:flex sm:justify-center"
                 variants={itemVariants}
               >
-                <motion.div 
-                  className="rounded-md shadow"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Link
-                    to="/register"
-                    className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-primary dark:text-white bg-white dark:bg-primary/90 hover:bg-gray-100 dark:hover:bg-primary md:py-4 md:text-lg md:px-10 transition-all"
+                {!isAuthenticated ? (
+                  <>
+                    <motion.div 
+                      className="rounded-md shadow"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Link
+                        to="/register"
+                        className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-primary dark:text-white bg-white dark:bg-primary/90 hover:bg-gray-100 dark:hover:bg-primary md:py-4 md:text-lg md:px-10 transition-all"
+                      >
+                        Get Started
+                      </Link>
+                    </motion.div>
+                    <motion.div 
+                      className="mt-3 rounded-md shadow sm:mt-0 sm:ml-3"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Link
+                        to="/login"
+                        className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 md:py-4 md:text-lg md:px-10 transition-all"
+                      >
+                        Log In
+                      </Link>
+                    </motion.div>
+                  </>
+                ) : (
+                  <motion.div 
+                    className="rounded-md shadow"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
-                    Get Started
-                  </Link>
-                </motion.div>
-                <motion.div 
-                  className="mt-3 rounded-md shadow sm:mt-0 sm:ml-3"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Link
-                    to="/login"
-                    className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 md:py-4 md:text-lg md:px-10 transition-all"
-                  >
-                    Log In
-                  </Link>
-                </motion.div>
+                    <Link
+                      to="/dashboard"
+                      className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-primary dark:text-white bg-white dark:bg-primary/90 hover:bg-gray-100 dark:hover:bg-primary md:py-4 md:text-lg md:px-10 transition-all"
+                    >
+                      Go to Dashboard
+                    </Link>
+                  </motion.div>
+                )}
               </motion.div>
               
               <motion.div 
@@ -244,22 +261,41 @@ const Home = () => {
             <span className="block text-indigo-200">Start your journey today.</span>
           </h2>
           <div className="mt-8 flex lg:mt-0 lg:flex-shrink-0">
-            <motion.div 
-              className="inline-flex rounded-md shadow"
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Link
-                to="/register"
-                className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-primary dark:text-white bg-white dark:bg-primary/90 hover:bg-gray-50 dark:hover:bg-primary transition-all"
+            {!isAuthenticated ? (
+              <motion.div 
+                className="inline-flex rounded-md shadow"
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                Get started
-              </Link>
-            </motion.div>
+                <Link
+                  to="/register"
+                  className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-primary dark:text-white bg-white dark:bg-primary/90 hover:bg-gray-50 dark:hover:bg-primary transition-all"
+                >
+                  Get started
+                </Link>
+              </motion.div>
+            ) : (
+              <motion.div 
+                className="inline-flex rounded-md shadow"
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Link
+                  to="/activities"
+                  className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-primary dark:text-white bg-white dark:bg-primary/90 hover:bg-gray-50 dark:hover:bg-primary transition-all"
+                >
+                  Browse Activities
+                </Link>
+              </motion.div>
+            )}
           </div>
         </div>
       </div>

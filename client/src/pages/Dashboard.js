@@ -2,51 +2,175 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import { getMyJoinedActivities, getMyCreatedActivities, getActivities } from '../api/activityService';
+import { getMyJoinedActivities, getMyCreatedActivities } from '../api/activityService';
 import { getFriends } from '../api/friendService';
+import { getFriendRecommendations, getActivityRecommendations, getUserInsights } from '../api/recommendationService';
+import { sendFriendRequestById } from '../api/friendService';
 import { useTheme } from '../contexts/ThemeContext';
 import BlobCursor from '../components/effects/BlobCursor';
+
+// LocalStorage keys for caching
+const DASHBOARD_CACHE_KEY = 'dashboard_data';
+const DASHBOARD_TIMESTAMP_KEY = 'dashboard_timestamp';
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes in milliseconds
 
 const Dashboard = () => {
   const { currentUser } = useAuth();
   const [userActivities, setUserActivities] = useState([]);
   const [recommendedActivities, setRecommendedActivities] = useState([]);
+  const [recommendedFriends, setRecommendedFriends] = useState([]);
   const [friends, setFriends] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [connectingToUser, setConnectingToUser] = useState(null);
+  const [connectionSuccess, setConnectionSuccess] = useState(null);
   const [stats, setStats] = useState({
     activitiesJoined: 0,
     activitiesCreated: 0,
     pendingInvitations: 0,
     friendCount: 0,
   });
+  
+  // Try loading dashboard data from cache on initial render
+  useEffect(() => {
+    const loadCachedData = () => {
+      try {
+        const cachedData = localStorage.getItem(DASHBOARD_CACHE_KEY);
+        const timestamp = localStorage.getItem(DASHBOARD_TIMESTAMP_KEY);
+        
+        if (cachedData && timestamp) {
+          const cacheAge = Date.now() - parseInt(timestamp);
+          // Only use cache if it's less than 10 minutes old
+          if (cacheAge < CACHE_DURATION) {
+            const parsedData = JSON.parse(cachedData);
+            
+            // Set state from cache for immediate display
+            setUserActivities(parsedData.userActivities || []);
+            setRecommendedActivities(parsedData.recommendedActivities || []);
+            setRecommendedFriends(parsedData.recommendedFriends || []);
+            setFriends(parsedData.friends || []);
+            setStats(parsedData.stats || {
+              activitiesJoined: 0,
+              activitiesCreated: 0,
+              pendingInvitations: 0,
+              friendCount: 0,
+            });
+            
+            // Still show content immediately but don't mark as fully loaded
+            // This allows the UI to show something while fresh data is fetched
+            console.log('Loaded dashboard data from cache');
+          }
+        }
+      } catch (err) {
+        console.error('Error loading cached dashboard data:', err);
+        // Continue with normal loading if cache loading fails
+      }
+    };
+    
+    loadCachedData();
+  }, []);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       setIsLoading(true);
+      setError(null);
+      
       try {
-        // Fetch user joined and created activities
-        const joinedActivities = await getMyJoinedActivities();
-        const createdActivities = await getMyCreatedActivities();
+        // Fetch user activity insights for accurate statistics
+        let insights = { joinedActivities: 0, createdActivities: 0 };
+        try {
+          insights = await getUserInsights();
+          console.log("User activity insights fetched successfully:", insights);
+        } catch (insightsErr) {
+          console.error("Error fetching activity insights:", insightsErr);
+        }
+        
+        // Fetch user joined activities
+        let joinedActivities = [];
+        try {
+          joinedActivities = await getMyJoinedActivities();
+          console.log("Joined activities fetched successfully:", joinedActivities);
+        } catch (joinedErr) {
+          console.error("Error fetching joined activities:", joinedErr);
+          joinedActivities = [];
+        }
+        
+        // Fetch user created activities
+        let createdActivities = [];
+        try {
+          createdActivities = await getMyCreatedActivities();
+          console.log("Created activities fetched successfully:", createdActivities);
+        } catch (createdErr) {
+          console.error("Error fetching created activities:", createdErr);
+          createdActivities = [];
+        }
+        
+        // Ensure we have valid arrays before concatenation
+        joinedActivities = Array.isArray(joinedActivities) ? joinedActivities : [];
+        createdActivities = Array.isArray(createdActivities) ? createdActivities : [];
+        
         const allUserActivities = [...joinedActivities, ...createdActivities];
         setUserActivities(allUserActivities);
         
-        // Fetch recommended activities (using general getActivities for now)
-        const recommended = await getActivities();
-        setRecommendedActivities(recommended);
+        // Fetch activity recommendations
+        let recommended = [];
+        try {
+          recommended = await getActivityRecommendations();
+          console.log("Activity recommendations fetched successfully:", recommended);
+        } catch (recErr) {
+          console.error("Error fetching activity recommendations:", recErr);
+          recommended = [];
+        }
+        setRecommendedActivities(Array.isArray(recommended) ? recommended : []);
+        
+        // Fetch friend recommendations based on preferences
+        let recommendedFriendsData = [];
+        try {
+          recommendedFriendsData = await getFriendRecommendations();
+          console.log("Friend recommendations fetched successfully:", recommendedFriendsData);
+        } catch (recFriendsErr) {
+          console.error("Error fetching friend recommendations:", recFriendsErr);
+          recommendedFriendsData = [];
+        }
+        setRecommendedFriends(Array.isArray(recommendedFriendsData) ? recommendedFriendsData : []);
         
         // Fetch user friends
-        const friendsData = await getFriends();
-        setFriends(friendsData);
+        let friendsData = [];
+        try {
+          friendsData = await getFriends();
+          console.log("Friends fetched successfully:", friendsData);
+        } catch (friendsErr) {
+          console.error("Error fetching friends:", friendsErr);
+          friendsData = [];
+        }
+        setFriends(Array.isArray(friendsData) ? friendsData : []);
         
-        // Calculate stats
-        setStats({
-          activitiesJoined: joinedActivities.length,
-          activitiesCreated: createdActivities.length,
-          pendingInvitations: 3, // Mock data for now
-          friendCount: friendsData.length,
-        });
+        // Calculate stats with multiple data sources - prioritize insights if available
+        const updatedStats = {
+          // Use insights data if available, otherwise fall back to array lengths
+          activitiesJoined: insights.joinedActivities || joinedActivities?.length || 0,
+          activitiesCreated: insights.createdActivities || createdActivities?.length || 0,
+          pendingInvitations: 3, // Mock data for now, can be replaced with actual pending invites
+          friendCount: friendsData?.length || 0,
+        };
+        setStats(updatedStats);
+        
+        // Save dashboard data to localStorage for future visits
+        const dashboardData = {
+          userActivities: allUserActivities,
+          recommendedActivities: Array.isArray(recommended) ? recommended : [],
+          recommendedFriends: Array.isArray(recommendedFriendsData) ? recommendedFriendsData : [],
+          friends: Array.isArray(friendsData) ? friendsData : [],
+          stats: updatedStats,
+        };
+        
+        localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(dashboardData));
+        localStorage.setItem(DASHBOARD_TIMESTAMP_KEY, Date.now().toString());
+        console.log('Dashboard data cached successfully');
+        
       } catch (error) {
-        console.error("Error fetching dashboard data:", error);
+        console.error("Dashboard data fetch error:", error);
+        setError("Failed to load dashboard data. Please try refreshing the page.");
       } finally {
         setIsLoading(false);
       }
@@ -54,6 +178,42 @@ const Dashboard = () => {
     
     fetchDashboardData();
   }, []);
+
+  // Handle friend request
+  const handleConnect = async (userId) => {
+    setConnectingToUser(userId);
+    setConnectionSuccess(null);
+    
+    try {
+      await sendFriendRequestById(userId);
+      setConnectionSuccess(userId);
+      setTimeout(() => {
+        setConnectionSuccess(null);
+      }, 3000);
+      
+      // Remove this user from recommendations
+      const updatedRecommendedFriends = recommendedFriends.filter(friend => friend._id !== userId);
+      setRecommendedFriends(updatedRecommendedFriends);
+      
+      // Update cache with new recommendations list
+      try {
+        const cachedData = localStorage.getItem(DASHBOARD_CACHE_KEY);
+        if (cachedData) {
+          const parsedData = JSON.parse(cachedData);
+          parsedData.recommendedFriends = updatedRecommendedFriends;
+          localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(parsedData));
+        }
+      } catch (err) {
+        console.error('Error updating cache after friend request:', err);
+      }
+      
+    } catch (err) {
+      console.error("Error sending friend request:", err);
+      setError("Failed to send friend request. Please try again.");
+    } finally {
+      setConnectingToUser(null);
+    }
+  };
 
   // Hide default cursor when dashboard is mounted
   useEffect(() => {
@@ -137,14 +297,22 @@ const Dashboard = () => {
             >
               Dashboard
             </motion.h1>
-            <motion.p 
-              className="text-gray-600 dark:text-gray-400"
+            <motion.div 
+              className="flex items-center"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
             >
-              Welcome back, {currentUser?.name || currentUser?.username || 'User'}!
-            </motion.p>
+              <p className="text-gray-600 dark:text-gray-400">
+                Welcome back, {currentUser?.name || currentUser?.username || 'User'}!
+              </p>
+              <Link to="/profile" className="ml-3 text-primary dark:text-primary-light hover:underline flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                My Profile
+              </Link>
+            </motion.div>
           </div>
           
           <motion.div
@@ -340,14 +508,130 @@ const Dashboard = () => {
           )}
         </motion.div>
         
+        {/* Recommended Friends */}
+        {recommendedFriends.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="mb-8"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">People You May Know</h2>
+              <Link to="/friends" className="text-primary dark:text-primary-light hover:underline">Find more friends</Link>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {recommendedFriends.slice(0, 3).map((friend) => (
+                <motion.div
+                  key={friend._id}
+                  variants={cardHoverVariants}
+                  whileHover="hover"
+                  whileTap="tap"
+                  className="glass-card rounded-lg overflow-hidden"
+                >
+                  <div className="p-5">
+                    <div className="flex items-center mb-3">
+                      <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                        <img 
+                          src={friend.profilePicture || '/avatar.svg'} 
+                          alt={friend.username} 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = '/avatar.svg';
+                          }}
+                        />
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="font-bold text-lg text-gray-800 dark:text-white">{friend.username}</h3>
+                        <div className="flex items-center">
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            {friend.similarityScore}% match
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Shared interests */}
+                    <div className="mb-4">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        You both like:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {friend.sharedInterests?.map((interest, idx) => (
+                          <span 
+                            key={idx} 
+                            className={`px-2 py-1 text-xs rounded-full 
+                              ${interest.type === 'hobby' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300' : 
+                                interest.type === 'sport' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 
+                                interest.type === 'subject' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' :
+                                'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'}`}
+                          >
+                            {interest.value}
+                          </span>
+                        ))}
+                        {(!friend.sharedInterests || friend.sharedInterests.length === 0) && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            Similar preferences to you
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col">
+                      <button
+                        onClick={() => handleConnect(friend._id)}
+                        disabled={connectingToUser === friend._id || connectionSuccess === friend._id}
+                        className={`btn ${
+                          connectionSuccess === friend._id 
+                            ? 'bg-green-500 hover:bg-green-600 text-white' 
+                            : 'btn-primary'
+                        } w-full flex items-center justify-center`}
+                      >
+                        {connectionSuccess === friend._id ? (
+                          <>
+                            <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Friend Request Sent
+                          </>
+                        ) : connectingToUser === friend._id ? (
+                          <>
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Connecting...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                            </svg>
+                            Connect
+                          </>
+                        )}
+                      </button>
+                      <Link to={`/profile/${friend._id}`} className="mt-2 text-sm text-center text-primary dark:text-blue-400 hover:underline">
+                        View Profile
+                      </Link>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+        
         {/* Recommended Activities */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.8 }}
         >
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Recommended For You</h2>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Recommended Activities</h2>
             <Link to="/activities" className="text-primary dark:text-primary-light hover:underline">Explore more</Link>
           </div>
           

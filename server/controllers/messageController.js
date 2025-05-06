@@ -1,5 +1,7 @@
 const Message = require('../models/Message');
+const GroupMessage = require('../models/GroupMessage');
 const User = require('../models/User');
+const Activity = require('../models/Activity');
 
 // Helper function to generate conversation ID consistently
 const generateConversationId = (userId1, userId2) => {
@@ -161,5 +163,91 @@ exports.deleteMessage = async (req, res) => {
       return res.status(404).json({ message: 'Message not found' });
     }
     res.status(500).send('Server error');
+  }
+};
+
+// Send a message to an activity group chat
+exports.sendActivityMessage = async (req, res) => {
+  try {
+    const { activityId, content, senderName } = req.body;
+    const senderId = req.user.id;
+    
+    // Validate activity exists
+    const activity = await Activity.findById(activityId);
+    if (!activity) {
+      return res.status(404).json({ message: 'Activity not found' });
+    }
+    
+    // Create group message
+    const groupMessage = new GroupMessage({
+      activityId,
+      sender: senderId,
+      content,
+      senderName: senderName || req.user.username
+    });
+    
+    await groupMessage.save();
+    
+    // Populate sender info for the response
+    const populatedMessage = await GroupMessage.findById(groupMessage._id)
+      .populate('sender', 'username profilePicture');
+    
+    // Format response to match socket.io format
+    const formattedMessage = {
+      _id: populatedMessage._id,
+      roomId: `activity-${activityId}`,
+      content: populatedMessage.content,
+      sender: {
+        id: senderId,
+        username: populatedMessage.senderName || populatedMessage.sender.username
+      },
+      timestamp: populatedMessage.createdAt
+    };
+    
+    res.status(201).json(formattedMessage);
+  } catch (err) {
+    console.error('Error sending activity message:', err);
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: err.message 
+    });
+  }
+};
+
+// Get messages for an activity group chat
+exports.getActivityMessages = async (req, res) => {
+  try {
+    const { activityId } = req.params;
+    
+    // Validate activity exists
+    const activity = await Activity.findById(activityId);
+    if (!activity) {
+      return res.status(404).json({ message: 'Activity not found' });
+    }
+    
+    // Find all messages for the activity
+    const messages = await GroupMessage.find({ activityId })
+      .sort({ createdAt: 1 })
+      .populate('sender', 'username profilePicture');
+    
+    // Format messages to match socket.io format
+    const formattedMessages = messages.map(msg => ({
+      _id: msg._id,
+      roomId: `activity-${activityId}`,
+      content: msg.content,
+      sender: {
+        id: msg.sender._id,
+        username: msg.senderName || msg.sender.username
+      },
+      timestamp: msg.createdAt
+    }));
+    
+    res.json(formattedMessages);
+  } catch (err) {
+    console.error('Error retrieving activity messages:', err);
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: err.message 
+    });
   }
 };

@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # MongoDB service
+  mongo:
+    image: mongo:latest
+    container_name: peerconnect-mongo
+    restart: always
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - peerconnect-network
+
+  # Node.js backend service
+  server:
+    build: ./server
+    container_name: peerconnect-server
+    restart: always
+    depends_on:
+      - mongo
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017/peerconnect
+      - JWT_SECRET=your_jwt_secret_key
+      - CLIENT_URL=http://client
+      - NODE_ENV=production
+    ports:
+      - "5111:5111"
+    networks:
+      - peerconnect-network
+
+  # React frontend service
+  client:
+    build: ./client
+    container_name: peerconnect-client
+    restart: always
+    depends_on:
+      - server
+    ports:
+      - "80:80"
+    networks:
+      - peerconnect-network
+
+# Shared network for all services
+networks:
+  peerconnect-network:
+    driver: bridge
+
+# Persistent volume for MongoDB data
+volumes:
+  mongodb_data:

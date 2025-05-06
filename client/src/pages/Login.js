@@ -24,11 +24,42 @@ const Login = () => {
     setIsLoading(true);
     setError(null);
     
+    // Validate form inputs
+    if (!formData.email.trim()) {
+      setError('Email is required');
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!formData.password) {
+      setError('Password is required');
+      setIsLoading(false);
+      return;
+    }
+    
     try {
-      await login(formData);
+      console.log('Attempting login with email:', formData.email);
+      
+      // Clear any existing authentication data
+      localStorage.removeItem('token');
+      
+      // Try login with a catch for network errors
+      const response = await login(formData);
+      console.log('Login successful, token received:', response?.token ? 'Yes' : 'No');
+      
+      // Redirect to dashboard
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message || 'Failed to log in. Please check your credentials.');
+      console.error('Login error:', err);
+      
+      // Handle different types of errors
+      if (!navigator.onLine) {
+        setError('Network error. Please check your internet connection.');
+      } else if (err.message.includes('401') || err.message.includes('400')) {
+        setError('Invalid email or password. Please try again.');
+      } else {
+        setError(err.message || 'Failed to log in. Please try again later.');
+      }
     } finally {
       setIsLoading(false);
     }

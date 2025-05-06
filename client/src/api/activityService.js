@@ -1,6 +1,14 @@
-import axios from 'axios';
+import api from './config';
+import { API_URL } from './config';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5111';
+// Helper function to process image URLs consistently
+const processImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http')) return imagePath;
+  
+  // Use the explicit API_URL from config
+  return `${API_URL}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+};
 
 // Get all activities with optional filtering
 export const getActivities = async (category, search) => {
@@ -13,9 +21,21 @@ export const getActivities = async (category, search) => {
       queryParams.append('search', search);
     }
     
-    const response = await axios.get(`${API_URL}/api/activities?${queryParams}`);
+    const response = await api.get(`/api/activities?${queryParams}`);
+    
+    // Process image URLs if needed
+    if (response.data && Array.isArray(response.data)) {
+      response.data = response.data.map(activity => {
+        if (activity.image) {
+          activity.image = processImageUrl(activity.image);
+        }
+        return activity;
+      });
+    }
+    
     return response.data;
   } catch (error) {
+    console.error('Error fetching activities:', error);
     throw error;
   }
 };
@@ -23,9 +43,16 @@ export const getActivities = async (category, search) => {
 // Get activity by ID
 export const getActivityById = async (activityId) => {
   try {
-    const response = await axios.get(`${API_URL}/api/activities/${activityId}`);
+    const response = await api.get(`/api/activities/${activityId}`);
+    
+    // Process image URL if needed
+    if (response.data && response.data.image) {
+      response.data.image = processImageUrl(response.data.image);
+    }
+    
     return response.data;
   } catch (error) {
+    console.error('Error fetching activity details:', error);
     throw error;
   }
 };
@@ -33,9 +60,37 @@ export const getActivityById = async (activityId) => {
 // Create new activity
 export const createActivity = async (activityData) => {
   try {
-    const response = await axios.post(`${API_URL}/api/activities`, activityData);
-    return response.data;
+    // Handle file uploads if present
+    if (activityData.image && activityData.image instanceof File) {
+      const formData = new FormData();
+      Object.keys(activityData).forEach(key => {
+        formData.append(key, activityData[key]);
+      });
+      
+      const response = await api.post(`/api/activities`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      // Process image URL in response if needed
+      if (response.data && response.data.image) {
+        response.data.image = processImageUrl(response.data.image);
+      }
+      
+      return response.data;
+    } else {
+      const response = await api.post(`/api/activities`, activityData);
+      
+      // Process image URL in response if needed
+      if (response.data && response.data.image) {
+        response.data.image = processImageUrl(response.data.image);
+      }
+      
+      return response.data;
+    }
   } catch (error) {
+    console.error('Error creating activity:', error);
     throw error;
   }
 };
@@ -43,9 +98,16 @@ export const createActivity = async (activityData) => {
 // Join an activity
 export const joinActivity = async (activityId) => {
   try {
-    const response = await axios.post(`${API_URL}/api/activities/${activityId}/join`);
+    const response = await api.post(`/api/activities/${activityId}/join`);
+    
+    // Process image URL if needed
+    if (response.data && response.data.image) {
+      response.data.image = processImageUrl(response.data.image);
+    }
+    
     return response.data;
   } catch (error) {
+    console.error('Error joining activity:', error);
     throw error;
   }
 };
@@ -53,9 +115,16 @@ export const joinActivity = async (activityId) => {
 // Leave an activity
 export const leaveActivity = async (activityId) => {
   try {
-    const response = await axios.delete(`${API_URL}/api/activities/${activityId}/leave`);
+    const response = await api.delete(`/api/activities/${activityId}/leave`);
+    
+    // Process image URL if needed
+    if (response.data && response.data.image) {
+      response.data.image = processImageUrl(response.data.image);
+    }
+    
     return response.data;
   } catch (error) {
+    console.error('Error leaving activity:', error);
     throw error;
   }
 };
@@ -63,9 +132,37 @@ export const leaveActivity = async (activityId) => {
 // Update an activity
 export const updateActivity = async (activityId, activityData) => {
   try {
-    const response = await axios.put(`${API_URL}/api/activities/${activityId}`, activityData);
-    return response.data;
+    // Handle file uploads if present
+    if (activityData.image && activityData.image instanceof File) {
+      const formData = new FormData();
+      Object.keys(activityData).forEach(key => {
+        formData.append(key, activityData[key]);
+      });
+      
+      const response = await api.put(`/api/activities/${activityId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      // Process image URL in response if needed
+      if (response.data && response.data.image) {
+        response.data.image = processImageUrl(response.data.image);
+      }
+      
+      return response.data;
+    } else {
+      const response = await api.put(`/api/activities/${activityId}`, activityData);
+      
+      // Process image URL in response if needed
+      if (response.data && response.data.image) {
+        response.data.image = processImageUrl(response.data.image);
+      }
+      
+      return response.data;
+    }
   } catch (error) {
+    console.error('Error updating activity:', error);
     throw error;
   }
 };
@@ -73,9 +170,10 @@ export const updateActivity = async (activityId, activityData) => {
 // Delete an activity
 export const deleteActivity = async (activityId) => {
   try {
-    const response = await axios.delete(`${API_URL}/api/activities/${activityId}`);
+    const response = await api.delete(`/api/activities/${activityId}`);
     return response.data;
   } catch (error) {
+    console.error('Error deleting activity:', error);
     throw error;
   }
 };
@@ -83,19 +181,49 @@ export const deleteActivity = async (activityId) => {
 // Get activities created by current user
 export const getMyCreatedActivities = async () => {
   try {
-    const response = await axios.get(`${API_URL}/api/activities/user/created`);
-    return response.data;
+    const response = await api.get(`/api/activities/user/created`);
+    
+    // Process image URLs if needed
+    if (response.data && Array.isArray(response.data)) {
+      response.data = response.data.map(activity => {
+        if (activity.image) {
+          activity.image = processImageUrl(activity.image);
+        }
+        return activity;
+      });
+      return response.data;
+    }
+    
+    // Handle case where response exists but isn't an array
+    console.warn('Created activities response is not an array:', response.data);
+    return [];
   } catch (error) {
-    throw error;
+    console.error('Error fetching created activities:', error);
+    return [];
   }
 };
 
 // Get activities joined by current user
 export const getMyJoinedActivities = async () => {
   try {
-    const response = await axios.get(`${API_URL}/api/activities/user/joined`);
-    return response.data;
+    const response = await api.get(`/api/activities/user/joined`);
+    
+    // Process image URLs if needed
+    if (response.data && Array.isArray(response.data)) {
+      response.data = response.data.map(activity => {
+        if (activity.image) {
+          activity.image = processImageUrl(activity.image);
+        }
+        return activity;
+      });
+      return response.data;
+    }
+    
+    // Handle case where response exists but isn't an array
+    console.warn('Joined activities response is not an array:', response.data);
+    return [];
   } catch (error) {
-    throw error;
+    console.error('Error fetching joined activities:', error);
+    return [];
   }
 };

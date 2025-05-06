@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getMessages, sendMessage } from '../api/messageService';
-import { getUserById } from '../api/userService';
+import { getUserProfile } from '../api/userService';
 import io from 'socket.io-client';
 import { API_URL } from '../api/config';
 
@@ -47,7 +47,7 @@ const Conversation = () => {
     const loadConversation = async () => {
       try {
         // Get recipient user details
-        const recipientData = await getUserById(userId);
+        const recipientData = await getUserProfile(userId);
         setRecipient(recipientData);
         
         // Get message history

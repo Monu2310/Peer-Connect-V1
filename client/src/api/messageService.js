@@ -1,75 +1,57 @@
-import axios from 'axios';
-import { API_URL } from './config';
+import api from './config';
 
-/**
- * Get all conversations for the current user
- */
+// Get conversations
 export const getConversations = async () => {
-  try {
-    const response = await axios.get(`${API_URL}/api/messages/conversations`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching conversations:', error);
-    throw new Error(error.response?.data?.message || 'Failed to fetch conversations');
-  }
+  const response = await api.get('/api/messages/conversations');
+  return response.data;
 };
 
-/**
- * Get messages between current user and another user
- * @param {string} userId - ID of the other user in the conversation
- */
-export const getMessages = async (userId) => {
-  try {
-    const response = await axios.get(`${API_URL}/api/messages/${userId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching messages:', error);
-    throw new Error(error.response?.data?.message || 'Failed to fetch messages');
-  }
+// Get messages for a conversation
+export const getMessages = async (conversationId) => {
+  const response = await api.get(`/api/messages/${conversationId}`);
+  return response.data;
 };
 
-/**
- * Send a message to another user
- * @param {string} recipientId - ID of the recipient user
- * @param {string} content - Message content
- */
+// Send a message
 export const sendMessage = async (recipientId, content) => {
+  const response = await api.post('/api/messages', { receiverId: recipientId, content });
+  return response.data;
+};
+
+// Mark conversation as read
+export const markAsRead = async (conversationId) => {
+  const response = await api.put(`/api/messages/${conversationId}/read`);
+  return response.data;
+};
+
+// Get unread message count
+export const getUnreadCount = async () => {
+  const response = await api.get('/api/messages/unread/count');
+  return response.data;
+};
+
+// Get messages for an activity group chat
+export const getActivityMessages = async (activityId) => {
   try {
-    const response = await axios.post(`${API_URL}/api/messages`, { 
-      recipient: recipientId, 
-      content 
+    const response = await api.get(`/api/messages/activity/${activityId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching activity messages:', error);
+    throw error;
+  }
+};
+
+// Send a message to an activity group chat
+export const sendActivityMessage = async (activityId, content, senderName) => {
+  try {
+    const response = await api.post('/api/messages/activity', {
+      activityId,
+      content,
+      senderName
     });
     return response.data;
   } catch (error) {
-    console.error('Error sending message:', error);
-    throw new Error(error.response?.data?.message || 'Failed to send message');
-  }
-};
-
-/**
- * Mark messages as read
- * @param {string} senderId - ID of the sender whose messages should be marked as read
- */
-export const markMessagesAsRead = async (senderId) => {
-  try {
-    const response = await axios.put(`${API_URL}/api/messages/read/${senderId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error marking messages as read:', error);
-    throw new Error(error.response?.data?.message || 'Failed to mark messages as read');
-  }
-};
-
-/**
- * Delete a message
- * @param {string} messageId - ID of the message to delete
- */
-export const deleteMessage = async (messageId) => {
-  try {
-    const response = await axios.delete(`${API_URL}/api/messages/${messageId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error deleting message:', error);
-    throw new Error(error.response?.data?.message || 'Failed to delete message');
+    console.error('Error sending activity message:', error);
+    throw error;
   }
 };

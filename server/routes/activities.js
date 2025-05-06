@@ -13,6 +13,16 @@ router.post('/', auth, activityController.createActivity);
 // @access  Private
 router.get('/', auth, activityController.getActivities);
 
+// @route   GET /api/activities/user/created
+// @desc    Get activities created by current user
+// @access  Private
+router.get('/user/created', auth, activityController.getMyCreatedActivities);
+
+// @route   GET /api/activities/user/joined
+// @desc    Get activities joined by current user
+// @access  Private
+router.get('/user/joined', auth, activityController.getMyJoinedActivities);
+
 // @route   GET /api/activities/:activityId
 // @desc    Get activity by ID
 // @access  Private
@@ -37,15 +47,5 @@ router.put('/:activityId', auth, activityController.updateActivity);
 // @desc    Delete activity
 // @access  Private (only creator)
 router.delete('/:activityId', auth, activityController.deleteActivity);
-
-// @route   GET /api/activities/user/created
-// @desc    Get activities created by current user
-// @access  Private
-router.get('/user/created', auth, activityController.getMyCreatedActivities);
-
-// @route   GET /api/activities/user/joined
-// @desc    Get activities joined by current user
-// @access  Private
-router.get('/user/joined', auth, activityController.getMyJoinedActivities);
 
 module.exports = router;

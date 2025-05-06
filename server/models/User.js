@@ -24,7 +24,7 @@ const UserSchema = new mongoose.Schema({
   },
   profilePicture: {
     type: String,
-    default: '../../../avatar.svg'
+    default: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
   },
   bio: {
     type: String,
@@ -39,6 +39,27 @@ const UserSchema = new mongoose.Schema({
     default: ''
   },
   interests: {
+    type: [String],
+    default: []
+  },
+  // New preference fields
+  hobbies: {
+    type: [String],
+    default: []
+  },
+  favoriteSubjects: {
+    type: [String],
+    default: []
+  },
+  sports: {
+    type: [String],
+    default: []
+  },
+  musicGenres: {
+    type: [String],
+    default: []
+  },
+  movieGenres: {
     type: [String],
     default: []
   },

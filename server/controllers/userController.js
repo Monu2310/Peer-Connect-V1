@@ -23,7 +23,22 @@ exports.getUserById = async (req, res) => {
 // Update user profile
 exports.updateProfile = async (req, res) => {
   try {
-    const { username, email, bio, location, interests, profilePicture, major, year } = req.body;
+    const { 
+      username, 
+      email, 
+      bio, 
+      location, 
+      interests, 
+      profilePicture, 
+      major, 
+      year,
+      // New preference fields
+      hobbies,
+      favoriteSubjects,
+      sports,
+      musicGenres,
+      movieGenres
+    } = req.body;
     
     // Build profile object
     const profileFields = {};
@@ -38,9 +53,16 @@ exports.updateProfile = async (req, res) => {
     // Handle interests specially - could be array or string
     if (interests !== undefined) {
       profileFields.interests = Array.isArray(interests) 
-        ? interests.join(',') 
-        : interests;
+        ? interests
+        : interests.split(',').map(i => i.trim()).filter(i => i);
     }
+    
+    // Handle new preference fields
+    if (hobbies !== undefined) profileFields.hobbies = Array.isArray(hobbies) ? hobbies : [];
+    if (favoriteSubjects !== undefined) profileFields.favoriteSubjects = Array.isArray(favoriteSubjects) ? favoriteSubjects : [];
+    if (sports !== undefined) profileFields.sports = Array.isArray(sports) ? sports : [];
+    if (musicGenres !== undefined) profileFields.musicGenres = Array.isArray(musicGenres) ? musicGenres : [];
+    if (movieGenres !== undefined) profileFields.movieGenres = Array.isArray(movieGenres) ? movieGenres : [];
     
     // Update user
     const user = await User.findByIdAndUpdate(
@@ -59,26 +81,28 @@ exports.updateProfile = async (req, res) => {
 // Search users
 exports.searchUsers = async (req, res) => {
   try {
-    const { query } = req.query;
+    const q = req.query.q;
     
-    if (!query) {
+    if (!q) {
       return res.status(400).json({ message: 'Search query is required' });
     }
     
-    // Find users by username or interests
+    // Find users by username, email, interests, or major
     const users = await User.find({
       $or: [
-        { username: { $regex: query, $options: 'i' } },
-        { interests: { $in: [new RegExp(query, 'i')] } },
-        { major: { $regex: query, $options: 'i' } }
+        { username: { $regex: q, $options: 'i' } },
+        { email: { $regex: q, $options: 'i' } },
+        { interests: { $in: [new RegExp(q, 'i')] } },
+        { major: { $regex: q, $options: 'i' } }
       ]
     })
     .select('-password')
     .limit(10);
     
+    console.log(`Search for '${q}' found ${users.length} users`);
     res.json(users);
   } catch (err) {
-    console.error(err.message);
+    console.error('Error searching users:', err.message);
     res.status(500).send('Server error');
   }
 };
@@ -106,6 +130,30 @@ exports.getDashboardStats = async (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
+    res.status(500).send('Server error');
+  }
+};
+
+// Find user by email
+exports.findUserByEmail = async (req, res) => {
+  try {
+    const { email } = req.query;
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+    
+    // Find user by exact email match
+    const user = await User.findOne({ email: email.trim() }).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found with this email' });
+    }
+    
+    console.log(`User found by email: ${user.username} (${user._id})`);
+    res.json(user);
+  } catch (err) {
+    console.error('Error finding user by email:', err.message);
     res.status(500).send('Server error');
   }
 };

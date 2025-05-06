@@ -1,6 +1,19 @@
 const Activity = require('../models/Activity');
 const User = require('../models/User');
 
+// Function to get default image based on category
+const getDefaultImageForCategory = (category) => {
+  const categoryImages = {
+    'Academic': 'https://images.unsplash.com/photo-1491975474562-1f4e30bc9468?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
+    'Social': 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
+    'Sports': 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
+    'Career': 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
+    'Other': 'https://images.unsplash.com/photo-1493612276216-ee3925520721?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80'
+  };
+  
+  return categoryImages[category] || categoryImages['Other'];
+};
+
 // Create a new activity
 exports.createActivity = async (req, res) => {
   try {
@@ -22,7 +35,7 @@ exports.createActivity = async (req, res) => {
       location,
       date,
       maxParticipants,
-      image,
+      image: image || getDefaultImageForCategory(category), // Use default image if none provided
       creator: req.user.id,
       participants: [req.user.id] // Creator is automatically a participant
     });
@@ -204,7 +217,13 @@ exports.updateActivity = async (req, res) => {
     // Update fields
     if (title) activity.title = title;
     if (description) activity.description = description;
-    if (category) activity.category = category;
+    if (category) {
+      activity.category = category;
+      // If category changes and no custom image is provided, update the image based on the new category
+      if (!image && (!activity.image || activity.image.includes('unsplash.com'))) {
+        activity.image = getDefaultImageForCategory(category);
+      }
+    }
     if (location) activity.location = location;
     if (date) activity.date = date;
     if (maxParticipants) activity.maxParticipants = maxParticipants;
