@@ -206,12 +206,12 @@ const Register = () => {
       {items.map((item, index) => (
         <span 
           key={index} 
-          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"
         >
           {item}
           <button
             type="button"
-            className="ml-1.5 inline-flex text-blue-400 hover:text-blue-600"
+            className="ml-1.5 inline-flex text-blue-400 hover:text-blue-600 dark:text-blue-300 dark:hover:text-blue-100"
             onClick={() => handleRemovePreference(item, category)}
           >
             <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
@@ -227,10 +227,10 @@ const Register = () => {
   const renderProgressBar = () => (
     <div className="mb-6">
       <div className="flex justify-between mb-1">
-        <div className="text-xs font-medium text-blue-700">Account Setup</div>
-        <div className="text-xs font-medium text-blue-700">{step} of 3</div>
+        <div className="text-xs font-medium text-blue-700 dark:text-blue-400">Account Setup</div>
+        <div className="text-xs font-medium text-blue-700 dark:text-blue-400">{step} of 3</div>
       </div>
-      <div className="w-full bg-gray-200 rounded-full h-2.5">
+      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
         <div 
           className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" 
           style={{ width: `${Math.min((step / 3) * 100, 100)}%` }}
@@ -240,16 +240,16 @@ const Register = () => {
   );
   
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <Link to="/" className="block text-center mb-6">
             <span className="text-primary font-bold text-2xl">PeerConnect</span>
           </Link>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Create your PeerConnect account</h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-gray-100">Create your PeerConnect account</h2>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             Already have an account?{' '}
-            <Link to="/login" className="font-medium text-primary hover:text-primary-dark">
+            <Link to="/login" className="font-medium text-primary dark:text-primary-light hover:text-primary-dark dark:hover:text-primary-light">
               Sign in here
             </Link>
           </p>
@@ -258,13 +258,13 @@ const Register = () => {
         {renderProgressBar()}
         
         {(formError || error) && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
+          <div className="bg-red-100 dark:bg-red-900/20 border-l-4 border-red-500 text-red-700 dark:text-red-400 p-4 mb-4" role="alert">
             <p>{formError || error}</p>
           </div>
         )}
         
         {apiResponse && !apiResponse.success && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
+          <div className="bg-red-100 dark:bg-red-900/20 border-l-4 border-red-500 text-red-700 dark:text-red-400 p-4 mb-4" role="alert">
             <p>Server Error: {apiResponse.error}</p>
           </div>
         )}
@@ -278,8 +278,9 @@ const Register = () => {
               exit="out"
               variants={pageVariants}
               transition={{ duration: 0.3 }}
+              className="bg-white dark:bg-gray-800 shadow-md dark:shadow-2xl dark:shadow-black/20 rounded-lg p-6"
             >
-              <form className="mt-8 space-y-6">
+              <form className="mt-6 space-y-6">
                 <div className="rounded-md shadow-sm -space-y-px">
                   <div>
                     <label htmlFor="username" className="sr-only">Username</label>
@@ -290,7 +291,7 @@ const Register = () => {
                       value={username}
                       onChange={onChange}
                       required
-                      className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
+                      className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 dark:bg-gray-700 rounded-t-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
                       placeholder="Username *"
                     />
                   </div>
@@ -304,7 +305,7 @@ const Register = () => {
                       value={email}
                       onChange={onChange}
                       required
-                      className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
+                      className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 dark:bg-gray-700 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
                       placeholder="Email address *"
                     />
                   </div>
@@ -318,7 +319,7 @@ const Register = () => {
                       value={password}
                       onChange={onChange}
                       required
-                      className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
+                      className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 dark:bg-gray-700 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
                       placeholder="Password *"
                     />
                   </div>
@@ -332,7 +333,7 @@ const Register = () => {
                       value={passwordConfirm}
                       onChange={onChange}
                       required
-                      className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
+                      className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 dark:bg-gray-700 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
                       placeholder="Confirm Password *"
                     />
                   </div>
@@ -344,7 +345,7 @@ const Register = () => {
                       type="text"
                       value={major}
                       onChange={onChange}
-                      className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
+                      className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 dark:bg-gray-700 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
                       placeholder="Major / Field of Study (optional)"
                     />
                   </div>
@@ -358,7 +359,7 @@ const Register = () => {
                       max="2030"
                       value={graduationYear}
                       onChange={onChange}
-                      className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
+                      className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 dark:bg-gray-700 rounded-b-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
                       placeholder="Expected Graduation Year (optional)"
                     />
                   </div>
@@ -368,7 +369,7 @@ const Register = () => {
                   <button
                     type="button"
                     onClick={nextStep}
-                    className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                    className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:focus:ring-offset-gray-800"
                   >
                     Continue
                   </button>
@@ -385,47 +386,48 @@ const Register = () => {
               exit="out"
               variants={pageVariants}
               transition={{ duration: 0.3 }}
+              className="bg-white dark:bg-gray-800 shadow-md dark:shadow-2xl dark:shadow-black/20 rounded-lg p-6"
             >
-              <form className="mt-8 space-y-6">
+              <form className="mt-6 space-y-6">
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       What are your hobbies?
                     </label>
-                    <p className="text-xs text-gray-500 mb-2">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                       These help us match you with peers who share your interests
                     </p>
                     {renderPreferenceChips(hobbies, 'hobbies')}
                     <input
                       type="text"
                       placeholder="Type a hobby and press Enter"
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                       onKeyPress={(e) => handleAddPreference(e, 'hobbies')}
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       What subjects are you interested in?
                     </label>
                     {renderPreferenceChips(favoriteSubjects, 'favoriteSubjects')}
                     <input
                       type="text"
                       placeholder="Type a subject and press Enter"
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                       onKeyPress={(e) => handleAddPreference(e, 'favoriteSubjects')}
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       What sports do you enjoy?
                     </label>
                     {renderPreferenceChips(sports, 'sports')}
                     <input
                       type="text"
                       placeholder="Type a sport and press Enter"
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                       onKeyPress={(e) => handleAddPreference(e, 'sports')}
                     />
                   </div>
@@ -435,14 +437,14 @@ const Register = () => {
                   <button
                     type="button"
                     onClick={prevStep}
-                    className="group relative w-1/2 flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                    className="group relative w-1/2 flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:focus:ring-offset-gray-800"
                   >
                     Back
                   </button>
                   <button
                     type="button"
                     onClick={nextStep}
-                    className="group relative w-1/2 flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                    className="group relative w-1/2 flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:focus:ring-offset-gray-800"
                   >
                     Continue
                   </button>
@@ -459,31 +461,32 @@ const Register = () => {
               exit="out"
               variants={pageVariants}
               transition={{ duration: 0.3 }}
+              className="bg-white dark:bg-gray-800 shadow-md dark:shadow-2xl dark:shadow-black/20 rounded-lg p-6"
             >
-              <form className="mt-8 space-y-6" onSubmit={onSubmit}>
+              <form className="mt-6 space-y-6" onSubmit={onSubmit}>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       What music do you like?
                     </label>
                     {renderPreferenceChips(musicGenres, 'musicGenres')}
                     <input
                       type="text"
                       placeholder="Type a music genre and press Enter"
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                       onKeyPress={(e) => handleAddPreference(e, 'musicGenres')}
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       What movies or TV shows do you enjoy?
                     </label>
                     {renderPreferenceChips(movieGenres, 'movieGenres')}
                     <input
                       type="text"
                       placeholder="Type a movie/TV genre and press Enter"
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                       onKeyPress={(e) => handleAddPreference(e, 'movieGenres')}
                     />
                   </div>
@@ -493,14 +496,14 @@ const Register = () => {
                   <button
                     type="button"
                     onClick={prevStep}
-                    className="group relative w-1/2 flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                    className="group relative w-1/2 flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:focus:ring-offset-gray-800"
                   >
                     Back
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className={`group relative w-1/2 flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${
+                    className={`group relative w-1/2 flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:focus:ring-offset-gray-800 ${
                       loading ? 'opacity-70 cursor-not-allowed' : ''
                     }`}
                   >
@@ -508,8 +511,8 @@ const Register = () => {
                   </button>
                 </div>
                 
-                <div className="text-xs text-gray-500 text-center">
-                  By signing up, you agree to our <a href="#" className="text-primary">Terms of Service</a> and <a href="#" className="text-primary">Privacy Policy</a>.
+                <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                  By signing up, you agree to our <a href="#" className="text-primary dark:text-primary-light">Terms of Service</a> and <a href="#" className="text-primary dark:text-primary-light">Privacy Policy</a>.
                 </div>
               </form>
             </motion.div>
