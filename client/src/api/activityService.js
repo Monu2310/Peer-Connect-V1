@@ -21,6 +21,7 @@ export const getActivities = async (category, search) => {
       queryParams.append('search', search);
     }
     
+    console.log('Fetching activities from:', `${API_URL}/api/activities?${queryParams}`);
     const response = await api.get(`/api/activities?${queryParams}`);
     
     // Process image URLs if needed
@@ -36,6 +37,9 @@ export const getActivities = async (category, search) => {
     return response.data;
   } catch (error) {
     console.error('Error fetching activities:', error);
+    if (error.message.includes('Network Error')) {
+      throw new Error('Server connection failed. Please check if the server is running.');
+    }
     throw error;
   }
 };

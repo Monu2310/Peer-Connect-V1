@@ -28,4 +28,9 @@ router.get('/dashboard/stats', auth, userController.getDashboardStats);
 // @access  Private
 router.get('/find-by-email', auth, userController.findUserByEmail);
 
+// @route   POST /api/users/random-avatar
+// @desc    Generate a random profile avatar for the current user
+// @access  Private
+router.post('/random-avatar', auth, userController.generateRandomAvatar);
+
 module.exports = router;

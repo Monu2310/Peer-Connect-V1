@@ -116,3 +116,20 @@ export const findUserByEmail = async (email) => {
     throw error;
   }
 };
+
+// Generate random avatar
+export const generateRandomAvatar = async () => {
+  try {
+    const response = await api.post('/api/users/random-avatar');
+    
+    // Process profile picture URL if needed
+    if (response.data && response.data.profilePicture) {
+      response.data.profilePicture = processImageUrl(response.data.profilePicture);
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error generating random avatar:', error);
+    throw error;
+  }
+};

@@ -1,6 +1,38 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
+// Array of profile image URLs to randomly select from
+const profileImageOptions = [
+  'https://robohash.org/',
+  'https://avatars.dicebear.com/api/avataaars/',
+  'https://avatars.dicebear.com/api/bottts/',
+  'https://avatars.dicebear.com/api/human/',
+  'https://avatars.dicebear.com/api/identicon/',
+  'https://avatars.dicebear.com/api/jdenticon/',
+  'https://avatars.dicebear.com/api/gridy/',
+  'https://api.multiavatar.com/'
+];
+
+// Helper function to generate a random profile image URL
+const generateRandomProfileImage = (username) => {
+  // Select a random base URL from the options
+  const baseUrl = profileImageOptions[Math.floor(Math.random() * profileImageOptions.length)];
+  
+  // Add username as seed and any required parameters
+  // Different services have different parameter requirements
+  if (baseUrl.includes('dicebear')) {
+    return `${baseUrl}${username}.svg?mood=happy&background=%23ffffff`;
+  } else if (baseUrl.includes('robohash')) {
+    return `${baseUrl}${username}?set=set4&bgset=bg1&size=200x200`;
+  } else if (baseUrl.includes('multiavatar')) {
+    // For multiavatar, ensure we're returning a PNG
+    return `${baseUrl}${username}.png`;
+  }
+  
+  // Default fallback
+  return `${baseUrl}${username}`;
+};
+
 // Cookie options
 const cookieOptions = {
   httpOnly: true, // Cannot be accessed by client-side JS
@@ -41,7 +73,8 @@ exports.register = async (req, res) => {
     user = new User({
       username,
       email,
-      password
+      password,
+      profilePicture: generateRandomProfileImage(username) // Generate random profile image
     });
     
     // Add optional fields if provided
@@ -71,10 +104,13 @@ exports.register = async (req, res) => {
 
     jwt.sign(
       payload,
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'default_secret_do_not_use_in_production',
       { expiresIn: '7d' },
       (err, token) => {
-        if (err) throw err;
+        if (err) {
+          console.error('JWT signing error:', err);
+          return res.status(500).json({ message: 'Error generating authentication token', error: err.message });
+        }
         
         // Set token in HTTP-only cookie
         res.cookie('token', token, cookieOptions);
@@ -97,8 +133,31 @@ exports.register = async (req, res) => {
       }
     );
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    console.error('Registration error:', err);
+    
+    // Send more specific error messages based on error type
+    if (err.name === 'ValidationError') {
+      // Mongoose validation error - extract field-specific errors
+      const errors = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({ 
+        message: 'Validation error', 
+        errors: errors,
+        details: err.message 
+      });
+    } else if (err.code === 11000) {
+      // Duplicate key error (usually email or username)
+      return res.status(400).json({ 
+        message: 'Duplicate key error - email or username already exists',
+        details: err.message
+      });
+    } else {
+      // Generic server error with more details
+      res.status(500).json({ 
+        message: 'Server error during registration', 
+        error: err.message,
+        stack: process.env.NODE_ENV === 'production' ? undefined : err.stack
+      });
+    }
   }
 };
 

@@ -28,6 +28,7 @@ const Activities = () => {
         setCategories(uniqueCategories);
 
         setLoading(false);
+        setError(''); // Clear any existing errors when successful
       } catch (err) {
         console.error('Error fetching activities:', err);
         setError('Failed to load activities. Please try again later.');
@@ -198,24 +199,57 @@ const Activities = () => {
 
         {error && (
           <motion.div 
-            className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md"
+            className="bg-red-50 border-l-4 border-red-500 text-red-700 p-6 mb-6 rounded-lg shadow-sm"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             role="alert"
           >
-            <p className="font-medium">{error}</p>
-            <button 
-              onClick={() => window.location.reload()} 
-              className="mt-2 bg-red-500 text-white px-4 py-1.5 rounded text-sm hover:bg-red-600 transition-colors"
-            >
-              Retry
-            </button>
+            <div className="flex flex-col md:flex-row md:items-center justify-between">
+              <div className="flex items-center mb-3 md:mb-0">
+                <svg className="h-6 w-6 text-red-500 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="font-medium text-lg">{error}</p>
+                  <p className="text-sm text-red-600 mt-1">The server might be unavailable or the connection might be disrupted.</p>
+                </div>
+              </div>
+              <motion.button 
+                onClick={() => {
+                  setLoading(true);
+                  setError('');
+                  // Force a fetch of activities after a short delay
+                  setTimeout(async () => {
+                    try {
+                      const data = await getActivities();
+                      setActivities(data);
+                      setFilteredActivities(data);
+                      const uniqueCategories = [...new Set(data.map(activity => activity.category))];
+                      setCategories(uniqueCategories);
+                      setLoading(false);
+                    } catch (err) {
+                      console.error('Error retrying fetch activities:', err);
+                      setError('Failed to load activities. Please try again later.');
+                      setLoading(false);
+                    }
+                  }, 1000);
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg flex items-center justify-center transition-colors"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Retry
+              </motion.button>
+            </div>
           </motion.div>
         )}
 
         {/* Search and Filters */}
         <motion.div 
-          className="mb-6 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow border border-gray-100"
+          className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-lg transition-shadow border border-gray-100 dark:border-gray-700"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -232,7 +266,7 @@ const Activities = () => {
                 <motion.input
                   type="text"
                   placeholder="Search activities by title, description or location..."
-                  className="block w-full pl-10 pr-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                  className="block w-full pl-10 pr-3 py-2 text-sm md:text-base border border-gray-300 dark:border-gray-600 rounded-lg leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   initial={{ scale: 0.98 }}
@@ -245,7 +279,7 @@ const Activities = () => {
                 {/* Category Filter Dropdown */}
                 <div className="w-full md:w-48">
                   <select
-                    className="block w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                    className="block w-full px-3 py-2 text-sm md:text-base border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
                   >
@@ -259,7 +293,7 @@ const Activities = () => {
                 {/* Sort Dropdown */}
                 <div className="w-full md:w-48">
                   <select
-                    className="block w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                    className="block w-full px-3 py-2 text-sm md:text-base border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                     value={sortOption}
                     onChange={(e) => setSortOption(e.target.value)}
                   >
@@ -276,16 +310,16 @@ const Activities = () => {
         {/* Activities Grid */}
         {filteredActivities.length === 0 ? (
           <motion.div 
-            className="text-center py-16 bg-gray-50 rounded-xl border border-gray-100 shadow-sm"
+            className="text-center py-16 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400 dark:text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 14h.01M19 21L5 3" />
             </svg>
-            <h3 className="text-xl font-medium text-gray-900 mb-2">No activities found</h3>
-            <p className="text-gray-500 mb-6">Try adjusting your search or filters</p>
+            <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">No activities found</h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-6">Try adjusting your search or filters</p>
             <motion.button 
               className="px-5 py-2 bg-primary text-white rounded-lg shadow-lg hover:bg-primary-dark transition-colors"
               onClick={() => {
@@ -316,9 +350,9 @@ const Activities = () => {
                 style={{ opacity: 1 }}
                 transition={{ type: 'spring', stiffness: 300 }}
               >
-                <div className="h-full overflow-hidden bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100">
+                <div className="h-full overflow-hidden bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-700">
                   <div className="relative">
-                    <div className="h-52 bg-gradient-to-br from-gray-200 to-gray-100 relative overflow-hidden">
+                    <div className="h-52 bg-gradient-to-br from-gray-200 to-gray-100 dark:from-gray-700 dark:to-gray-800 relative overflow-hidden">
                       {activity.image ? (
                         <motion.img 
                           src={activity.image} 
@@ -333,8 +367,8 @@ const Activities = () => {
                           }}
                         />
                       ) : (
-                        <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-100 to-gray-200">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
                         </div>
@@ -355,11 +389,11 @@ const Activities = () => {
                     
                     <div className="p-5">
                       <div className="flex justify-between items-start mb-3">
-                        <h3 className="font-bold text-xl text-gray-800 hover:text-primary transition-colors line-clamp-1">
+                        <h3 className="font-bold text-xl text-gray-800 dark:text-gray-100 hover:text-primary transition-colors line-clamp-1">
                           {activity.title}
                         </h3>
                         <motion.div 
-                          className="flex items-center bg-gray-100 px-2 py-1 rounded-full text-gray-700 text-sm"
+                          className="flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full text-gray-700 dark:text-gray-200 text-sm"
                           whileHover={{ scale: 1.1 }}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -370,18 +404,18 @@ const Activities = () => {
                       </div>
                       
                       <div className="flex flex-col space-y-3 mb-5">
-                        <p className="text-gray-600 line-clamp-2">
+                        <p className="text-gray-600 dark:text-gray-300 line-clamp-2">
                           {activity.description}
                         </p>
                         
-                        <div className="flex items-center text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg">
+                        <div className="flex items-center text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 px-3 py-1.5 rounded-lg">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
                           {formatDate(activity.date)}
                         </div>
                         
-                        <div className="flex items-center text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg">
+                        <div className="flex items-center text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 px-3 py-1.5 rounded-lg">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -396,7 +430,7 @@ const Activities = () => {
                       >
                         <Link 
                           to={`/activities/${activity._id}`} 
-                          className="block w-full text-center py-2.5 px-4 bg-gradient-to-r from-primary to-indigo-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+                          className="block w-full text-center py-2.5 px-4 bg-gradient-to-r from-primary to-indigo-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium dark:shadow-gray-900/30"
                         >
                           View Details
                         </Link>

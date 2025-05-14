@@ -30,6 +30,10 @@ const Dashboard = () => {
     pendingInvitations: 0,
     friendCount: 0,
   });
+  const [friendView, setFriendView] = useState('grid');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredFriends, setFilteredFriends] = useState([]);
+  const [friendCategory, setFriendCategory] = useState('all');
   
   // Try loading dashboard data from cache on initial render
   useEffect(() => {
@@ -280,6 +284,38 @@ const Dashboard = () => {
     }
   ];
 
+  // Filter friends based on search and category
+  useEffect(() => {
+    if (recommendedFriends.length > 0) {
+      let filtered = [...recommendedFriends];
+      
+      // Apply search filter
+      if (searchTerm.trim() !== '') {
+        filtered = filtered.filter(friend => 
+          friend.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          friend.sharedInterests?.some(interest => 
+            interest.value.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+        );
+      }
+      
+      // Apply category filter
+      if (friendCategory !== 'all') {
+        filtered = filtered.filter(friend => {
+          if (friendCategory === 'high-match' && friend.similarityScore >= 75) return true;
+          if (friendCategory === 'medium-match' && friend.similarityScore >= 50 && friend.similarityScore < 75) return true;
+          if (friendCategory === 'new' && friend.isNew) return true;
+          if (friendCategory === 'mutual-friends' && friend.mutualFriends && friend.mutualFriends.length > 0) return true;
+          return false;
+        });
+      }
+      
+      setFilteredFriends(filtered);
+    } else {
+      setFilteredFriends([]);
+    }
+  }, [recommendedFriends, searchTerm, friendCategory]);
+
   return (
     <div className="pt-16 min-h-screen bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text transition-colors duration-300">
       {/* Add BlobCursor component */}
@@ -455,7 +491,7 @@ const Dashboard = () => {
           transition={{ delay: 0.4 }}
         >
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Your Recent Activities</h2>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Joined Activities</h2>
             <Link to="/activities" className="text-primary dark:text-primary-light hover:underline">View all</Link>
           </div>
 
@@ -517,12 +553,64 @@ const Dashboard = () => {
             className="mb-8"
           >
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">People You May Know</h2>
-              <Link to="/friends" className="text-primary dark:text-primary-light hover:underline">Find more friends</Link>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Network Suggestions</h2>
+              <Link to="/friends" className="text-primary dark:text-primary-light hover:underline">Find more connections</Link>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recommendedFriends.slice(0, 3).map((friend) => (
+            {/* Search and Filter */}
+            <div className="mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                {/* Search input */}
+                <div className="flex-1 mb-3 sm:mb-0">
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search by name or interest"
+                    className="w-full p-3 rounded-lg border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-primary dark:focus:ring-blue-400 transition-all duration-300"
+                  />
+                </div>
+                
+                {/* Filter by category */}
+                <div className="flex items-center space-x-2">
+                  <select
+                    value={friendCategory}
+                    onChange={(e) => setFriendCategory(e.target.value)}
+                    className="p-3 rounded-lg border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-primary dark:focus:ring-blue-400 transition-all duration-300"
+                  >
+                    <option value="all">All</option>
+                    <option value="high-match">High Match (75%+)</option>
+                    <option value="medium-match">Medium Match (50%-74%)</option>
+                    <option value="new">New Friends</option>
+                    <option value="mutual-friends">Mutual Friends</option>
+                  </select>
+                  
+                  <button
+                    onClick={() => setFriendView(friendView === 'grid' ? 'list' : 'grid')}
+                    className="p-3 rounded-lg bg-primary dark:bg-blue-400 text-white flex items-center space-x-2 hover:bg-primary-dark dark:hover:bg-blue-500 transition-all duration-300"
+                  >
+                    {friendView === 'grid' ? (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 6h18M3 14h18m-7 8h7M3 18h4" />
+                        </svg>
+                        <span>List View</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+                        </svg>
+                        <span>Grid View</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div className={`grid grid-cols-1 gap-6 ${friendView === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-1'}`}>
+              {filteredFriends.slice(0, 3).map((friend) => (
                 <motion.div
                   key={friend._id}
                   variants={cardHoverVariants}
@@ -621,6 +709,58 @@ const Dashboard = () => {
                 </motion.div>
               ))}
             </div>
+            
+            {/* Empty state for filtered connections */}
+            {filteredFriends.length === 0 && recommendedFriends.length > 0 && (
+              <div className="glass-card rounded-lg p-6 text-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-200 mb-2">No matches found</h3>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">
+                  {searchTerm ? `No connections match "${searchTerm}"` : "No connections match the selected filter"}
+                </p>
+                <button 
+                  onClick={() => {
+                    setSearchTerm('');
+                    setFriendCategory('all');
+                  }} 
+                  className="btn btn-primary inline-block"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            )}
+            
+            {/* Connection metrics */}
+            {filteredFriends.length > 0 && (
+              <div className="glass-card rounded-lg p-4 mb-4 flex flex-wrap justify-between items-center">
+                <div className="flex items-center space-x-2 mb-2 sm:mb-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    Showing <span className="font-semibold">{Math.min(filteredFriends.length, 3)}</span> of <span className="font-semibold">{filteredFriends.length}</span> suggestions
+                  </span>
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  <div className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full text-xs flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Updated today</span>
+                  </div>
+                  
+                  <div className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full text-xs flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    <span>AI-powered matches</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
         
@@ -631,7 +771,7 @@ const Dashboard = () => {
           transition={{ delay: 0.8 }}
         >
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Recommended Activities</h2>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Activities For You</h2>
             <Link to="/activities" className="text-primary dark:text-primary-light hover:underline">Explore more</Link>
           </div>
           

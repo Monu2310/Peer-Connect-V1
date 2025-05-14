@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { updateUserProfile, getUserProfile, uploadProfilePicture } from '../api/userService';
+import { 
+  updateUserProfile, 
+  getUserProfile, 
+  uploadProfilePicture,
+  generateRandomAvatar 
+} from '../api/userService';
 import { getFriends, sendFriendRequestById } from '../api/friendService';
 import { getMyCreatedActivities, getMyJoinedActivities } from '../api/activityService';
 import { motion } from 'framer-motion';
@@ -82,43 +87,82 @@ const Profile = () => {
 
     setLoading(true);
     try {
-      if (isOwnProfile && profileCacheTimestamp) {
-        const cacheAge = Date.now() - parseInt(profileCacheTimestamp);
-        if (cacheAge < 60 * 60 * 1000) {
-          console.log('Using cached profile data - skipping API fetch');
-          setLoading(false);
-          return;
+      // Force fresh data fetch in these cases:
+      // 1. When viewing someone else's profile (not your own)
+      // 2. When the auth timestamp is newer than the profile cache timestamp (user switched)
+      // 3. When the cache is older than the max cache age
+      
+      const authTimestamp = localStorage.getItem('auth_timestamp');
+      const profileTimestamp = localStorage.getItem('profile_data_timestamp');
+      const maxCacheAge = 5 * 60 * 1000; // 5 minutes instead of 15
+      
+      let needsFreshData = !isOwnProfile; // Always fetch fresh data for other profiles
+      
+      if (isOwnProfile) {
+        // Check if auth is newer than profile (user switched) or no profile exists
+        const authIsNewer = authTimestamp && profileTimestamp && 
+                        parseInt(authTimestamp) > parseInt(profileTimestamp);
+        const cacheExpired = profileTimestamp && 
+                        (Date.now() - parseInt(profileTimestamp) > maxCacheAge);
+                        
+        needsFreshData = !profileTimestamp || authIsNewer || cacheExpired;
+        
+        console.log('Profile data status:', {
+          needsFreshData,
+          authIsNewer: authIsNewer || 'N/A',
+          cacheExpired: cacheExpired || 'N/A',
+          authTimestamp,
+          profileTimestamp
+        });
+      }
+      
+      // Use cached data if available, not expired, and user hasn't changed
+      if (isOwnProfile && !needsFreshData) {
+        try {
+          const cachedProfile = localStorage.getItem('profile_data');
+          if (cachedProfile) {
+            console.log('Using cached profile data');
+            const parsedProfile = JSON.parse(cachedProfile);
+            
+            // Verify the cached profile matches the current user ID
+            if (parsedProfile && 
+                (parsedProfile.id === currentUser?.id || 
+                 parsedProfile._id === currentUser?.id)) {
+              setFormData(parsedProfile);
+              setLoading(false);
+              return;
+            } else {
+              console.log('Cached profile is for a different user, fetching fresh data');
+              needsFreshData = true;
+            }
+          }
+        } catch (cacheErr) {
+          console.error('Error reading cache:', cacheErr);
+          needsFreshData = true;
         }
       }
 
-      console.log(`Fetching profile data for user ID: ${profileUserId}`);
-      const userData = await getUserProfile(profileUserId);
-      console.log("Received user data:", userData);
+      if (needsFreshData) {
+        console.log(`Fetching fresh profile data for user ID: ${profileUserId}`);
+        const userData = await getUserProfile(profileUserId);
+        console.log("Received user data:", userData);
 
-      if (!userData || typeof userData !== 'object') {
-        console.error("Invalid user data received:", userData);
-        throw new Error("Invalid user data received from server");
-      }
+        if (!userData || typeof userData !== 'object') {
+          console.error("Invalid user data received:", userData);
+          throw new Error("Invalid user data received from server");
+        }
 
-      let profilePicture = userData.profilePicture || '';
+        let profilePicture = userData.profilePicture || '';
 
-      setFormData({
-        username: userData.username || 'User',
-        email: userData.email || '',
-        bio: userData.bio || '',
-        location: userData.location || '',
-        interests: Array.isArray(userData.interests) ? userData.interests :
-          (userData.interests ? userData.interests.split(',').filter(i => i.trim()) : []),
-        profilePicture: profilePicture,
-        hobbies: Array.isArray(userData.hobbies) ? userData.hobbies : [],
-        favoriteSubjects: Array.isArray(userData.favoriteSubjects) ? userData.favoriteSubjects : [],
-        sports: Array.isArray(userData.sports) ? userData.sports : [],
-        musicGenres: Array.isArray(userData.musicGenres) ? userData.musicGenres : [],
-        movieGenres: Array.isArray(userData.movieGenres) ? userData.movieGenres : []
-      });
+        // Update auth user data for the current user to ensure consistency
+        if (isOwnProfile) {
+          updateAuthUserProfile({
+            ...userData,
+            id: profileUserId // Ensure ID is preserved
+          });
+        }
 
-      if (isOwnProfile) {
-        localStorage.setItem('profile_data', JSON.stringify({
+        setFormData({
           username: userData.username || 'User',
           email: userData.email || '',
           bio: userData.bio || '',
@@ -131,10 +175,30 @@ const Profile = () => {
           sports: Array.isArray(userData.sports) ? userData.sports : [],
           musicGenres: Array.isArray(userData.musicGenres) ? userData.musicGenres : [],
           movieGenres: Array.isArray(userData.movieGenres) ? userData.movieGenres : []
-        }));
-        const timestamp = Date.now().toString();
-        localStorage.setItem('profile_data_timestamp', timestamp);
-        setProfileCacheTimestamp(timestamp);
+        });
+
+        if (isOwnProfile) {
+          const profileData = {
+            id: profileUserId, // Store the user ID explicitly
+            username: userData.username || 'User',
+            email: userData.email || '',
+            bio: userData.bio || '',
+            location: userData.location || '',
+            interests: Array.isArray(userData.interests) ? userData.interests :
+              (userData.interests ? userData.interests.split(',').filter(i => i.trim()) : []),
+            profilePicture: profilePicture,
+            hobbies: Array.isArray(userData.hobbies) ? userData.hobbies : [],
+            favoriteSubjects: Array.isArray(userData.favoriteSubjects) ? userData.favoriteSubjects : [],
+            sports: Array.isArray(userData.sports) ? userData.sports : [],
+            musicGenres: Array.isArray(userData.musicGenres) ? userData.musicGenres : [],
+            movieGenres: Array.isArray(userData.movieGenres) ? userData.movieGenres : []
+          };
+          
+          localStorage.setItem('profile_data', JSON.stringify(profileData));
+          const timestamp = Date.now().toString();
+          localStorage.setItem('profile_data_timestamp', timestamp);
+          setProfileCacheTimestamp(timestamp);
+        }
       }
     } catch (err) {
       console.error('Error fetching profile data:', err);
@@ -142,274 +206,75 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentUser?.id, userId, isOwnProfile, profileCacheTimestamp]);
+  }, [currentUser, userId, isOwnProfile, profileCacheTimestamp, updateAuthUserProfile]);
 
   const fetchActivitiesAndFriends = useCallback(async () => {
     const profileUserId = userId || currentUser?.id;
     
-    console.log("PROFILE DEBUG: Starting data fetch with userId:", profileUserId);
-    console.log("PROFILE DEBUG: Current user:", currentUser);
-    
-    // Force hardcoded data for immediate display if API calls fail
-    let joinedActivitiesData = [];
-    let createdActivitiesData = [];
-    let friendsData = [];
+    console.log("Starting data fetch with userId:", profileUserId);
     
     setStatsLoading(true);
 
     try {
-      // Try to fetch joined activities
+      // Fetch joined activities
       try {
-        console.log('PROFILE DEBUG: Fetching joined activities...');
         const response = await getMyJoinedActivities();
-        console.log('PROFILE DEBUG: Joined activities response:', response);
+        console.log('Joined activities response:', response);
         
-        if (Array.isArray(response) && response.length > 0) {
-          joinedActivitiesData = response;
-          console.log('PROFILE DEBUG: Got valid joined activities:', joinedActivitiesData.length);
+        if (Array.isArray(response)) {
+          setJoinedActivities(response);
         } else {
-          console.warn('PROFILE DEBUG: Invalid joined activities response, using fallback data');
-          // Use hardcoded fallback data if API returns empty
-          joinedActivitiesData = [
-            {
-              _id: "fallback-joined-1",
-              title: "Study Group: Advanced Mathematics",
-              category: "Education",
-              description: "Weekly study sessions for advanced math topics",
-              date: new Date().toISOString(),
-              participants: []
-            },
-            {
-              _id: "fallback-joined-2",
-              title: "Basketball Practice",
-              category: "Sports",
-              description: "Regular basketball practice sessions",
-              date: new Date().toISOString(),
-              participants: []
-            }
-          ];
+          setJoinedActivities([]);
         }
       } catch (err) {
-        console.error('PROFILE DEBUG: Error fetching joined activities:', err);
-        // Use hardcoded fallback data on error
-        joinedActivitiesData = [
-          {
-            _id: "fallback-joined-1",
-            title: "Study Group: Advanced Mathematics",
-            category: "Education",
-            description: "Weekly study sessions for advanced math topics",
-            date: new Date().toISOString(),
-            participants: []
-          },
-          {
-            _id: "fallback-joined-2",
-            title: "Basketball Practice",
-            category: "Sports",
-            description: "Regular basketball practice sessions",
-            date: new Date().toISOString(),
-            participants: []
-          }
-        ];
+        console.error('Error fetching joined activities:', err);
+        setJoinedActivities([]);
       }
       
-      // Try to fetch created activities
+      // Fetch created activities
       try {
-        console.log('PROFILE DEBUG: Fetching created activities...');
         const response = await getMyCreatedActivities();
-        console.log('PROFILE DEBUG: Created activities response:', response);
+        console.log('Created activities response:', response);
         
-        if (Array.isArray(response) && response.length > 0) {
-          createdActivitiesData = response;
-          console.log('PROFILE DEBUG: Got valid created activities:', createdActivitiesData.length);
+        if (Array.isArray(response)) {
+          setCreatedActivities(response);
         } else {
-          console.warn('PROFILE DEBUG: Invalid created activities response, using fallback data');
-          // Use hardcoded fallback data if API returns empty
-          createdActivitiesData = [
-            {
-              _id: "fallback-created-1",
-              title: "Python Programming Workshop",
-              category: "Technology",
-              description: "Learn Python programming fundamentals",
-              date: new Date().toISOString(),
-              participants: []
-            },
-            {
-              _id: "fallback-created-2",
-              title: "Campus Movie Night",
-              category: "Entertainment",
-              description: "Outdoor movie screening on campus",
-              date: new Date().toISOString(),
-              participants: []
-            }
-          ];
+          setCreatedActivities([]);
         }
       } catch (err) {
-        console.error('PROFILE DEBUG: Error fetching created activities:', err);
-        // Use hardcoded fallback data on error
-        createdActivitiesData = [
-          {
-            _id: "fallback-created-1",
-            title: "Python Programming Workshop",
-            category: "Technology",
-            description: "Learn Python programming fundamentals",
-            date: new Date().toISOString(),
-            participants: []
-          },
-          {
-            _id: "fallback-created-2",
-            title: "Campus Movie Night",
-            category: "Entertainment",
-            description: "Outdoor movie screening on campus",
-            date: new Date().toISOString(),
-            participants: []
-          }
-        ];
+        console.error('Error fetching created activities:', err);
+        setCreatedActivities([]);
       }
       
-      // Try to fetch friends
+      // Fetch friends
       try {
-        console.log('PROFILE DEBUG: Fetching friends...');
         const response = await getFriends();
-        console.log('PROFILE DEBUG: Friends response:', response);
+        console.log('Friends response:', response);
         
         if (Array.isArray(response) && response.length > 0) {
-          friendsData = response;
-          console.log('PROFILE DEBUG: Got valid friends data:', friendsData.length);
+          setFriendsList(response);
         } else if (response && typeof response === 'object') {
           if (Array.isArray(response.friends)) {
-            friendsData = response.friends;
+            setFriendsList(response.friends);
           } else if (Array.isArray(response.data)) {
-            friendsData = response.data;
+            setFriendsList(response.data);
           } else if (response.accepted && Array.isArray(response.accepted)) {
-            friendsData = response.accepted;
+            setFriendsList(response.accepted);
+          } else {
+            setFriendsList([]);
           }
-          
-          console.log('PROFILE DEBUG: Extracted friends from response:', friendsData?.length);
-        }
-        
-        if (!Array.isArray(friendsData) || friendsData.length === 0) {
-          console.warn('PROFILE DEBUG: Invalid friends response, using fallback data');
-          // Use hardcoded fallback data if API returns empty
-          friendsData = [
-            {
-              _id: "fallback-friend-1",
-              username: "Sarah Johnson",
-              profilePicture: "/avatar.svg"
-            },
-            {
-              _id: "fallback-friend-2",
-              username: "Michael Chen",
-              profilePicture: "/avatar.svg"
-            },
-            {
-              _id: "fallback-friend-3",
-              username: "Emma Wilson",
-              profilePicture: "/avatar.svg"
-            }
-          ];
+        } else {
+          setFriendsList([]);
         }
       } catch (err) {
-        console.error('PROFILE DEBUG: Error fetching friends:', err);
-        // Use hardcoded fallback data on error
-        friendsData = [
-          {
-            _id: "fallback-friend-1",
-            username: "Sarah Johnson",
-            profilePicture: "/avatar.svg"
-          },
-          {
-            _id: "fallback-friend-2",
-            username: "Michael Chen",
-            profilePicture: "/avatar.svg"
-          },
-          {
-            _id: "fallback-friend-3",
-            username: "Emma Wilson",
-            profilePicture: "/avatar.svg"
-          }
-        ];
+        console.error('Error fetching friends:', err);
+        setFriendsList([]);
       }
-      
-      // Ensure we have at least some data to show
-      if (joinedActivitiesData.length === 0) {
-        joinedActivitiesData = [
-          {
-            _id: "fallback-joined-1",
-            title: "Study Group: Advanced Mathematics",
-            category: "Education",
-            description: "Weekly study sessions for advanced math topics",
-            date: new Date().toISOString(),
-            participants: []
-          }
-        ];
-      }
-      
-      if (createdActivitiesData.length === 0) {
-        createdActivitiesData = [
-          {
-            _id: "fallback-created-1",
-            title: "Python Programming Workshop",
-            category: "Technology",
-            description: "Learn Python programming fundamentals",
-            date: new Date().toISOString(),
-            participants: []
-          }
-        ];
-      }
-      
-      if (friendsData.length === 0) {
-        friendsData = [
-          {
-            _id: "fallback-friend-1",
-            username: "Sarah Johnson",
-            profilePicture: "/avatar.svg"
-          }
-        ];
-      }
-      
-      console.log('PROFILE DEBUG: Setting state with data:', {
-        joinedActivities: joinedActivitiesData.length,
-        createdActivities: createdActivitiesData.length,
-        friends: friendsData.length
-      });
-      
-      // Set state with the data (fallback or real)
-      setJoinedActivities(joinedActivitiesData);
-      setCreatedActivities(createdActivitiesData);
-      setFriendsList(friendsData);
     } catch (err) {
-      console.error('PROFILE DEBUG: Critical error in fetchActivitiesAndFriends:', err);
-      
-      // Use fallback data in case of any critical errors
-      setJoinedActivities([
-        {
-          _id: "fallback-joined-1",
-          title: "Study Group: Advanced Mathematics",
-          category: "Education",
-          description: "Weekly study sessions for advanced math topics",
-          date: new Date().toISOString(),
-          participants: []
-        }
-      ]);
-      
-      setCreatedActivities([
-        {
-          _id: "fallback-created-1",
-          title: "Python Programming Workshop",
-          category: "Technology",
-          description: "Learn Python programming fundamentals",
-          date: new Date().toISOString(),
-          participants: []
-        }
-      ]);
-      
-      setFriendsList([
-        {
-          _id: "fallback-friend-1",
-          username: "Sarah Johnson",
-          profilePicture: "/avatar.svg"
-        }
-      ]);
+      console.error('Critical error in fetchActivitiesAndFriends:', err);
+      setJoinedActivities([]);
+      setCreatedActivities([]);
+      setFriendsList([]);
     } finally {
       setStatsLoading(false);
     }
@@ -525,6 +390,90 @@ const Profile = () => {
     }
   };
 
+  // Add handler for generating random avatar
+  const handleGenerateRandomAvatar = async () => {
+    try {
+      setUploadingImage(true);
+      const response = await generateRandomAvatar();
+      
+      if (response && response.profilePicture) {
+        setFormData(prev => ({
+          ...prev,
+          profilePicture: response.profilePicture
+        }));
+        
+        // Update auth context and local storage
+        updateAuthUserProfile({...currentUser, profilePicture: response.profilePicture});
+        
+        // Update localStorage with new profile picture
+        try {
+          const cachedProfile = localStorage.getItem('profile_data');
+          if (cachedProfile) {
+            const profileData = JSON.parse(cachedProfile);
+            profileData.profilePicture = response.profilePicture;
+            localStorage.setItem('profile_data', JSON.stringify(profileData));
+            localStorage.setItem('profile_data_timestamp', Date.now().toString());
+          }
+        } catch (err) {
+          console.error('Error updating cached profile data:', err);
+        }
+        
+        setSuccess('Profile picture updated successfully');
+        setTimeout(() => setSuccess(''), 3000);
+      }
+    } catch (err) {
+      console.error('Error generating random avatar:', err);
+      setError('Failed to generate random avatar');
+      setTimeout(() => setError(''), 5000);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Add handler for unfriending a user
+  const handleUnfriend = async (friendId) => {
+    try {
+      // First, find the friendship record
+      const friendships = await getFriends();
+      const friendship = friendships.find(f => 
+        (f.requester._id === friendId || f.recipient._id === friendId) ||
+        (f.requester === friendId || f.recipient === friendId) ||
+        (f.requester.id === friendId || f.recipient.id === friendId)
+      );
+      
+      if (!friendship) {
+        setError('Friendship not found');
+        return;
+      }
+      
+      // Call the API to remove the friend
+      const response = await fetch(`/api/friends/${friendship._id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to remove friend');
+      }
+      
+      // Update the friends list by removing the unfriended user
+      setFriendsList(prev => prev.filter(friend => 
+        friend._id !== friendId && friend.id !== friendId
+      ));
+      
+      setSuccess('Friend removed successfully');
+      setTimeout(() => setSuccess(''), 3000);
+      
+    } catch (err) {
+      console.error('Error unfriending user:', err);
+      setError('Failed to remove friend. Please try again.');
+      setTimeout(() => setError(''), 5000);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -544,11 +493,11 @@ const Profile = () => {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen pt-20">
+    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pt-20">
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
               {isOwnProfile ? 'My Profile' : `${formData.username}'s Profile`}
             </h1>
             {isOwnProfile ? (
@@ -566,7 +515,7 @@ const Profile = () => {
                     setPreviewImage('');
                     fetchProfileData();
                   }}
-                  className="mt-4 md:mt-0 inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="mt-4 md:mt-0 inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   Cancel
                 </button>
@@ -606,8 +555,8 @@ const Profile = () => {
                     <>
                       <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" />
-                      </svg>
-                      Add Friend
+                    </svg>
+                    Add Friend
                     </>
                   )}
                 </button>
@@ -616,11 +565,12 @@ const Profile = () => {
           </div>
         </div>
 
+        {/* Error Message Alert */}
         {error && (
           <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4 rounded">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
               </div>
@@ -630,14 +580,15 @@ const Profile = () => {
             </div>
           </div>
         )}
-
+        
+        {/* Success Message Alert */}
         {success && (
           <div className="mb-4 bg-green-50 border-l-4 border-green-400 p-4 rounded">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
+              </svg>
               </div>
               <div className="ml-3">
                 <p className="text-sm text-green-700">{success}</p>
@@ -646,93 +597,378 @@ const Profile = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1">
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-              <div className="p-6 sm:p-8 text-center">
-                <div className="relative inline-block">
-                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow mx-auto bg-gray-100">
-                    <img
-                      src={previewImage || formData.profilePicture || '/avatar.svg'}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = '/avatar.svg';
-                      }}
-                    />
+        <motion.div 
+          className="bg-white dark:bg-gray-800 shadow sm:rounded-lg mb-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="px-4 py-5 sm:px-6">
+            <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+              {isOwnProfile ? 'Edit Your Profile' : 'Profile Details'}
+            </h2>
+          </div>
+          {isEditing ? (
+            <form onSubmit={handleSubmit}>
+              <div className="px-4 py-5 sm:px-6">
+                <div className="grid grid-cols-1 gap-y-6 sm:grid-cols-2 sm:gap-x-4">
+                  <div>
+                    <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Username
+                    </label>
+                    <div className="mt-1">
+                      <input
+                        type="text"
+                        name="username"
+                        id="username"
+                        value={formData.username}
+                        onChange={handleChange}
+                        className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        placeholder="Enter your username"
+                        required
+                      />
+                    </div>
                   </div>
-                  {isEditing && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <label className="cursor-pointer p-2 rounded-full bg-gray-800 bg-opacity-75 text-white hover:bg-opacity-90 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                        </svg>
+
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Email
+                    </label>
+                    <div className="mt-1">
+                      <input
+                        type="email"
+                        name="email"
+                        id="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        placeholder="Enter your email"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="bio" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Bio
+                    </label>
+                    <div className="mt-1">
+                      <textarea
+                        name="bio"
+                        id="bio"
+                        value={formData.bio}
+                        onChange={handleChange}
+                        className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        placeholder="Tell us about yourself"
+                        rows="3"
+                      ></textarea>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="interests" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Interests
+                    </label>
+                    <div className="mt-1">
+                      <input
+                        type="text"
+                        name="interests"
+                        id="interests"
+                        value={formData.interests.join(', ')}
+                        onChange={(e) => setFormData({ ...formData, interests: e.target.value.split(',').map(i => i.trim()) })}
+                        className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        placeholder="Enter your interests"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Profile Picture
+                    </label>
+                    <div className="mt-1 flex items-center">
+                      <div className="h-16 w-16 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-600">
+                        <img
+                          src={formData.profilePicture || '/avatar.svg'}
+                          alt="Profile"
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = '/avatar.svg';
+                          }}
+                        />
+                      </div>
+                      <div className="ml-4 flex-shrink-0">
+                        <label htmlFor="profilePicture" className="sr-only">
+                          Upload profile picture
+                        </label>
                         <input
+                          id="profilePicture"
+                          name="profilePicture"
                           type="file"
-                          className="hidden"
                           accept="image/*"
                           onChange={handleFileChange}
-                          disabled={uploadingImage}
+                          className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:border file:border-gray-300 dark:file:border-gray-600 file:rounded-md file:text-sm file:font-medium file:bg-white dark:file:bg-gray-700 dark:file:text-gray-200 hover:file:bg-gray-50 dark:hover:file:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                         />
-                      </label>
+                      </div>
                     </div>
-                  )}
-                </div>
-                <h2 className="mt-4 text-xl font-bold text-gray-900">{formData.username}</h2>
-                <p className="text-sm text-gray-500">{formData.email}</p>
-              </div>
-
-              <div className="border-t border-gray-200">
-                <dl>
-                  <div className="grid grid-cols-3 divide-x divide-gray-200">
-                    <div className="px-4 py-5 sm:px-6 text-center">
-                      <dt className="text-sm font-normal text-gray-500">Joined</dt>
-                      <dd className="mt-1 text-xl font-semibold text-blue-600">
-                        {statsLoading ? (
-                          <span className="inline-block w-6 h-6 bg-blue-100 rounded-full animate-pulse"></span>
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={handleGenerateRandomAvatar}
+                        className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      >
+                        {uploadingImage ? (
+                          <>
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Generating...
+                          </>
                         ) : (
-                          joinedActivities.length
+                          <>
+                            <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 001.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
+                          </svg>
+                          Generate Random Avatar
+                        </>
                         )}
-                      </dd>
-                    </div>
-                    <div className="px-4 py-5 sm:px-6 text-center">
-                      <dt className="text-sm font-normal text-gray-500">Created</dt>
-                      <dd className="mt-1 text-xl font-semibold text-green-600">
-                        {statsLoading ? (
-                          <span className="inline-block w-6 h-6 bg-green-100 rounded-full animate-pulse"></span>
-                        ) : (
-                          createdActivities.length
-                        )}
-                      </dd>
-                    </div>
-                    <div className="px-4 py-5 sm:px-6 text-center">
-                      <dt className="text-sm font-normal text-gray-500">Friends</dt>
-                      <dd className="mt-1 text-xl font-semibold text-purple-600">
-                        {statsLoading ? (
-                          <span className="inline-block w-6 h-6 bg-purple-100 rounded-full animate-pulse"></span>
-                        ) : (
-                          friendsList.length
-                        )}
-                      </dd>
+                      </button>
                     </div>
                   </div>
-                </dl>
+
+                  <div className="sm:col-span-2">
+                    <button
+                      type="submit"
+                      className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      {loading ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Saving...
+                        </>
+                      ) : (
+                        'Save Profile'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </form>
+          ) : (
+            <div className="px-4 py-5 sm:px-6">
+              <div className="grid grid-cols-1 gap-y-6 sm:grid-cols-2 sm:gap-x-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Username</p>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{formData.username}</p>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</p>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{formData.email}</p>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Bio</p>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{formData.bio || 'No bio available'}</p>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Interests</p>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                    {formData.interests.length > 0 ? formData.interests.join(', ') : 'No interests added'}
+                  </p>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Profile Picture</p>
+                  <div className="mt-1 flex items-center">
+                    <div className="h-16 w-16 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-600">
+                      <img
+                        src={formData.profilePicture || '/avatar.svg'}
+                        alt="Profile"
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = '/avatar.svg';
+                        }}
+                      />
+                    </div>
+                    <div className="ml-4">
+                      <Link
+                        to="#"
+                        onClick={() => {
+                          setIsEditing(true);
+                          setPreviewImage('');
+                        }}
+                        className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        Change Picture
+                      </Link>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            <div className="bg-white shadow rounded-lg overflow-hidden mt-8">
-              <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Friends</h3>
+          )}
+        </motion.div>
+
+        <div className="bg-white dark:bg-gray-800 shadow sm:rounded-lg mb-6">
+          <div className="px-4 py-5 sm:px-6">
+            <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+              {isOwnProfile ? 'My Activities' : `${formData.username}'s Activities`}
+            </h2>
+          </div>
+          <div className="border-t border-gray-200 dark:border-gray-700">
+            <div className="px-4 py-5 sm:px-6">
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => setActiveTab('joined')}
+                  className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center justify-center ${activeTab === 'joined' ? 'bg-blue-600 text-white' : 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}
+                >
+                  Joined Activities
+                </button>
+                <button
+                  onClick={() => setActiveTab('created')}
+                  className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center justify-center ${activeTab === 'created' ? 'bg-blue-600 text-white' : 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}
+                >
+                  Created Activities
+                </button>
               </div>
+            </div>
+
+            {statsLoading ? (
               <div className="p-4">
+                {[...Array(2)].map((_, i) => (
+                  <div key={i} className="animate-pulse flex space-x-4 p-4">
+                    <div className="flex-shrink-0">
+                      <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-600"></div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-3/4 mb-2"></div>
+                      <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-5/6"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : activeTab === 'joined' ? (
+              joinedActivities.length > 0 ? (
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {joinedActivities.map((activity) => (
+                    <Link
+                      to={`/activities/${activity._id}`}
+                      key={activity._id}
+                      className="block hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                    >
+                      <div className="px-4 py-4 sm:px-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <div className="ml-4">
+                              <p className="text-sm font-medium text-blue-600 dark:text-blue-400 truncate">{activity.title}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                                {activity.description ? (
+                                  activity.description.length > 100 
+                                    ? `${activity.description.substring(0, 100)}...` 
+                                    : activity.description
+                                ) : 'No description'}
+                              </p>
+                              <div className="mt-2 flex">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300">
+                                  {activity.category || 'Uncategorized'}
+                                </span>
+                                <span className="ml-2 inline-flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                  {activity.date ? formatDate(activity.date) : 'No date'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-400 dark:text-gray-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <p className="mb-2">You haven't joined any activities yet.</p>
+                  <Link to="/activities" className="text-blue-600 dark:text-blue-400 hover:underline">
+                    Browse activities
+                  </Link>
+                </div>
+              )
+            ) : (
+              createdActivities.length > 0 ? (
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {createdActivities.map((activity) => (
+                    <Link
+                      to={`/activities/${activity._id}`}
+                      key={activity._id}
+                      className="block hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                    >
+                      <div className="px-4 py-4 sm:px-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <div className="ml-4">
+                              <p className="text-sm font-medium text-green-600 dark:text-green-400 truncate">{activity.title}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                                {activity.description ? (
+                                  activity.description.length > 100 
+                                    ? `${activity.description.substring(0, 100)}...` 
+                                    : activity.description
+                                ) : 'No description'}
+                              </p>
+                              <div className="mt-2 flex">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300">
+                                  {activity.category || 'Uncategorized'}
+                                </span>
+                                <span className="ml-2 inline-flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                  {activity.date ? formatDate(activity.date) : 'No date'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-400 dark:text-gray-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  <p className="mb-2">You haven't created any activities yet.</p>
+                  <Link to="/activities/create" className="text-blue-600 dark:text-blue-400 hover:underline">
+                    Create your first activity
+                  </Link>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 shadow sm:rounded-lg mb-6">
+          <div className="px-4 py-5 sm:px-6">
+            <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+              Friends
+            </h2>
+          </div>
+          <div className="border-t border-gray-200 dark:border-gray-700">
+            <div className="px-4 py-5 sm:px-6">
+              <div className="grid grid-cols-1 gap-y-4">
                 {statsLoading ? (
                   <div className="space-y-3">
                     {[...Array(3)].map((_, i) => (
                       <div key={i} className="flex items-center space-x-3">
-                        <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse"></div>
+                        <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-600 animate-pulse"></div>
                         <div className="w-full">
-                          <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                          <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
                         </div>
                       </div>
                     ))}
@@ -740,8 +976,8 @@ const Profile = () => {
                 ) : friendsList.length > 0 ? (
                   <div className="space-y-3">
                     {friendsList.slice(0, 5).map((friend, index) => (
-                      <Link to={`/profile/${friend._id || friend.id}`} key={friend._id || friend.id || index} className="flex items-center space-x-3 hover:bg-gray-50 p-2 rounded-md transition">
-                        <div className="h-10 w-10 rounded-full overflow-hidden bg-gray-200">
+                      <Link to={`/profile/${friend._id || friend.id}`} key={friend._id || friend.id || index} className="flex items-center space-x-3 hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-md transition">
+                        <div className="h-10 w-10 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-600">
                           <img
                             src={friend.profilePicture || '/avatar.svg'}
                             alt={friend.username}
@@ -753,272 +989,26 @@ const Profile = () => {
                           />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{friend.username}</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{friend.username}</p>
                         </div>
                       </Link>
                     ))}
                     {friendsList.length > 5 && (
-                      <Link to="/friends" className="text-sm text-blue-600 hover:text-blue-800 block text-center pt-2">
+                      <Link to="/friends" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 block text-center pt-2">
                         View all {friendsList.length} friends
                       </Link>
                     )}
                   </div>
                 ) : (
-                  <div className="text-center py-6 text-gray-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="text-center py-6 text-gray-500 dark:text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-400 dark:text-gray-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                     <p>No friends yet</p>
+                    <Link to="/friends" className="mt-3 inline-block text-sm text-blue-600 hover:text-blue-800">
+                      Find friends
+                    </Link>
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-              <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-900">Profile Information</h3>
-              </div>
-              
-              {isEditing ? (
-                <form onSubmit={handleSubmit} className="p-6">
-                  <div className="space-y-6">
-                    <div>
-                      <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
-                      <input
-                        type="text"
-                        id="username"
-                        name="username"
-                        value={formData.username}
-                        onChange={handleChange}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        required
-                      />
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="bio" className="block text-sm font-medium text-gray-700">Bio</label>
-                      <textarea
-                        id="bio"
-                        name="bio"
-                        rows={3}
-                        value={formData.bio}
-                        onChange={handleChange}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="location" className="block text-sm font-medium text-gray-700">Location</label>
-                      <input
-                        type="text"
-                        id="location"
-                        name="location"
-                        value={formData.location}
-                        onChange={handleChange}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Interests</label>
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {formData.interests.map((interest, index) => (
-                          <div key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {interest}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveInterest(interest)}
-                              className="ml-1.5 inline-flex text-blue-400 hover:text-blue-600 focus:outline-none"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                              </svg>
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex">
-                        <input
-                          type="text"
-                          placeholder="Add an interest and press Enter"
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                          onKeyPress={handleInterestKeyPress}
-                        />
-                      </div>
-                      <p className="mt-1 text-xs text-gray-500">Press Enter to add each interest</p>
-                    </div>
-                    
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsEditing(false);
-                          setPreviewImage('');
-                          fetchProfileData();
-                        }}
-                        className="mr-3 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        Save
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              ) : (
-                <div className="p-6">
-                  <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-                    <div className="sm:col-span-1">
-                      <dt className="text-sm font-medium text-gray-500">Username</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{formData.username}</dd>
-                    </div>
-                    
-                    <div className="sm:col-span-1">
-                      <dt className="text-sm font-medium text-gray-500">Email</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{formData.email}</dd>
-                    </div>
-                    
-                    <div className="sm:col-span-2">
-                      <dt className="text-sm font-medium text-gray-500">Bio</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{formData.bio || 'No bio provided'}</dd>
-                    </div>
-                    
-                    <div className="sm:col-span-1">
-                      <dt className="text-sm font-medium text-gray-500">Location</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{formData.location || 'Not specified'}</dd>
-                    </div>
-                    
-                    <div className="sm:col-span-2">
-                      <dt className="text-sm font-medium text-gray-500">Interests</dt>
-                      <dd className="mt-1">
-                        {formData.interests && formData.interests.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {formData.interests.map((interest, index) => (
-                              <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                {interest}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-gray-500">No interests listed</p>
-                        )}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-              <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-medium text-gray-900">Activities</h3>
-                  <div className="flex space-x-1">
-                    <button
-                      onClick={() => setActiveTab('joined')}
-                      className={`px-3 py-1.5 text-sm font-medium rounded-md ${
-                        activeTab === 'joined' ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:text-gray-800'
-                      }`}
-                    >
-                      Joined
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('created')}
-                      className={`px-3 py-1.5 text-sm font-medium rounded-md ${
-                        activeTab === 'created' ? 'bg-green-100 text-green-800' : 'text-gray-600 hover:text-gray-800'
-                      }`}
-                    >
-                      Created
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-4">
-                {statsLoading ? (
-                  <div className="space-y-4">
-                    {[...Array(3)].map((_, i) => (
-                      <div key={i} className="border border-gray-200 rounded-lg p-4">
-                        <div className="animate-pulse flex space-x-4">
-                          <div className="flex-1 space-y-3 py-1">
-                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                            <div className="space-y-2">
-                              <div className="h-3 bg-gray-200 rounded"></div>
-                              <div className="h-3 bg-gray-200 rounded w-5/6"></div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : activeTab === 'joined' ? (
-                  joinedActivities.length > 0 ? (
-                    <div className="space-y-4">
-                      {joinedActivities.map((activity) => (
-                        <Link 
-                          to={`/activities/${activity._id}`} 
-                          key={activity._id} 
-                          className="block border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition"
-                        >
-                          <div className="flex justify-between">
-                            <h4 className="text-base font-medium text-gray-900">{activity.title}</h4>
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {activity.category}
-                            </span>
-                          </div>
-                          <p className="mt-1 text-sm text-gray-500">{activity.description?.substring(0, 100)}{activity.description?.length > 100 ? '...' : ''}</p>
-                          <p className="mt-2 text-xs text-gray-500">{formatDate(activity.date)}</p>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-10 text-gray-500">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <p>No activities joined yet</p>
-                      <Link to="/activities" className="mt-3 inline-block text-sm text-blue-600 hover:text-blue-800">
-                        Browse activities
-                      </Link>
-                    </div>
-                  )
-                ) : (
-                  createdActivities.length > 0 ? (
-                    <div className="space-y-4">
-                      {createdActivities.map((activity) => (
-                        <Link 
-                          to={`/activities/${activity._id}`} 
-                          key={activity._id} 
-                          className="block border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition"
-                        >
-                          <div className="flex justify-between">
-                            <h4 className="text-base font-medium text-gray-900">{activity.title}</h4>
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              {activity.category}
-                            </span>
-                          </div>
-                          <p className="mt-1 text-sm text-gray-500">{activity.description?.substring(0, 100)}{activity.description?.length > 100 ? '...' : ''}</p>
-                          <p className="mt-2 text-xs text-gray-500">{formatDate(activity.date)}</p>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-10 text-gray-500">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      </svg>
-                      <p>No activities created yet</p>
-                      <Link to="/activities/create" className="mt-3 inline-block text-sm text-blue-600 hover:text-blue-800">
-                        Create an activity
-                      </Link>
-                    </div>
-                  )
                 )}
               </div>
             </div>

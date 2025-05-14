@@ -98,8 +98,13 @@ const Register = () => {
         return;
       }
       
-      if (password.length < 4) {
-        setFormError('Password must be at least 4 characters');
+      if (username.length < 3 || username.length > 20) {
+        setFormError('Username must be between 3 and 20 characters');
+        return;
+      }
+      
+      if (password.length < 6) {
+        setFormError('Password must be at least 6 characters');
         return;
       }
     }
@@ -162,10 +167,26 @@ const Register = () => {
         setFormError('This email is already registered. Please use another email or try logging in.');
       } else if (err.message.includes('Username is already taken')) {
         setFormError('This username is already taken. Please choose another username.');
+      } else if (err.message.includes('password')) {
+        setFormError(err.message);
+      } else if (err.message.includes('validation')) {
+        setFormError(err.message);
       } else {
+        // Create a more detailed error message for server errors
+        let errorMsg = err.message;
+        
+        // If it's the generic server error, suggest possible fixes
+        if (errorMsg.includes('Server error during registration')) {
+          errorMsg += '. This could be due to:';
+          errorMsg += '\n• Password too short (minimum 6 characters required)';
+          errorMsg += '\n• Network connection issues';
+          errorMsg += '\n• Server temporarily unavailable';
+          errorMsg += '\nPlease try again with a stronger password.';
+        }
+        
         setApiResponse({ 
           success: false, 
-          error: err.message || 'Registration failed. Please try again.' 
+          error: errorMsg
         });
       }
       setLoading(false);

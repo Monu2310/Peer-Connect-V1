@@ -62,19 +62,19 @@ const CreateActivity = () => {
           </Link>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
           <div className="p-8">
-            <h1 className="text-2xl font-bold text-gray-900 mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-indigo-500">Create New Activity</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-indigo-500">Create New Activity</h1>
             
             {error && (
-              <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
+              <div className="bg-red-100 dark:bg-red-900/30 border-l-4 border-red-500 text-red-700 dark:text-red-400 p-4 mb-6" role="alert">
                 <p>{error}</p>
               </div>
             )}
             
             <form onSubmit={onSubmit} className="space-y-6">
               <div>
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Activity Title *
                 </label>
                 <input
@@ -84,13 +84,13 @@ const CreateActivity = () => {
                   value={title}
                   onChange={onChange}
                   required
-                  className="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                  className="w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   placeholder="Give your activity a clear title"
                 />
               </div>
               
               <div>
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Description *
                 </label>
                 <textarea
@@ -100,14 +100,14 @@ const CreateActivity = () => {
                   onChange={onChange}
                   required
                   rows="5"
-                  className="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                  className="w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   placeholder="Describe your activity, what participants should expect, what to bring, etc."
                 />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Date and Time *
                   </label>
                   <input
@@ -117,12 +117,12 @@ const CreateActivity = () => {
                     value={date}
                     onChange={onChange}
                     required
-                    className="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                    className="w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
                 
                 <div>
-                  <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="location" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Location *
                   </label>
                   <input
@@ -132,7 +132,7 @@ const CreateActivity = () => {
                     value={location}
                     onChange={onChange}
                     required
-                    className="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                    className="w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     placeholder="Where will this activity take place?"
                   />
                 </div>
@@ -140,7 +140,7 @@ const CreateActivity = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Category *
                   </label>
                   <select
@@ -149,7 +149,7 @@ const CreateActivity = () => {
                     value={category}
                     onChange={onChange}
                     required
-                    className="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                    className="w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   >
                     <option value="" disabled>Select a category</option>
                     <option value="Academic">Academic</option>
@@ -161,7 +161,7 @@ const CreateActivity = () => {
                 </div>
                 
                 <div>
-                  <label htmlFor="maxParticipants" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="maxParticipants" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Max Participants (optional)
                   </label>
                   <input
@@ -171,19 +171,19 @@ const CreateActivity = () => {
                     value={maxParticipants}
                     onChange={onChange}
                     min="1"
-                    className="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                    className="w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     placeholder="Leave empty for unlimited"
                   />
-                  <p className="mt-1 text-xs text-gray-500">Leave empty for unlimited participants</p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave empty for unlimited participants</p>
                 </div>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Image Upload
                 </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center">
-                  <p className="text-gray-500 text-sm">
+                <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-md p-6 text-center bg-gray-50 dark:bg-gray-700">
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">
                     Image upload is coming in a future update. 
                     <br />
                     For now, activities will use default images based on category.
@@ -194,7 +194,7 @@ const CreateActivity = () => {
               <div className="flex justify-end space-x-3">
                 <Link
                   to="/activities"
-                  className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   Cancel
                 </Link>

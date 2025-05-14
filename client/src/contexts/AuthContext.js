@@ -178,11 +178,20 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       console.log('Sending registration data:', {...userData, password: '[REDACTED]'});
+      
+      // Add specific logging for debugging
+      console.log('API URL being used:', `${API_URL}/api/auth/register`);
+      console.log('Request headers:', {
+        'Content-Type': 'application/json',
+        'withCredentials': true
+      });
+      
       const res = await axios.post(`${API_URL}/api/auth/register`, userData, {
         withCredentials: true, // Important for cookie-based auth
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: 15000 // Extend timeout for registration
       });
       
       dispatch({
@@ -208,9 +217,27 @@ export const AuthProvider = ({ children }) => {
       return res.data;
     } catch (err) {
       console.error('Registration error details:', err);
+      
+      // Enhanced error logging
+      console.error('Error response status:', err.response?.status);
+      console.error('Error response data:', err.response?.data);
+      console.error('Error response headers:', err.response?.headers);
+      
       // Get a more detailed error message
-      const errorMessage = err.response?.data?.message || 
-                          (err.response?.status === 500 ? 'Server error during registration' : 'Registration failed');
+      let errorMessage = 'Registration failed';
+      
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.response?.data?.details) {
+        errorMessage = err.response.data.details;
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.response?.status === 500) {
+        errorMessage = 'Server error during registration. Please try again later.';
+      } else if (!err.response) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      }
+      
       setError(errorMessage);
       
       dispatch({
@@ -226,8 +253,19 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('Attempting login at URL:', `${API_URL}/api/auth/login`);
       
-      // Clear any previous errors or tokens
+      // First, clear ALL local storage related to previous user
+      // This ensures we don't mix data between different users
       localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_DATA_KEY);
+      localStorage.removeItem(AUTH_TIMESTAMP_KEY);
+      localStorage.removeItem('profile_data');
+      localStorage.removeItem('profile_data_timestamp');
+      localStorage.removeItem('user_preferences');
+      
+      // Clear any cached data in sessionStorage
+      sessionStorage.clear();
+      
+      // Reset auth token
       setAuthToken(null);
       
       // Simplify the login request
@@ -253,15 +291,31 @@ export const AuthProvider = ({ children }) => {
       // Store the token in localStorage and set in axios
       setAuthToken(res.data.token);
       
+      // Set fresh auth timestamp
+      localStorage.setItem(AUTH_TIMESTAMP_KEY, Date.now().toString());
+      
       // Dispatch success action
       dispatch({
         type: 'LOGIN_SUCCESS',
         payload: res.data
       });
       
-      // Load user data after login
+      // Load user data after login - force fresh data
       try {
-        await loadUser();
+        const userData = await axios.get(`${API_URL}/api/auth/me`, {
+          withCredentials: true,
+          timeout: 5000,
+          headers: {
+            'Authorization': `Bearer ${res.data.token}`,
+            'Cache-Control': 'no-cache'
+          }
+        });
+        
+        // Update auth state with fresh user data
+        dispatch({
+          type: 'USER_LOADED',
+          payload: userData.data
+        });
       } catch (userErr) {
         console.error('Error loading user after login:', userErr);
         // Continue anyway since we have the token
@@ -300,8 +354,10 @@ export const AuthProvider = ({ children }) => {
     // Clear any data that should not persist after logout
     sessionStorage.clear(); // Clear all session storage data (joined activities, etc.)
     
-    // Consider keeping some preferences in localStorage for better UX on future logins
-    // But remove any sensitive data
+    // Clear profile cache data to ensure fresh data for next login
+    localStorage.removeItem('profile_data');
+    localStorage.removeItem('profile_data_timestamp');
+    localStorage.removeItem('user_preferences');
     
     dispatch({ type: 'LOGOUT' });
   };
