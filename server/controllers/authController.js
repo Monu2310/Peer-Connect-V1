@@ -104,7 +104,7 @@ exports.register = async (req, res) => {
 
     jwt.sign(
       payload,
-      process.env.JWT_SECRET || 'default_secret_do_not_use_in_production',
+      process.env.JWT_SECRET || '1f539cf180c85d4612a2c671fed287225a0071ce3cca3cf2c975f48e7016dcd210dfd4f9e6d06a306b39eac8c767ef6fa2ee454f4048d564734c7f5bc97e8a8460b375d9f67be2e3d0d6ae05da7fdf93e97e8eb404ae376416b64d3cf75c42417289255928d65dc5b36b2cd11ee02ee1be22327ac111839265032b1f795b36df',
       { expiresIn: '7d' },
       (err, token) => {
         if (err) {
