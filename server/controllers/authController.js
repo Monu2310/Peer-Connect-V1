@@ -26,59 +26,72 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
 
-    // Add timeouts to MongoDB queries
-    const findEmailOptions = { maxTimeMS: 30000 }; // 30 second timeout
-    const findUsernameOptions = { maxTimeMS: 30000 }; // 30 second timeout
-
-    // Check if user exists with a timeout
-    let existingUser = await User.findOne({ email }, null, findEmailOptions);
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists with this email' });
-    }
-
-    // Check if username is taken with a timeout
-    existingUser = await User.findOne({ username }, null, findUsernameOptions);
-    if (existingUser) {
-      return res.status(400).json({ message: 'Username is already taken' });
-    }
-
-    // Create new user with minimal data
-    const user = new User({
-      username,
-      email,
-      password,
-      profilePicture: 'https://avatars.dicebear.com/api/identicon/' + username + '.svg'
-    });
+    // Log database check attempt
+    console.log(`Checking if email ${email} already exists...`);
     
-    // Save the user with a timeout
-    await user.save({ maxTimeMS: 30000 });
-    
-    // Create token directly instead of using callback
-    const token = jwt.sign(
-      { id: user.id },
-      process.env.JWT_SECRET || 'default_jwt_secret',
-      { expiresIn: '7d' }
-    );
-    
-    // Return response with token and minimal user data
-    return res.status(201).json({
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email
+    try {
+      // Check if user exists with timeout options
+      let existingUser = await User.findOne({ email }).maxTimeMS(20000).exec();
+      if (existingUser) {
+        return res.status(400).json({ message: 'User already exists with this email' });
       }
-    });
-    
+
+      // Log username check attempt
+      console.log(`Checking if username ${username} already exists...`);
+      
+      // Check if username is taken with timeout options
+      existingUser = await User.findOne({ username }).maxTimeMS(20000).exec();
+      if (existingUser) {
+        return res.status(400).json({ message: 'Username is already taken' });
+      }
+
+      // Create new user with minimal data
+      console.log(`Creating new user: ${username}`);
+      const user = new User({
+        username,
+        email,
+        password,
+        profilePicture: 'https://avatars.dicebear.com/api/identicon/' + username + '.svg'
+      });
+      
+      // Save the user with timeout
+      console.log('Saving user to database...');
+      await user.save({ maxTimeMS: 30000 });
+      console.log(`User ${username} created successfully with id: ${user.id}`);
+      
+      // Create token directly instead of using callback
+      console.log('Generating JWT token...');
+      const token = jwt.sign(
+        { id: user.id },
+        process.env.JWT_SECRET || 'default_jwt_secret',
+        { expiresIn: '7d' }
+      );
+      
+      console.log('Registration successful, returning response');
+      // Return response with token and minimal user data
+      return res.status(201).json({
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          profilePicture: user.profilePicture
+        }
+      });
+    } catch (dbError) {
+      console.error('Database operation error:', dbError);
+      if (dbError.name === 'MongooseError' && dbError.message.includes('buffering timed out')) {
+        return res.status(503).json({ 
+          message: 'Database operation timed out. Please try again in a moment.'
+        });
+      }
+      throw dbError; // Re-throw to be caught by outer catch
+    }
   } catch (err) {
     console.error('Registration error:', err);
     
     // Handle different types of errors
-    if (err.name === 'MongooseError' && err.message.includes('buffering timed out')) {
-      return res.status(503).json({ 
-        message: 'Database connection timed out. Please try again in a moment.'
-      });
-    } else if (err.code === 11000) {
+    if (err.code === 11000) {
       return res.status(400).json({ 
         message: 'Username or email already in use'
       });

@@ -63,58 +63,75 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); // Add cookie-parser middleware
 
-// Database connection with increased timeout and better error handling
-// Try connecting to the database with retries
+// Database connection with waitBeforeOperations to ensure connection is ready
 const connectWithRetry = () => {
-  const options = {
-    serverSelectionTimeoutMS: 60000, // Increase timeout to 60 seconds
-    socketTimeoutMS: 60000, // Socket timeout
-    connectTimeoutMS: 60000, // Connection timeout
-    // Remove deprecated options
-    retryWrites: true,
-    w: 'majority'
+  const mongooseOptions = {
+    serverSelectionTimeoutMS: 30000,
+    socketTimeoutMS: 45000,
+    connectTimeoutMS: 30000,
+    // Important: Wait until connection is ready before allowing queries
+    bufferCommands: false, // Disable mongoose buffering
+    bufferMaxEntries: 0    // Disable driver buffering
   };
   
-  console.log('MongoDB connection attempt...');
-  console.log('Using MongoDB URI:', process.env.MONGODB_URI.replace(/mongodb\+srv:\/\/([^:]+):([^@]+)@/, 'mongodb+srv://user:****@'));
+  console.log('MongoDB connection attempt with URI:', 
+    process.env.MONGODB_URI.replace(/mongodb\+srv:\/\/([^:]+):([^@]+)@/, 'mongodb+srv://****:****@'));
   
-  return mongoose.connect(process.env.MONGODB_URI, options)
+  return mongoose.connect(process.env.MONGODB_URI, mongooseOptions)
     .then(() => {
       console.log('MongoDB connected successfully');
+      mongoose.connection.db.admin().ping()
+        .then(() => console.log('MongoDB ping successful - database is responsive'))
+        .catch(err => console.error('MongoDB ping failed:', err));
     })
     .catch(err => {
       console.error('MongoDB connection error:', err);
       console.log('Retrying MongoDB connection in 5 seconds...');
-      setTimeout(connectWithRetry, 5000); // Retry after 5 seconds
+      setTimeout(connectWithRetry, 5000);
     });
 };
 
-// Initial connection
-connectWithRetry();
+// Make sure MongoDB is connected before initializing routes
+const initializeApp = async () => {
+  try {
+    // First establish the database connection
+    await connectWithRetry();
+    
+    // Only set up routes after DB connection is established
+    app.use('/api/users', require('./routes/users'));
+    app.use('/api/auth', require('./routes/auth'));
+    app.use('/api/activities', require('./routes/activities'));
+    app.use('/api/messages', require('./routes/messages'));
+    app.use('/api/friends', require('./routes/friends'));
+    app.use('/api/recommendations', require('./routes/recommendations'));
+    
+    // Default route
+    app.get('/', (req, res) => {
+      res.send('PeerConnect API is running');
+    });
+    
+    // Better error handler
+    app.use((err, req, res, next) => {
+      console.error(err.stack);
+      res.status(500).json({ 
+        message: 'Server Error', 
+        error: process.env.NODE_ENV === 'production' ? {} : err.message
+      });
+    });
+    
+    // Start server
+    const PORT = process.env.PORT || 5111;
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to initialize application:', error);
+    process.exit(1); // Exit with error code
+  }
+};
 
-// Add connection event handlers
-mongoose.connection.on('error', err => {
-  console.error('MongoDB connection error:', err);
-  // If the connection fails, try to reconnect
-  setTimeout(connectWithRetry, 5000);
-});
-
-mongoose.connection.on('disconnected', () => {
-  console.log('MongoDB disconnected! Attempting to reconnect...');
-  connectWithRetry();
-});
-
-mongoose.connection.on('connected', () => {
-  console.log('MongoDB connected!');
-});
-
-// Routes
-app.use('/api/users', require('./routes/users'));
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/activities', require('./routes/activities'));
-app.use('/api/messages', require('./routes/messages'));
-app.use('/api/friends', require('./routes/friends'));
-app.use('/api/recommendations', require('./routes/recommendations'));
+// Initialize the application
+initializeApp();
 
 // Socket.io for real-time communication
 io.on('connection', (socket) => {
@@ -248,24 +265,4 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('Client disconnected');
   });
-});
-
-// Default route
-app.get('/', (req, res) => {
-  res.send('PeerConnect API is running');
-});
-
-// Better error handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ 
-    message: 'Server Error', 
-    error: process.env.NODE_ENV === 'production' ? {} : err.message
-  });
-});
-
-// Start server
-const PORT = process.env.PORT || 5111;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
 });
