@@ -16,36 +16,14 @@ const server = http.createServer(app);
 
 // Define CORS options more explicitly
 const corsOptions = {
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, Postman)
-    const allowedOrigins = [
-      process.env.CLIENT_URL || 'http://localhost:3111', 
-      'http://localhost:5111',
-      'http://127.0.0.1:3111',
-      'http://127.0.0.1:5111',
-      'https://peer-connect-v1-cl.onrender.com',
-      // Allow any render.com subdomain during development
-      /\.onrender\.com$/
-    ];
-    
-    // Check if origin is in allowed origins or matches regex pattern
-    const allowed = !origin || 
-                   allowedOrigins.some(allowed => {
-                     return typeof allowed === 'string' 
-                       ? allowed === origin
-                       : allowed.test && allowed.test(origin);
-                   });
-    
-    if (allowed) {
-      callback(null, true);
-    } else {
-      console.log('CORS blocked request from:', origin);
-      callback(null, false);
-    }
-  },
+  origin: [
+    'http://localhost:3111',
+    'http://localhost:5111', 
+    'https://peer-connect-v1-cl.onrender.com'
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'],
-  credentials: true,
+  credentials: false, // Change from true to false to avoid cookie issues
   preflightContinue: false,
   optionsSuccessStatus: 204
 };

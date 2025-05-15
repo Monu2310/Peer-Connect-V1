@@ -179,76 +179,43 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('Sending registration data:', {...userData, password: '[REDACTED]'});
       
-      // Add specific logging for debugging
-      console.log('API URL being used:', `${API_URL}/api/auth/register`);
-      
-      // Create a new simplified request with just the essential data
-      const registrationData = {
+      // Use a minimal registration object with only essential fields
+      const minimalRegistration = {
         username: userData.username,
         email: userData.email,
         password: userData.password
       };
       
-      // Add optional fields only if they exist and are valid
-      if (userData.major) registrationData.major = userData.major;
-      if (userData.graduationYear) registrationData.graduationYear = userData.graduationYear;
-      
-      // Only add preference arrays if they exist and are arrays
-      ['hobbies', 'favoriteSubjects', 'sports', 'musicGenres', 'movieGenres'].forEach(field => {
-        if (userData[field] && Array.isArray(userData[field])) {
-          registrationData[field] = userData[field];
-        }
-      });
-      
-      // Make the request with a longer timeout and simplified data
-      const res = await axios.post(`${API_URL}/api/auth/register`, registrationData, {
-        withCredentials: true,
+      // Make the request with a simplified payload
+      const res = await axios.post(`${API_URL}/api/auth/register`, minimalRegistration, {
         headers: {
           'Content-Type': 'application/json'
         },
-        timeout: 30000 // Extended timeout for registration (30 seconds)
+        timeout: 30000 // Extended timeout
       });
       
-      dispatch({
-        type: 'REGISTER_SUCCESS',
-        payload: res.data
-      });
-      
-      // Load user after successful registration
-      await loadUser();
-      
-      // Store preferences to local storage for quick access
-      if (userData.hobbies || userData.favoriteSubjects || userData.sports || 
-          userData.musicGenres || userData.movieGenres) {
-        localStorage.setItem('user_preferences', JSON.stringify({
-          hobbies: userData.hobbies || [],
-          favoriteSubjects: userData.favoriteSubjects || [],
-          sports: userData.sports || [],
-          musicGenres: userData.musicGenres || [],
-          movieGenres: userData.movieGenres || []
-        }));
+      // Handle the successful registration
+      if (res.data && res.data.token) {
+        localStorage.setItem(TOKEN_KEY, res.data.token);
+        
+        dispatch({
+          type: 'REGISTER_SUCCESS',
+          payload: res.data
+        });
+        
+        // Skip loadUser and just use the data from response
+        return res.data;
+      } else {
+        throw new Error('Invalid response from server');
       }
-      
-      return res.data;
     } catch (err) {
       console.error('Registration error details:', err);
-      
-      // Enhanced error logging
-      console.error('Error response status:', err.response?.status);
-      console.error('Error response data:', err.response?.data);
-      console.error('Error response headers:', err.response?.headers);
       
       // Get a more detailed error message
       let errorMessage = 'Registration failed';
       
       if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
-      } else if (err.response?.data?.details) {
-        errorMessage = err.response.data.details;
-      } else if (err.response?.data?.error) {
-        errorMessage = err.response.data.error;
-      } else if (err.response?.status === 500) {
-        errorMessage = 'Server error during registration. Please try again later.';
       } else if (!err.response) {
         errorMessage = 'Network error. Please check your internet connection.';
       }

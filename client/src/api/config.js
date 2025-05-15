@@ -7,7 +7,7 @@ export const API_URL = process.env.REACT_APP_API_URL || 'https://peer-connect-ap
 console.log('Using API URL:', API_URL); // Debug log
 
 // Request timeout in milliseconds
-export const REQUEST_TIMEOUT = 10000;
+export const REQUEST_TIMEOUT = 30000; // Increase timeout to 30 seconds
 
 // Create axios instance with default config
 const api = axios.create({
@@ -16,7 +16,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json'
   },
-  withCredentials: true // Always include credentials for cross-origin requests
+  withCredentials: false // Important: changed to false to avoid CORS preflight issues
 });
 
 // Add request interceptor to include auth token in all requests
