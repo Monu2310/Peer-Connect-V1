@@ -37,13 +37,19 @@ const generateRandomProfileImage = (username) => {
 const cookieOptions = {
   httpOnly: true, // Cannot be accessed by client-side JS
   secure: process.env.NODE_ENV === 'production', // In production, only send over HTTPS
-  sameSite: 'lax', // Controls when cookies are sent with cross-site requests
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Use 'none' in production for cross-site
   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
 };
 
 // Register a new user
 exports.register = async (req, res) => {
   try {
+    console.log('Registration attempt:', {
+      username: req.body.username,
+      email: req.body.email,
+      passwordLength: req.body.password ? req.body.password.length : 0
+    });
+
     const { 
       username, 
       email, 
@@ -57,15 +63,29 @@ exports.register = async (req, res) => {
       movieGenres
     } = req.body;
 
+    // Validate required fields
+    if (!username || !email || !password) {
+      console.log('Missing required fields');
+      return res.status(400).json({ message: 'Username, email, and password are required' });
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      console.log('Password too short');
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
     // Check if user exists
     let user = await User.findOne({ email });
     if (user) {
+      console.log('Email already in use:', email);
       return res.status(400).json({ message: 'User already exists with this email' });
     }
 
     // Check if username is taken
     user = await User.findOne({ username });
     if (user) {
+      console.log('Username already taken:', username);
       return res.status(400).json({ message: 'Username is already taken' });
     }
 
@@ -81,7 +101,7 @@ exports.register = async (req, res) => {
     if (major) user.major = major;
     if (graduationYear) user.year = graduationYear;
     
-    // Add preference fields if provided
+    // Add preference fields if provided - with extra validation
     if (hobbies && Array.isArray(hobbies)) user.hobbies = hobbies;
     if (favoriteSubjects && Array.isArray(favoriteSubjects)) user.favoriteSubjects = favoriteSubjects;
     if (sports && Array.isArray(sports)) user.sports = sports;
@@ -90,48 +110,57 @@ exports.register = async (req, res) => {
     
     // Add all hobbies, sports, etc. to interests for compatibility with existing code
     user.interests = [
-      ...(hobbies || []),
-      ...(sports || []),
-      ...(favoriteSubjects || [])
+      ...(hobbies && Array.isArray(hobbies) ? hobbies : []),
+      ...(sports && Array.isArray(sports) ? sports : []),
+      ...(favoriteSubjects && Array.isArray(favoriteSubjects) ? favoriteSubjects : [])
     ];
 
+    // Save the user
+    console.log('Saving new user:', username);
     await user.save();
+    console.log('User saved successfully:', username);
 
     // Generate JWT token
     const payload = {
       id: user.id
     };
 
-    jwt.sign(
-      payload,
-      process.env.JWT_SECRET || '1f539cf180c85d4612a2c671fed287225a0071ce3cca3cf2c975f48e7016dcd210dfd4f9e6d06a306b39eac8c767ef6fa2ee454f4048d564734c7f5bc97e8a8460b375d9f67be2e3d0d6ae05da7fdf93e97e8eb404ae376416b64d3cf75c42417289255928d65dc5b36b2cd11ee02ee1be22327ac111839265032b1f795b36df',
-      { expiresIn: '7d' },
-      (err, token) => {
-        if (err) {
-          console.error('JWT signing error:', err);
-          return res.status(500).json({ message: 'Error generating authentication token', error: err.message });
+    // Use a try-catch block for jwt.sign to handle any errors
+    try {
+      // Generate token with the JWT secret from environment variables
+      const token = jwt.sign(
+        payload,
+        process.env.JWT_SECRET || 'peerconnect_jwt_secret_key_12345',
+        { expiresIn: '7d' }
+      );
+      
+      console.log('JWT token generated successfully');
+      
+      // Set token in HTTP-only cookie
+      res.cookie('token', token, cookieOptions);
+      
+      // Also send token in response body
+      return res.status(201).json({ 
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          profilePicture: user.profilePicture,
+          hobbies: user.hobbies,
+          favoriteSubjects: user.favoriteSubjects,
+          sports: user.sports,
+          musicGenres: user.musicGenres,
+          movieGenres: user.movieGenres
         }
-        
-        // Set token in HTTP-only cookie
-        res.cookie('token', token, cookieOptions);
-        
-        // Also send token in response body
-        res.status(201).json({ 
-          token,
-          user: {
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            profilePicture: user.profilePicture,
-            hobbies: user.hobbies,
-            favoriteSubjects: user.favoriteSubjects,
-            sports: user.sports,
-            musicGenres: user.musicGenres,
-            movieGenres: user.movieGenres
-          }
-        });
-      }
-    );
+      });
+    } catch (jwtError) {
+      console.error('JWT signing error:', jwtError);
+      return res.status(500).json({ 
+        message: 'Error generating authentication token', 
+        error: jwtError.message 
+      });
+    }
   } catch (err) {
     console.error('Registration error:', err);
     

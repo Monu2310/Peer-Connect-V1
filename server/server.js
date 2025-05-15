@@ -21,12 +21,22 @@ const corsOptions = {
     const allowedOrigins = [
       process.env.CLIENT_URL || 'http://localhost:3111', 
       'http://localhost:5111',
-      'http://127.0.0.1:3111',  // Also allow localhost with IP
+      'http://127.0.0.1:3111',
       'http://127.0.0.1:5111',
-      'https://peer-connect-v1-cl.onrender.com'  // Add your deployed client URL
+      'https://peer-connect-v1-cl.onrender.com',
+      // Allow any render.com subdomain during development
+      /\.onrender\.com$/
     ];
     
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    // Check if origin is in allowed origins or matches regex pattern
+    const allowed = !origin || 
+                   allowedOrigins.some(allowed => {
+                     return typeof allowed === 'string' 
+                       ? allowed === origin
+                       : allowed.test && allowed.test(origin);
+                   });
+    
+    if (allowed) {
       callback(null, true);
     } else {
       console.log('CORS blocked request from:', origin);

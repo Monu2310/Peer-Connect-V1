@@ -181,17 +181,32 @@ export const AuthProvider = ({ children }) => {
       
       // Add specific logging for debugging
       console.log('API URL being used:', `${API_URL}/api/auth/register`);
-      console.log('Request headers:', {
-        'Content-Type': 'application/json',
-        'withCredentials': true
+      
+      // Create a new simplified request with just the essential data
+      const registrationData = {
+        username: userData.username,
+        email: userData.email,
+        password: userData.password
+      };
+      
+      // Add optional fields only if they exist and are valid
+      if (userData.major) registrationData.major = userData.major;
+      if (userData.graduationYear) registrationData.graduationYear = userData.graduationYear;
+      
+      // Only add preference arrays if they exist and are arrays
+      ['hobbies', 'favoriteSubjects', 'sports', 'musicGenres', 'movieGenres'].forEach(field => {
+        if (userData[field] && Array.isArray(userData[field])) {
+          registrationData[field] = userData[field];
+        }
       });
       
-      const res = await axios.post(`${API_URL}/api/auth/register`, userData, {
-        withCredentials: true, // Important for cookie-based auth
+      // Make the request with a longer timeout and simplified data
+      const res = await axios.post(`${API_URL}/api/auth/register`, registrationData, {
+        withCredentials: true,
         headers: {
           'Content-Type': 'application/json'
         },
-        timeout: 15000 // Extend timeout for registration
+        timeout: 30000 // Extended timeout for registration (30 seconds)
       });
       
       dispatch({
