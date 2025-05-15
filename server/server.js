@@ -65,23 +65,31 @@ app.use(cookieParser()); // Add cookie-parser middleware
 
 // Database connection with updated options to ensure connection is ready
 const connectWithRetry = () => {
+  // Get the MongoDB URI from environment or use a fallback for MongoDB Atlas
+  const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://monu:mehta2310@cluster1.ofyyuwa.mongodb.net/peerconnect?retryWrites=true&w=majority&appName=Cluster1';
+  
   const mongooseOptions = {
     serverSelectionTimeoutMS: 30000,
     socketTimeoutMS: 45000,
     connectTimeoutMS: 30000,
-    // Removed unsupported options: bufferMaxEntries
     bufferCommands: false // Disable mongoose buffering
   };
   
-  console.log('MongoDB connection attempt with URI:', 
-    process.env.MONGODB_URI.replace(/mongodb\+srv:\/\/([^:]+):([^@]+)@/, 'mongodb+srv://****:****@'));
+  // Log the connection string with credentials masked
+  const maskedUri = mongoUri.replace(/mongodb\+srv:\/\/([^:]+):([^@]+)@/, 'mongodb+srv://****:****@');
+  console.log('MongoDB connection attempt with URI:', maskedUri);
   
-  return mongoose.connect(process.env.MONGODB_URI, mongooseOptions)
+  return mongoose.connect(mongoUri, mongooseOptions)
     .then(() => {
       console.log('MongoDB connected successfully');
-      mongoose.connection.db.admin().ping()
-        .then(() => console.log('MongoDB ping successful - database is responsive'))
-        .catch(err => console.error('MongoDB ping failed:', err));
+      // Check if we can ping the database
+      try {
+        mongoose.connection.db.admin().ping()
+          .then(() => console.log('MongoDB ping successful - database is responsive'))
+          .catch(err => console.error('MongoDB ping failed:', err));
+      } catch (err) {
+        console.error('Error pinging MongoDB:', err);
+      }
     })
     .catch(err => {
       console.error('MongoDB connection error:', err);
