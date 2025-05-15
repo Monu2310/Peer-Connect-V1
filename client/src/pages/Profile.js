@@ -286,6 +286,29 @@ const Profile = () => {
     fetchActivitiesAndFriends();
   }, [fetchActivitiesAndFriends]);
 
+  // Force exit loading state after timeout
+  useEffect(() => {
+    // This ensures we never get stuck in loading state
+    const loadingTimeout = setTimeout(() => {
+      if (loading) {
+        console.log('Force exiting loading state after timeout');
+        setLoading(false);
+        
+        // Set minimal data if none is available
+        if (!formData.username) {
+          setFormData(prev => ({
+            ...prev,
+            username: currentUser?.username || 'User',
+            email: currentUser?.email || '',
+            profilePicture: currentUser?.profilePicture || ''
+          }));
+        }
+      }
+    }, 8000); // Exit loading state after 8 seconds no matter what
+    
+    return () => clearTimeout(loadingTimeout);
+  }, [loading, currentUser, formData.username]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
