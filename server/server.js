@@ -14,6 +14,20 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
+// Force setting the MongoDB URI for Render.com
+if (process.env.RENDER) {
+  console.log('Running on Render.com - setting explicit MongoDB URI');
+  process.env.MONGODB_URI = 'mongodb+srv://monu:mehta2310@cluster1.ofyyuwa.mongodb.net/peerconnect?retryWrites=true&w=majority&appName=Cluster1';
+}
+
+// Log environment variables for debugging (masking sensitive info)
+console.log('Environment Variables:');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('PORT:', process.env.PORT);
+console.log('MONGODB_URI:', process.env.MONGODB_URI ? 
+  process.env.MONGODB_URI.replace(/mongodb\+srv:\/\/([^:]+):([^@]+)@/, 'mongodb+srv://****:****@') : 
+  'Not set');
+
 // Define CORS options more explicitly
 const corsOptions = {
   origin: [
