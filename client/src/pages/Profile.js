@@ -87,82 +87,73 @@ const Profile = () => {
 
     setLoading(true);
     try {
-      // Force fresh data fetch in these cases:
-      // 1. When viewing someone else's profile (not your own)
-      // 2. When the auth timestamp is newer than the profile cache timestamp (user switched)
-      // 3. When the cache is older than the max cache age
+      // Simplify the logic to always fetch fresh data when deployed
+      let needsFreshData = true;
       
-      const authTimestamp = localStorage.getItem('auth_timestamp');
-      const profileTimestamp = localStorage.getItem('profile_data_timestamp');
-      const maxCacheAge = 5 * 60 * 1000; // 5 minutes instead of 15
-      
-      let needsFreshData = !isOwnProfile; // Always fetch fresh data for other profiles
-      
-      if (isOwnProfile) {
-        // Check if auth is newer than profile (user switched) or no profile exists
-        const authIsNewer = authTimestamp && profileTimestamp && 
-                        parseInt(authTimestamp) > parseInt(profileTimestamp);
-        const cacheExpired = profileTimestamp && 
-                        (Date.now() - parseInt(profileTimestamp) > maxCacheAge);
-                        
-        needsFreshData = !profileTimestamp || authIsNewer || cacheExpired;
-        
-        console.log('Profile data status:', {
-          needsFreshData,
-          authIsNewer: authIsNewer || 'N/A',
-          cacheExpired: cacheExpired || 'N/A',
-          authTimestamp,
-          profileTimestamp
-        });
-      }
-      
-      // Use cached data if available, not expired, and user hasn't changed
-      if (isOwnProfile && !needsFreshData) {
+      // Only use cache in development environment
+      if (process.env.NODE_ENV === 'development' && isOwnProfile) {
         try {
           const cachedProfile = localStorage.getItem('profile_data');
           if (cachedProfile) {
             console.log('Using cached profile data');
             const parsedProfile = JSON.parse(cachedProfile);
-            
-            // Verify the cached profile matches the current user ID
-            if (parsedProfile && 
-                (parsedProfile.id === currentUser?.id || 
-                 parsedProfile._id === currentUser?.id)) {
-              setFormData(parsedProfile);
-              setLoading(false);
-              return;
-            } else {
-              console.log('Cached profile is for a different user, fetching fresh data');
-              needsFreshData = true;
-            }
+            setFormData(parsedProfile);
+            setLoading(false);
+            return;
           }
         } catch (cacheErr) {
           console.error('Error reading cache:', cacheErr);
-          needsFreshData = true;
         }
       }
 
-      if (needsFreshData) {
-        console.log(`Fetching fresh profile data for user ID: ${profileUserId}`);
-        const userData = await getUserProfile(profileUserId);
-        console.log("Received user data:", userData);
+      console.log(`Fetching fresh profile data for user ID: ${profileUserId}`);
+      
+      // Add a timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile data fetch timeout')), 15000)
+      );
+      
+      // Race the fetch against a timeout
+      const userData = await Promise.race([
+        getUserProfile(profileUserId),
+        timeoutPromise
+      ]);
+      
+      console.log("Received user data:", userData);
 
-        if (!userData || typeof userData !== 'object') {
-          console.error("Invalid user data received:", userData);
-          throw new Error("Invalid user data received from server");
-        }
+      if (!userData || typeof userData !== 'object') {
+        console.error("Invalid user data received:", userData);
+        throw new Error("Invalid user data received from server");
+      }
 
-        let profilePicture = userData.profilePicture || '';
+      let profilePicture = userData.profilePicture || '';
 
-        // Update auth user data for the current user to ensure consistency
-        if (isOwnProfile) {
-          updateAuthUserProfile({
-            ...userData,
-            id: profileUserId // Ensure ID is preserved
-          });
-        }
+      // Update auth user data for the current user to ensure consistency
+      if (isOwnProfile) {
+        updateAuthUserProfile({
+          ...userData,
+          id: profileUserId // Ensure ID is preserved
+        });
+      }
 
-        setFormData({
+      setFormData({
+        username: userData.username || 'User',
+        email: userData.email || '',
+        bio: userData.bio || '',
+        location: userData.location || '',
+        interests: Array.isArray(userData.interests) ? userData.interests :
+          (userData.interests ? userData.interests.split(',').filter(i => i.trim()) : []),
+        profilePicture: profilePicture,
+        hobbies: Array.isArray(userData.hobbies) ? userData.hobbies : [],
+        favoriteSubjects: Array.isArray(userData.favoriteSubjects) ? userData.favoriteSubjects : [],
+        sports: Array.isArray(userData.sports) ? userData.sports : [],
+        musicGenres: Array.isArray(userData.musicGenres) ? userData.musicGenres : [],
+        movieGenres: Array.isArray(userData.movieGenres) ? userData.movieGenres : []
+      });
+
+      if (isOwnProfile) {
+        const profileData = {
+          id: profileUserId, // Store the user ID explicitly
           username: userData.username || 'User',
           email: userData.email || '',
           bio: userData.bio || '',
@@ -175,34 +166,24 @@ const Profile = () => {
           sports: Array.isArray(userData.sports) ? userData.sports : [],
           musicGenres: Array.isArray(userData.musicGenres) ? userData.musicGenres : [],
           movieGenres: Array.isArray(userData.movieGenres) ? userData.movieGenres : []
-        });
-
-        if (isOwnProfile) {
-          const profileData = {
-            id: profileUserId, // Store the user ID explicitly
-            username: userData.username || 'User',
-            email: userData.email || '',
-            bio: userData.bio || '',
-            location: userData.location || '',
-            interests: Array.isArray(userData.interests) ? userData.interests :
-              (userData.interests ? userData.interests.split(',').filter(i => i.trim()) : []),
-            profilePicture: profilePicture,
-            hobbies: Array.isArray(userData.hobbies) ? userData.hobbies : [],
-            favoriteSubjects: Array.isArray(userData.favoriteSubjects) ? userData.favoriteSubjects : [],
-            sports: Array.isArray(userData.sports) ? userData.sports : [],
-            musicGenres: Array.isArray(userData.musicGenres) ? userData.musicGenres : [],
-            movieGenres: Array.isArray(userData.movieGenres) ? userData.movieGenres : []
-          };
-          
-          localStorage.setItem('profile_data', JSON.stringify(profileData));
-          const timestamp = Date.now().toString();
-          localStorage.setItem('profile_data_timestamp', timestamp);
-          setProfileCacheTimestamp(timestamp);
-        }
+        };
+        
+        localStorage.setItem('profile_data', JSON.stringify(profileData));
+        const timestamp = Date.now().toString();
+        localStorage.setItem('profile_data_timestamp', timestamp);
+        setProfileCacheTimestamp(timestamp);
       }
     } catch (err) {
       console.error('Error fetching profile data:', err);
-      setError('Failed to load profile data');
+      setError('Failed to load profile data. Please refresh the page.');
+      
+      // Even if there's an error, don't stay in loading state forever
+      setFormData(prev => ({
+        ...prev,
+        username: currentUser?.username || 'User',
+        email: currentUser?.email || '',
+        profilePicture: currentUser?.profilePicture || ''
+      }));
     } finally {
       setLoading(false);
     }
