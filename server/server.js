@@ -70,14 +70,14 @@ const connectWithRetry = () => {
     serverSelectionTimeoutMS: 60000, // Increase timeout to 60 seconds
     socketTimeoutMS: 60000, // Socket timeout
     connectTimeoutMS: 60000, // Connection timeout
-    // Removed unsupported options: keepAlive and keepAliveInitialDelay
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
+    // Remove deprecated options
     retryWrites: true,
     w: 'majority'
   };
   
   console.log('MongoDB connection attempt...');
+  console.log('Using MongoDB URI:', process.env.MONGODB_URI.replace(/mongodb\+srv:\/\/([^:]+):([^@]+)@/, 'mongodb+srv://user:****@'));
+  
   return mongoose.connect(process.env.MONGODB_URI, options)
     .then(() => {
       console.log('MongoDB connected successfully');
