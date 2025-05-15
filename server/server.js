@@ -64,27 +64,49 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); // Add cookie-parser middleware
 
 // Database connection with increased timeout and better error handling
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/peerconnect', {
-  serverSelectionTimeoutMS: 60000, // Increase timeout to 60 seconds (from default 30s)
-  socketTimeoutMS: 45000, // Socket timeout
-  connectTimeoutMS: 60000, // Connection timeout
-  heartbeatFrequencyMS: 30000 // Send heartbeats every 30 seconds
-})
-  .then(() => console.log('MongoDB connected successfully'))
-  .catch(err => {
-    console.error('MongoDB connection error:', err);
-    // Don't crash the server on initial connection error
-    console.log('Will retry MongoDB connection...');
-  });
+// Try connecting to the database with retries
+const connectWithRetry = () => {
+  const options = {
+    serverSelectionTimeoutMS: 60000, // Increase timeout to 60 seconds
+    socketTimeoutMS: 60000, // Socket timeout
+    connectTimeoutMS: 60000, // Connection timeout
+    keepAlive: true,
+    keepAliveInitialDelay: 300000, // 5 minutes
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    retryWrites: true,
+    w: 'majority'
+  };
+  
+  console.log('MongoDB connection attempt...');
+  return mongoose.connect(process.env.MONGODB_URI, options)
+    .then(() => {
+      console.log('MongoDB connected successfully');
+    })
+    .catch(err => {
+      console.error('MongoDB connection error:', err);
+      console.log('Retrying MongoDB connection in 5 seconds...');
+      setTimeout(connectWithRetry, 5000); // Retry after 5 seconds
+    });
+};
 
-// Add connection error handler
+// Initial connection
+connectWithRetry();
+
+// Add connection event handlers
 mongoose.connection.on('error', err => {
   console.error('MongoDB connection error:', err);
+  // If the connection fails, try to reconnect
+  setTimeout(connectWithRetry, 5000);
 });
 
-// Add reconnected event handler
-mongoose.connection.on('reconnected', () => {
-  console.log('MongoDB reconnected!');
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected! Attempting to reconnect...');
+  connectWithRetry();
+});
+
+mongoose.connection.on('connected', () => {
+  console.log('MongoDB connected!');
 });
 
 // Routes
