@@ -63,15 +63,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); // Add cookie-parser middleware
 
-// Database connection with waitBeforeOperations to ensure connection is ready
+// Database connection with updated options to ensure connection is ready
 const connectWithRetry = () => {
   const mongooseOptions = {
     serverSelectionTimeoutMS: 30000,
     socketTimeoutMS: 45000,
     connectTimeoutMS: 30000,
-    // Important: Wait until connection is ready before allowing queries
-    bufferCommands: false, // Disable mongoose buffering
-    bufferMaxEntries: 0    // Disable driver buffering
+    // Removed unsupported options: bufferMaxEntries
+    bufferCommands: false // Disable mongoose buffering
   };
   
   console.log('MongoDB connection attempt with URI:', 
