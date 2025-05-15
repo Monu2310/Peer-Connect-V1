@@ -70,8 +70,7 @@ const connectWithRetry = () => {
     serverSelectionTimeoutMS: 60000, // Increase timeout to 60 seconds
     socketTimeoutMS: 60000, // Socket timeout
     connectTimeoutMS: 60000, // Connection timeout
-    keepAlive: true,
-    keepAliveInitialDelay: 300000, // 5 minutes
+    // Removed unsupported options: keepAlive and keepAliveInitialDelay
     useNewUrlParser: true,
     useUnifiedTopology: true,
     retryWrites: true,
