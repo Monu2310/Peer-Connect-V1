@@ -126,7 +126,7 @@ const initializeApp = async () => {
     app.use('/api/friends', require('./routes/friends'));
     app.use('/api/recommendations', require('./routes/recommendations'));
     
-    // Default route
+    // Default route and catch-all for client-side routing
     app.get('/', (req, res) => {
       res.send('PeerConnect API is running');
     });
