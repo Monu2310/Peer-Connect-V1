@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Use the explicit URL to avoid any environment variable issues
-export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5111';
 
 console.log('Using API URL:', API_URL); // Debug log
 
