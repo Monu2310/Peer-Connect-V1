@@ -22,7 +22,8 @@ const corsOptions = {
       process.env.CLIENT_URL || 'http://localhost:3111', 
       'http://localhost:5111',
       'http://127.0.0.1:3111',  // Also allow localhost with IP
-      'http://127.0.0.1:5111'
+      'http://127.0.0.1:5111',
+      'https://peer-connect-v1-cl.onrender.com'  // Add your deployed client URL
     ];
     
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
