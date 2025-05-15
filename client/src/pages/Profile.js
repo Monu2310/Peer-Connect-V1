@@ -87,107 +87,113 @@ const Profile = () => {
 
     setLoading(true);
     try {
-      // Simplify the logic to always fetch fresh data when deployed
-      let needsFreshData = true;
-      
-      // Only use cache in development environment
-      if (process.env.NODE_ENV === 'development' && isOwnProfile) {
+      // Try to load from cache first (for faster initial render)
+      if (isOwnProfile) {
         try {
           const cachedProfile = localStorage.getItem('profile_data');
           if (cachedProfile) {
             console.log('Using cached profile data');
             const parsedProfile = JSON.parse(cachedProfile);
             setFormData(parsedProfile);
-            setLoading(false);
-            return;
+            // Continue loading in the background, but show UI immediately
           }
         } catch (cacheErr) {
           console.error('Error reading cache:', cacheErr);
         }
       }
 
-      console.log(`Fetching fresh profile data for user ID: ${profileUserId}`);
+      console.log(`Fetching profile data for user ID: ${profileUserId}`);
       
-      // Add a timeout to prevent infinite loading
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile data fetch timeout')), 15000)
-      );
-      
-      // Race the fetch against a timeout
-      const userData = await Promise.race([
-        getUserProfile(profileUserId),
-        timeoutPromise
-      ]);
-      
-      console.log("Received user data:", userData);
+      // Use regular async/await without Promise.race to prevent rejections
+      try {
+        const userData = await getUserProfile(profileUserId);
+        console.log("Received user data:", userData);
 
-      if (!userData || typeof userData !== 'object') {
-        console.error("Invalid user data received:", userData);
-        throw new Error("Invalid user data received from server");
-      }
+        if (userData && typeof userData === 'object') {
+          let profilePicture = userData.profilePicture || '';
 
-      let profilePicture = userData.profilePicture || '';
+          // Update auth user data for the current user to ensure consistency
+          if (isOwnProfile) {
+            updateAuthUserProfile({
+              ...userData,
+              id: profileUserId // Ensure ID is preserved
+            });
+          }
 
-      // Update auth user data for the current user to ensure consistency
-      if (isOwnProfile) {
-        updateAuthUserProfile({
-          ...userData,
-          id: profileUserId // Ensure ID is preserved
-        });
-      }
+          setFormData({
+            username: userData.username || 'User',
+            email: userData.email || '',
+            bio: userData.bio || '',
+            location: userData.location || '',
+            interests: Array.isArray(userData.interests) ? userData.interests :
+              (userData.interests ? userData.interests.split(',').filter(i => i.trim()) : []),
+            profilePicture: profilePicture,
+            hobbies: Array.isArray(userData.hobbies) ? userData.hobbies : [],
+            favoriteSubjects: Array.isArray(userData.favoriteSubjects) ? userData.favoriteSubjects : [],
+            sports: Array.isArray(userData.sports) ? userData.sports : [],
+            musicGenres: Array.isArray(userData.musicGenres) ? userData.musicGenres : [],
+            movieGenres: Array.isArray(userData.movieGenres) ? userData.movieGenres : []
+          });
 
-      setFormData({
-        username: userData.username || 'User',
-        email: userData.email || '',
-        bio: userData.bio || '',
-        location: userData.location || '',
-        interests: Array.isArray(userData.interests) ? userData.interests :
-          (userData.interests ? userData.interests.split(',').filter(i => i.trim()) : []),
-        profilePicture: profilePicture,
-        hobbies: Array.isArray(userData.hobbies) ? userData.hobbies : [],
-        favoriteSubjects: Array.isArray(userData.favoriteSubjects) ? userData.favoriteSubjects : [],
-        sports: Array.isArray(userData.sports) ? userData.sports : [],
-        musicGenres: Array.isArray(userData.musicGenres) ? userData.musicGenres : [],
-        movieGenres: Array.isArray(userData.movieGenres) ? userData.movieGenres : []
-      });
-
-      if (isOwnProfile) {
-        const profileData = {
-          id: profileUserId, // Store the user ID explicitly
-          username: userData.username || 'User',
-          email: userData.email || '',
-          bio: userData.bio || '',
-          location: userData.location || '',
-          interests: Array.isArray(userData.interests) ? userData.interests :
-            (userData.interests ? userData.interests.split(',').filter(i => i.trim()) : []),
-          profilePicture: profilePicture,
-          hobbies: Array.isArray(userData.hobbies) ? userData.hobbies : [],
-          favoriteSubjects: Array.isArray(userData.favoriteSubjects) ? userData.favoriteSubjects : [],
-          sports: Array.isArray(userData.sports) ? userData.sports : [],
-          musicGenres: Array.isArray(userData.musicGenres) ? userData.musicGenres : [],
-          movieGenres: Array.isArray(userData.movieGenres) ? userData.movieGenres : []
-        };
+          if (isOwnProfile) {
+            const profileData = {
+              id: profileUserId, // Store the user ID explicitly
+              username: userData.username || 'User',
+              email: userData.email || '',
+              bio: userData.bio || '',
+              location: userData.location || '',
+              interests: Array.isArray(userData.interests) ? userData.interests :
+                (userData.interests ? userData.interests.split(',').filter(i => i.trim()) : []),
+              profilePicture: profilePicture,
+              hobbies: Array.isArray(userData.hobbies) ? userData.hobbies : [],
+              favoriteSubjects: Array.isArray(userData.favoriteSubjects) ? userData.favoriteSubjects : [],
+              sports: Array.isArray(userData.sports) ? userData.sports : [],
+              musicGenres: Array.isArray(userData.musicGenres) ? userData.musicGenres : [],
+              movieGenres: Array.isArray(userData.movieGenres) ? userData.movieGenres : []
+            };
+            
+            localStorage.setItem('profile_data', JSON.stringify(profileData));
+            const timestamp = Date.now().toString();
+            localStorage.setItem('profile_data_timestamp', timestamp);
+            setProfileCacheTimestamp(timestamp);
+            
+            console.log('Profile data updated and cached');
+          }
+        } else {
+          console.warn('Invalid user data structure received', userData);
+          throw new Error('Invalid user data structure');
+        }
+      } catch (fetchErr) {
+        console.error('Error in profile data fetch:', fetchErr);
+        // Don't throw error, just handle silently so UI can continue
         
-        localStorage.setItem('profile_data', JSON.stringify(profileData));
-        const timestamp = Date.now().toString();
-        localStorage.setItem('profile_data_timestamp', timestamp);
-        setProfileCacheTimestamp(timestamp);
+        // Use whatever data we have available
+        if (!formData.username && currentUser) {
+          setFormData(prev => ({
+            ...prev,
+            username: currentUser.username || 'User',
+            email: currentUser.email || '',
+            profilePicture: currentUser.profilePicture || ''
+          }));
+        }
       }
     } catch (err) {
-      console.error('Error fetching profile data:', err);
-      setError('Failed to load profile data. Please refresh the page.');
+      console.error('Error in profile flow:', err);
       
-      // Even if there's an error, don't stay in loading state forever
-      setFormData(prev => ({
-        ...prev,
-        username: currentUser?.username || 'User',
-        email: currentUser?.email || '',
-        profilePicture: currentUser?.profilePicture || ''
-      }));
+      // Set minimal data if none is available
+      if (!formData.username && currentUser) {
+        setFormData(prev => ({
+          ...prev,
+          username: currentUser.username || 'User',
+          email: currentUser.email || '',
+          profilePicture: currentUser.profilePicture || ''
+        }));
+      }
     } finally {
+      // Always exit loading state
       setLoading(false);
     }
-  }, [currentUser, userId, isOwnProfile, profileCacheTimestamp, updateAuthUserProfile]);
+  }, [currentUser, userId, isOwnProfile, formData.username, profileCacheTimestamp, updateAuthUserProfile]);
 
   const fetchActivitiesAndFriends = useCallback(async () => {
     const profileUserId = userId || currentUser?.id;
