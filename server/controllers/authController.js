@@ -26,14 +26,18 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
 
-    // Check if user exists
-    let existingUser = await User.findOne({ email });
+    // Add timeouts to MongoDB queries
+    const findEmailOptions = { maxTimeMS: 30000 }; // 30 second timeout
+    const findUsernameOptions = { maxTimeMS: 30000 }; // 30 second timeout
+
+    // Check if user exists with a timeout
+    let existingUser = await User.findOne({ email }, null, findEmailOptions);
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
 
-    // Check if username is taken
-    existingUser = await User.findOne({ username });
+    // Check if username is taken with a timeout
+    existingUser = await User.findOne({ username }, null, findUsernameOptions);
     if (existingUser) {
       return res.status(400).json({ message: 'Username is already taken' });
     }
@@ -46,8 +50,8 @@ exports.register = async (req, res) => {
       profilePicture: 'https://avatars.dicebear.com/api/identicon/' + username + '.svg'
     });
     
-    // Save the user
-    await user.save();
+    // Save the user with a timeout
+    await user.save({ maxTimeMS: 30000 });
     
     // Create token directly instead of using callback
     const token = jwt.sign(
@@ -69,17 +73,22 @@ exports.register = async (req, res) => {
   } catch (err) {
     console.error('Registration error:', err);
     
-    // Send specific error for duplicate key
-    if (err.code === 11000) {
+    // Handle different types of errors
+    if (err.name === 'MongooseError' && err.message.includes('buffering timed out')) {
+      return res.status(503).json({ 
+        message: 'Database connection timed out. Please try again in a moment.'
+      });
+    } else if (err.code === 11000) {
       return res.status(400).json({ 
         message: 'Username or email already in use'
       });
+    } else {
+      // Generic error
+      return res.status(500).json({ 
+        message: 'Server error during registration',
+        details: err.message
+      });
     }
-    
-    // Generic error
-    return res.status(500).json({ 
-      message: 'Server error during registration'
-    });
   }
 };
 

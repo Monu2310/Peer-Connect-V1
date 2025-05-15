@@ -63,10 +63,29 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); // Add cookie-parser middleware
 
-// Database connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/peerconnect')
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// Database connection with increased timeout and better error handling
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/peerconnect', {
+  serverSelectionTimeoutMS: 60000, // Increase timeout to 60 seconds (from default 30s)
+  socketTimeoutMS: 45000, // Socket timeout
+  connectTimeoutMS: 60000, // Connection timeout
+  heartbeatFrequencyMS: 30000 // Send heartbeats every 30 seconds
+})
+  .then(() => console.log('MongoDB connected successfully'))
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    // Don't crash the server on initial connection error
+    console.log('Will retry MongoDB connection...');
+  });
+
+// Add connection error handler
+mongoose.connection.on('error', err => {
+  console.error('MongoDB connection error:', err);
+});
+
+// Add reconnected event handler
+mongoose.connection.on('reconnected', () => {
+  console.log('MongoDB reconnected!');
+});
 
 // Routes
 app.use('/api/users', require('./routes/users'));
