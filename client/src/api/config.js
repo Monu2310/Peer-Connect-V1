@@ -7,7 +7,7 @@ export const API_URL = process.env.REACT_APP_API_URL || 'https://peer-connect-ap
 console.log('Using API URL:', API_URL); // Debug log
 
 // Request timeout in milliseconds
-export const REQUEST_TIMEOUT = 30000; // Increase timeout to 30 seconds
+export const REQUEST_TIMEOUT = 60000; // Increase timeout to 60 seconds for Render's cold start
 
 // Create axios instance with default config
 const api = axios.create({

@@ -32,12 +32,14 @@ console.log('MONGODB_URI:', process.env.MONGODB_URI ?
 const corsOptions = {
   origin: [
     'http://localhost:3111',
-    'http://localhost:5111', 
-    'https://peer-connect-v1-cl.onrender.com'
+    'http://localhost:5111',
+    'https://peer-connect-v1-cl.onrender.com',
+    'https://peerconnect-v1.onrender.com',
+    'https://peer-connect-1-0.onrender.com'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'],
-  credentials: false, // Change from true to false to avoid cookie issues
+  credentials: false, // Keep false to avoid cookie issues
   preflightContinue: false,
   optionsSuccessStatus: 204
 };
@@ -125,6 +127,15 @@ const initializeApp = async () => {
     app.use('/api/messages', require('./routes/messages'));
     app.use('/api/friends', require('./routes/friends'));
     app.use('/api/recommendations', require('./routes/recommendations'));
+    
+    // Add health check endpoint for client wake-up pings
+    app.get('/api/health', (req, res) => {
+      res.status(200).json({ 
+        status: 'ok',
+        message: 'Server is running',
+        timestamp: new Date().toISOString()
+      });
+    });
     
     // Default route and catch-all for client-side routing
     app.get('/', (req, res) => {

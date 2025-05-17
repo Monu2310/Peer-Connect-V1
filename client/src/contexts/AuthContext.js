@@ -250,25 +250,52 @@ export const AuthProvider = ({ children }) => {
       // Reset auth token
       setAuthToken(null);
       
-      // Simplify the login request
-      const res = await axios.post(
-        `${API_URL}/api/auth/login`, 
-        { email, password },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          withCredentials: true,
-          timeout: 8000 // Add timeout to prevent hanging requests
-        }
-      );
-      
-      console.log('Login response:', res.status);
-      
-      // Make sure we got a valid response with a token
-      if (!res.data || !res.data.token) {
-        throw new Error('Invalid response from server - no token received');
+      // Try to ping the server first to wake it up if it's sleeping
+      console.log('Pinging server to wake it up...');
+      try {
+        await axios.get(`${API_URL}/api/health`, { timeout: 5000 })
+          .catch(e => console.log('Wake-up ping failed, proceeding anyway'));
+      } catch (pingErr) {
+        console.log('Wake-up ping error (expected for cold starts):', pingErr.message);
       }
+      
+      // Define a function for login attempt with retries
+      const attemptLogin = async (retryCount = 0) => {
+        try {
+          // Simplify the login request
+          const res = await axios.post(
+            `${API_URL}/api/auth/login`, 
+            { email, password },
+            {
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              withCredentials: false,
+              timeout: 30000 // 30 second timeout for login request
+            }
+          );
+          
+          console.log('Login response:', res.status);
+          
+          // Make sure we got a valid response with a token
+          if (!res.data || !res.data.token) {
+            throw new Error('Invalid response from server - no token received');
+          }
+          
+          return res;
+        } catch (err) {
+          // If we have retries left and it's a network error (likely cold start), retry
+          if (retryCount < 2 && (!err.response || err.message.includes('timeout') || err.message.includes('Network Error'))) {
+            console.log(`Retry attempt ${retryCount + 1} for login...`);
+            await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds before retry
+            return attemptLogin(retryCount + 1);
+          }
+          throw err;
+        }
+      };
+      
+      // Attempt login with retry logic
+      const res = await attemptLogin();
       
       // Store the token in localStorage and set in axios
       setAuthToken(res.data.token);
@@ -285,8 +312,8 @@ export const AuthProvider = ({ children }) => {
       // Load user data after login - force fresh data
       try {
         const userData = await axios.get(`${API_URL}/api/auth/me`, {
-          withCredentials: true,
-          timeout: 5000,
+          withCredentials: false,
+          timeout: 10000,
           headers: {
             'Authorization': `Bearer ${res.data.token}`,
             'Cache-Control': 'no-cache'
@@ -317,8 +344,8 @@ export const AuthProvider = ({ children }) => {
       
       if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
-      } else if (err.message.includes('Network Error')) {
-        errorMessage = 'Cannot connect to server. Please check your internet connection.';
+      } else if (err.message.includes('Network Error') || err.message.includes('timeout')) {
+        errorMessage = 'Cannot connect to server. This may be due to Render spinning up the server. Please wait a moment and try again.';
       }
       
       setError(errorMessage);
