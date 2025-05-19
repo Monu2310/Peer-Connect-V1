@@ -156,7 +156,7 @@ const Activities = () => {
 
   return (
     <PageTransition>
-      <div className="container mx-auto px-4 py-6 max-w-7xl ">
+      <div className="container mx-auto px-4 max-w-7xl">
         {/* Enhanced Header Section */}
         <motion.div 
           className="relative mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl overflow-hidden shadow-sm"
@@ -167,7 +167,7 @@ const Activities = () => {
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32"></div>
           <div className="absolute bottom-0 left-0 w-40 h-40 bg-indigo-500/5 rounded-full -ml-20 -mb-20"></div>
           
-          <div className="relative z-10 p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mt-12">
+          <div className="relative z-10 p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div className="max-w-2xl">
               <h1 className="text-4xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary via-blue-500 to-indigo-600">
                 Discover Activities

@@ -7,7 +7,6 @@ import './App.css';
 
 // Components
 import Navbar from './components/layout/Navbar';
-import BlobCursor from './components/effects/BlobCursor';
 
 // Pages
 import Home from './pages/Home';
@@ -38,23 +37,19 @@ function App() {
     // Set a timeout to make sure the app is considered ready after a short delay
     const timer = setTimeout(() => {
       setAppReady(true);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Handle cursor style
-  useEffect(() => {
-    // Only hide the default cursor when the app is ready
-    if (appReady) {
-      document.body.style.cursor = 'none';
-    } else {
-      document.body.style.cursor = 'auto';
-    }
+    }, 300); // Reduced from 500ms to 300ms for faster initial load
     
-    // Cleanup
+    // Safety timeout - force app ready regardless after 2 seconds
+    const safetyTimer = setTimeout(() => {
+      if (!appReady) {
+        console.log('App initialization safety timeout triggered');
+        setAppReady(true);
+      }
+    }, 2000);
+
     return () => {
-      document.body.style.cursor = 'auto';
+      clearTimeout(timer);
+      clearTimeout(safetyTimer);
     };
   }, [appReady]);
 
@@ -62,6 +57,14 @@ function App() {
     return (
       <div className="flex justify-center items-center h-screen bg-white">
         <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
+        <div className="hidden">
+          {/* This hidden div helps prevent the microsecond loading flash */}
+          <ThemeProvider>
+            <AuthProvider>
+              <div></div>
+            </AuthProvider>
+          </ThemeProvider>
+        </div>
       </div>
     );
   }
@@ -70,11 +73,8 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <Router>
-          {/* Custom animated cursor with dynamic color based on theme */}
-          <BlobCursor fillColor="var(--cursor-color, #228be6)" />
-          
           <Navbar />
-          <div className="main-container min-h-screen bg-light-bg dark:bg-dark-bg transition-colors duration-300">
+          <div className="main-container min-h-screen bg-light-bg dark:bg-dark-bg transition-colors duration-300 pt-16">
             <AnimatePresence mode="wait">
               <Routes>
                 <Route path="/" element={<Home />} />

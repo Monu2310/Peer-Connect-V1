@@ -42,6 +42,17 @@ code {
   @apply bg-gray-300 dark:bg-gray-600 rounded-full hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors;
 }
 
+/* Add classes for page layout and stacking context */
+.main-container {
+  @apply relative isolate;
+}
+
+.fixed-navbar {
+  @apply fixed top-0 left-0 right-0 z-[100] transition-transform duration-300 will-change-transform;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
 /* Floating animation for elements */
 .floating {
   animation: floating 3s ease-in-out infinite;

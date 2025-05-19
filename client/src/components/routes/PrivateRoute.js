@@ -9,12 +9,13 @@ const PrivateRoute = ({ children }) => {
 
   // Set a timeout to prevent infinite loading
   useEffect(() => {
+    // Very short safety timeout to prevent infinite loading
     const timer = setTimeout(() => {
       if (loading) {
         console.warn("Auth loading took too long in PrivateRoute, forcing continue");
         setLocalLoading(false);
       }
-    }, 3000); // 3 seconds timeout
+    }, 2000); // Reduced to 2 seconds timeout
 
     // If auth context loading changes, update local loading state
     if (!loading) {
@@ -23,12 +24,26 @@ const PrivateRoute = ({ children }) => {
 
     return () => clearTimeout(timer);
   }, [loading]);
+  
+  // Additional safety timeout (second layer of protection)
+  useEffect(() => {
+    // Force exit loading state after max time regardless of other conditions
+    const maxWaitTimer = setTimeout(() => {
+      setLocalLoading(false);
+    }, 3000);
+    
+    return () => clearTimeout(maxWaitTimer);
+  }, []);
 
   // If still genuinely in loading state, show spinner
   if (loading && localLoading) {
+    // Start a counter to track how long the spinner has been visible
+    console.log("Showing auth loading spinner");
+    
     return (
-      <div className="h-screen flex items-center justify-center">
+      <div className="h-screen flex flex-col items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <p className="mt-4 text-gray-600 text-sm">Loading your profile...</p>
       </div>
     );
   }

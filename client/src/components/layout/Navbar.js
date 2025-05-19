@@ -38,29 +38,40 @@ const Navbar = () => {
   const isHomePage = location.pathname === '/';
   
   // Navbar styling variations
-  const navbarClasses = `fixed w-full z-10 transition-all duration-300 ease-in-out ${
+  const navbarClasses = `w-full transition-all duration-300 ${
     scrolled 
-      ? 'bg-white dark:bg-dark-card shadow-md' 
-      : isHomePage 
-        ? 'bg-transparent' 
-        : 'bg-primary dark:bg-dark-card'
+      ? 'bg-white dark:bg-gray-800 shadow-lg' 
+      : 'bg-primary dark:bg-gray-800'
   }`;
 
-  // Link styling variations
-  const linkClasses = `text-${scrolled || !isHomePage ? 'gray-700 dark:text-dark-text' : 'white'} hover:${scrolled || !isHomePage ? 'bg-gray-100 dark:bg-dark-light' : 'bg-primary/30'} nav-link`;
+  const linkClasses = `
+    px-3 py-2 rounded-md text-sm font-medium
+    ${scrolled 
+      ? 'text-gray-700 dark:text-gray-200 hover:text-primary dark:hover:text-primary' 
+      : 'text-white hover:text-gray-200'
+    }`;
+
+  const authButtonClasses = `
+    inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm font-medium
+    ${scrolled || !isHomePage
+      ? 'bg-primary text-white hover:bg-primary-dark'
+      : 'bg-white text-primary hover:bg-gray-100'
+    }`;
 
   return (
-    <nav className={navbarClasses}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className={`fixed-navbar ${navbarClasses}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 backdrop-blur-sm">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <Link to="/" className="flex items-center">
                 <motion.span 
-                  className={`font-bold text-xl text-black${
-                    scrolled || !isHomePage 
+                  className={`font-bold text-xl ${
+                    scrolled 
                       ? 'gradient-text' 
-                      : 'text-white'
+                      : isHomePage
+                        ? 'text-white'
+                        : 'text-white'
                   }`}
                   whileHover={{ scale: 1.05 }}
                 >
@@ -103,58 +114,64 @@ const Navbar = () => {
           </div>
           <div className="hidden md:block">
             <div className="ml-4 flex items-center md:ml-6">
-              {/* Dark Mode Toggle */}
-              <DarkModeToggle />
-              
-              {isAuthenticated ? (
-                <div className="flex items-center space-x-4 ml-4">
-                  <motion.span 
-                    className={`${scrolled || !isHomePage ? 'text-gray-700 dark:text-dark-text' : 'text-white'}`}
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    {getUserDisplayName()}
-                  </motion.span>
-                  <motion.button
-                    onClick={handleLogout}
-                    className={`${
-                      scrolled || !isHomePage 
-                        ? 'bg-primary text-white dark:bg-primary/80' 
-                        : 'bg-white text-primary'
-                    } px-4 py-2 rounded-md font-medium hover:opacity-90`}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Logout
-                  </motion.button>
-                </div>
-              ) : (
-                <div className="space-x-4">
-                  <motion.span whileHover={{ scale: 1.05 }} className="inline-block">
-                    <Link
-                      to="/login"
-                      className={`${
-                        scrolled || !isHomePage 
-                          ? 'text-gray-700 dark:text-dark-text' 
-                          : 'text-white'
-                      } px-3 py-2 rounded-md font-medium hover:opacity-80`}
+              <div className="flex items-center space-x-4">
+                <DarkModeToggle />
+                
+                {isAuthenticated ? (
+                  <div className="flex items-center space-x-4">
+                    <span className={`text-sm font-medium ${
+                      scrolled 
+                        ? 'text-gray-700 dark:text-gray-200' 
+                        : isHomePage
+                          ? 'text-white' 
+                          : 'text-gray-700 dark:text-gray-200'
+                    }`}>
+                      {getUserDisplayName()}
+                    </span>
+                    <button
+                      onClick={handleLogout}
+                      className={`${authButtonClasses} !bg-white-500 hover:!bg-white-600`}
                     >
+                      Logout
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-3">
+                    <Link to="/login" className={authButtonClasses}>
                       Login
                     </Link>
-                  </motion.span>
-                  <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="inline-block">
-                    <Link
-                      to="/register"
-                      className={`${
-                        scrolled || !isHomePage
-                          ? 'bg-primary text-white dark:bg-primary/80' 
-                          : 'bg-white text-primary'
-                      } px-4 py-2 rounded-md font-medium hover:opacity-90`}
+                    <Link 
+                      to="/signup" 
+                      className={`${authButtonClasses} !bg-white !text-primary border border-primary hover:!bg-gray-50 dark:!bg-gray-800 dark:!text-white dark:border-gray-700 dark:hover:!bg-gray-700`}
                     >
                       Sign Up
                     </Link>
-                  </motion.span>
-                </div>
-              )}
+                  </div>
+                )}
+
+                {/* Mobile menu button */}
+                <button
+                  onClick={toggleMobileMenu}
+                  className={`md:hidden inline-flex items-center justify-center p-2 rounded-md transition-colors ${
+                    scrolled 
+                      ? 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800' 
+                      : isHomePage
+                        ? 'text-white hover:bg-white/10' 
+                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  <span className="sr-only">Open main menu</span>
+                  {!mobileMenuOpen ? (
+                    <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                  ) : (
+                    <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
           <div className="-mr-2 flex md:hidden">

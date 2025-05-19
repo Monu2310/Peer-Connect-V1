@@ -56,9 +56,9 @@ const Home = () => {
                 transition={{ duration: 0.6, ease: 'easeOut' }}
                 className="text-white font-bold text-2xl"
               >
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-100">
+                {/* <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-100">
                   PeerConnect
-                </span>
+                </span> */}
               </motion.div>
             </nav>
 
@@ -271,12 +271,7 @@ const Home = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <Link
-                  to="/register"
-                  className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-primary dark:text-white bg-white dark:bg-primary/90 hover:bg-gray-50 dark:hover:bg-primary transition-all"
-                >
-                  Get started
-                </Link>
+                
               </motion.div>
             ) : (
               <motion.div 
@@ -288,12 +283,7 @@ const Home = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <Link
-                  to="/activities"
-                  className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-primary dark:text-white bg-white dark:bg-primary/90 hover:bg-gray-50 dark:hover:bg-primary transition-all"
-                >
-                  Browse Activities
-                </Link>
+                
               </motion.div>
             )}
           </div>

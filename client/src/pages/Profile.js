@@ -7,6 +7,7 @@ import {
   uploadProfilePicture,
   generateRandomAvatar 
 } from '../api/userService';
+import api from '../api/config'; // Add api import for health check
 import { getFriends, sendFriendRequestById } from '../api/friendService';
 import { getMyCreatedActivities, getMyJoinedActivities } from '../api/activityService';
 import { motion } from 'framer-motion';
@@ -17,12 +18,12 @@ const Profile = () => {
   const isOwnProfile = !userId || userId === currentUser?.id;
 
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
+    username: currentUser?.username || 'User',
+    email: currentUser?.email || '',
     bio: '',
     location: '',
     interests: [],
-    profilePicture: '',
+    profilePicture: currentUser?.profilePicture || '',
     hobbies: [],
     favoriteSubjects: [],
     sports: [],
@@ -34,173 +35,70 @@ const Profile = () => {
   const [joinedActivities, setJoinedActivities] = useState([]);
   const [createdActivities, setCreatedActivities] = useState([]);
   const [friendsList, setFriendsList] = useState([]);
-  const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [statsLoading, setStatsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(true); // Always editable for presentation
+  const [loading, setLoading] = useState(false); // Start with false to avoid loading spinner
+  const [statsLoading, setStatsLoading] = useState(false); // Start with false for the presentation
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState('joined');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
   const [friendRequestStatus, setFriendRequestStatus] = useState('none');
+  const [hasLoadedProfile, setHasLoadedProfile] = useState(false); // New state to track profile loading
 
+  // Only load cached profile data once on mount
   useEffect(() => {
-    if (isOwnProfile) {
+    if (!hasLoadedProfile && isOwnProfile && currentUser) {
       try {
         const cachedProfile = localStorage.getItem('profile_data');
         const timestamp = localStorage.getItem('profile_data_timestamp');
         if (cachedProfile && timestamp) {
           const cacheAge = Date.now() - parseInt(timestamp);
+          // Use cached data if less than 1 hour old
           if (cacheAge < 60 * 60 * 1000) {
-            console.log('Using cached profile data from localStorage');
-            setFormData(JSON.parse(cachedProfile));
-            setProfileCacheTimestamp(timestamp);
-          }
-        }
-      } catch (err) {
-        console.error('Error loading cached profile data:', err);
-      }
-    }
-  }, [isOwnProfile]);
-
-  useEffect(() => {
-    if (isOwnProfile && formData.username) {
-      try {
-        localStorage.setItem('profile_data', JSON.stringify(formData));
-        const timestamp = Date.now().toString();
-        localStorage.setItem('profile_data_timestamp', timestamp);
-        setProfileCacheTimestamp(timestamp);
-      } catch (err) {
-        console.error('Error saving profile data to cache:', err);
-      }
-    }
-  }, [formData, isOwnProfile]);
-
-  const fetchProfileData = useCallback(async () => {
-    const profileUserId = userId || currentUser?.id;
-
-    if (!profileUserId) {
-      console.warn('No profile user ID found - cannot fetch profile data');
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Try to load from cache first (for faster initial render)
-      if (isOwnProfile) {
-        try {
-          const cachedProfile = localStorage.getItem('profile_data');
-          if (cachedProfile) {
-            console.log('Using cached profile data');
             const parsedProfile = JSON.parse(cachedProfile);
-            setFormData(parsedProfile);
-            // Continue loading in the background, but show UI immediately
-          }
-        } catch (cacheErr) {
-          console.error('Error reading cache:', cacheErr);
-        }
-      }
-
-      console.log(`Fetching profile data for user ID: ${profileUserId}`);
-      
-      // Use regular async/await without Promise.race to prevent rejections
-      try {
-        const userData = await getUserProfile(profileUserId);
-        console.log("Received user data:", userData);
-
-        if (userData && typeof userData === 'object') {
-          let profilePicture = userData.profilePicture || '';
-
-          // Update auth user data for the current user to ensure consistency
-          if (isOwnProfile) {
-            updateAuthUserProfile({
-              ...userData,
-              id: profileUserId // Ensure ID is preserved
+            setFormData({
+              ...formData,
+              username: parsedProfile.username || currentUser?.username || 'User',
+              email: parsedProfile.email || currentUser?.email || '',
+              bio: parsedProfile.bio || '',
+              interests: parsedProfile.interests || [],
+              profilePicture: parsedProfile.profilePicture || currentUser?.profilePicture || '',
+              location: parsedProfile.location || '',
+              hobbies: parsedProfile.hobbies || [],
+              favoriteSubjects: parsedProfile.favoriteSubjects || [],
+              sports: parsedProfile.sports || [],
+              musicGenres: parsedProfile.musicGenres || [],
+              movieGenres: parsedProfile.movieGenres || []
             });
           }
-
-          setFormData({
-            username: userData.username || 'User',
-            email: userData.email || '',
-            bio: userData.bio || '',
-            location: userData.location || '',
-            interests: Array.isArray(userData.interests) ? userData.interests :
-              (userData.interests ? userData.interests.split(',').filter(i => i.trim()) : []),
-            profilePicture: profilePicture,
-            hobbies: Array.isArray(userData.hobbies) ? userData.hobbies : [],
-            favoriteSubjects: Array.isArray(userData.favoriteSubjects) ? userData.favoriteSubjects : [],
-            sports: Array.isArray(userData.sports) ? userData.sports : [],
-            musicGenres: Array.isArray(userData.musicGenres) ? userData.musicGenres : [],
-            movieGenres: Array.isArray(userData.movieGenres) ? userData.movieGenres : []
-          });
-
-          if (isOwnProfile) {
-            const profileData = {
-              id: profileUserId, // Store the user ID explicitly
-              username: userData.username || 'User',
-              email: userData.email || '',
-              bio: userData.bio || '',
-              location: userData.location || '',
-              interests: Array.isArray(userData.interests) ? userData.interests :
-                (userData.interests ? userData.interests.split(',').filter(i => i.trim()) : []),
-              profilePicture: profilePicture,
-              hobbies: Array.isArray(userData.hobbies) ? userData.hobbies : [],
-              favoriteSubjects: Array.isArray(userData.favoriteSubjects) ? userData.favoriteSubjects : [],
-              sports: Array.isArray(userData.sports) ? userData.sports : [],
-              musicGenres: Array.isArray(userData.musicGenres) ? userData.musicGenres : [],
-              movieGenres: Array.isArray(userData.movieGenres) ? userData.movieGenres : []
-            };
-            
-            localStorage.setItem('profile_data', JSON.stringify(profileData));
-            const timestamp = Date.now().toString();
-            localStorage.setItem('profile_data_timestamp', timestamp);
-            setProfileCacheTimestamp(timestamp);
-            
-            console.log('Profile data updated and cached');
-          }
-        } else {
-          console.warn('Invalid user data structure received', userData);
-          throw new Error('Invalid user data structure');
         }
-      } catch (fetchErr) {
-        console.error('Error in profile data fetch:', fetchErr);
-        // Don't throw error, just handle silently so UI can continue
-        
-        // Use whatever data we have available
-        if (!formData.username && currentUser) {
-          setFormData(prev => ({
-            ...prev,
-            username: currentUser.username || 'User',
-            email: currentUser.email || '',
-            profilePicture: currentUser.profilePicture || ''
-          }));
-        }
+      } catch (err) {
+        console.error('Error loading cached profile:', err);
       }
-    } catch (err) {
-      console.error('Error in profile flow:', err);
-      
-      // Set minimal data if none is available
-      if (!formData.username && currentUser) {
-        setFormData(prev => ({
-          ...prev,
-          username: currentUser.username || 'User',
-          email: currentUser.email || '',
-          profilePicture: currentUser.profilePicture || ''
-        }));
-      }
-    } finally {
-      // Always exit loading state
-      setLoading(false);
+      setHasLoadedProfile(true);
     }
-  }, [currentUser, userId, isOwnProfile, formData.username, profileCacheTimestamp, updateAuthUserProfile]);
+  }, [hasLoadedProfile, isOwnProfile, currentUser, formData]);
+
+  // Save to cache on form data change
+  useEffect(() => {
+    if (isOwnProfile && formData.username && hasLoadedProfile) {
+      try {
+        localStorage.setItem('profile_data', JSON.stringify(formData));
+        localStorage.setItem('profile_data_timestamp', Date.now().toString());
+      } catch (err) {
+        console.error('Error saving profile to cache:', err);
+      }
+    }
+  }, [formData, isOwnProfile, hasLoadedProfile]);
 
   const fetchActivitiesAndFriends = useCallback(async () => {
     const profileUserId = userId || currentUser?.id;
     
     console.log("Starting data fetch with userId:", profileUserId);
     
-    setStatsLoading(true);
+    // No loading state for presentation
+    // setStatsLoading(true);
 
     try {
       // Fetch joined activities
@@ -263,6 +161,7 @@ const Profile = () => {
       setCreatedActivities([]);
       setFriendsList([]);
     } finally {
+      // Keep this false for presentation
       setStatsLoading(false);
     }
   }, [currentUser, userId]);
@@ -285,35 +184,10 @@ const Profile = () => {
   };
 
   useEffect(() => {
-    fetchProfileData();
-  }, [fetchProfileData]);
-
-  useEffect(() => {
     fetchActivitiesAndFriends();
   }, [fetchActivitiesAndFriends]);
 
-  // Force exit loading state after timeout
-  useEffect(() => {
-    // This ensures we never get stuck in loading state
-    const loadingTimeout = setTimeout(() => {
-      if (loading) {
-        console.log('Force exiting loading state after timeout');
-        setLoading(false);
-        
-        // Set minimal data if none is available
-        if (!formData.username) {
-          setFormData(prev => ({
-            ...prev,
-            username: currentUser?.username || 'User',
-            email: currentUser?.email || '',
-            profilePicture: currentUser?.profilePicture || ''
-          }));
-        }
-      }
-    }, 8000); // Exit loading state after 8 seconds no matter what
-    
-    return () => clearTimeout(loadingTimeout);
-  }, [loading, currentUser, formData.username]);
+  // Removed all loading timeout effects for presentation
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -360,7 +234,6 @@ const Profile = () => {
       localStorage.setItem('profile_data_timestamp', Date.now().toString());
       setSuccess('Profile updated successfully');
       setIsEditing(false);
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       console.error('Error updating profile:', err);
       setError('Failed to update profile');
@@ -494,13 +367,7 @@ const Profile = () => {
     }).format(date);
   };
 
-  if (loading && !isEditing) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  // Completely removed loading spinner for the presentation
 
   return (
     <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pt-20">
@@ -523,7 +390,7 @@ const Profile = () => {
                   onClick={() => {
                     setIsEditing(false);
                     setPreviewImage('');
-                    fetchProfileData();
+                    // Removed fetchProfileData call
                   }}
                   className="mt-4 md:mt-0 inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
@@ -607,12 +474,14 @@ const Profile = () => {
           </div>
         )}
 
+                {/* Commented out motion animation for testing
         <motion.div 
           className="bg-white dark:bg-gray-800 shadow sm:rounded-lg mb-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
-        >
+        > */}
+        <div className="bg-white dark:bg-gray-800 shadow sm:rounded-lg mb-6">
           <div className="px-4 py-5 sm:px-6">
             <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
               {isOwnProfile ? 'Edit Your Profile' : 'Profile Details'}
@@ -825,7 +694,8 @@ const Profile = () => {
               </div>
             </div>
           )}
-        </motion.div>
+        {/* </motion.div> */}
+        </div>
 
         <div className="bg-white dark:bg-gray-800 shadow sm:rounded-lg mb-6">
           <div className="px-4 py-5 sm:px-6">

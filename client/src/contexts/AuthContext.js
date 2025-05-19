@@ -98,7 +98,9 @@ export const AuthProvider = ({ children }) => {
     const loadUserOnInit = async () => {
       // Make sure we only try to load user data once during initialization
       if (authInitialized) return;
-      setAuthInitialized(true);
+      
+      // Set initialized AFTER the function completes to prevent race conditions
+      // We'll set this at the end of the function
       
       const token = localStorage.getItem(TOKEN_KEY);
       const userData = localStorage.getItem(USER_DATA_KEY);
@@ -158,6 +160,9 @@ export const AuthProvider = ({ children }) => {
         // Ensure loading is set to false if there's no token
         dispatch({ type: 'SET_LOADING', payload: false });
       }
+      
+      // Now that we've completed the initialization process, set initialized to true
+      setAuthInitialized(true);
     };
 
     // Set a timeout to ensure loading state eventually ends
@@ -167,11 +172,23 @@ export const AuthProvider = ({ children }) => {
         console.warn("Auth loading took too long, forcing state to not loading");
         dispatch({ type: 'SET_LOADING', payload: false });
       }
-    }, 5000); // 5 seconds timeout
+    }, 3000); // Reduced to 3 seconds for a better user experience
+    
+    // Add a second, shorter safety timer as backup
+    const quickSafetyTimer = setTimeout(() => {
+      if (state.loading && !authInitialized) {
+        console.warn("Auth initialization taking too long, forcing loading state off");
+        setAuthInitialized(true); // Force initialization
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    }, 1500); // Very short timeout for a fast initial experience
 
     loadUserOnInit();
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(quickSafetyTimer);
+    };
   }, [authInitialized, state.loading]);
 
   // Register user
@@ -258,6 +275,9 @@ export const AuthProvider = ({ children }) => {
       } catch (pingErr) {
         console.log('Wake-up ping error (expected for cold starts):', pingErr.message);
       }
+      
+      // Set loading state to true at the beginning of login attempt
+      dispatch({ type: 'SET_LOADING', payload: true });
       
       // Define a function for login attempt with retries
       const attemptLogin = async (retryCount = 0) => {
@@ -355,6 +375,11 @@ export const AuthProvider = ({ children }) => {
       });
       
       throw new Error(errorMessage);
+    } finally {
+      // Ensure loading state is always set to false after login attempt, successful or failed
+      setTimeout(() => {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }, 100);
     }
   };
 
@@ -382,10 +407,19 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: 'SET_LOADING', payload: true });
       setAuthToken(localStorage.token);
       
+      // Set safety timeout for this operation
+      let timeoutId = setTimeout(() => {
+        console.warn('loadUser operation timed out, forcing loading state to false');
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }, 4000);
+      
       const res = await axios.get(`${API_URL}/api/auth/me`, {
         withCredentials: true,
         timeout: 5000 // Add timeout to prevent hanging requests
       });
+      
+      // Clear safety timeout since we got a response
+      clearTimeout(timeoutId);
       
       dispatch({
         type: 'USER_LOADED',
@@ -411,9 +445,27 @@ export const AuthProvider = ({ children }) => {
       
       dispatch({ type: 'AUTH_ERROR' });
       return null;
+    } finally {
+      // Always ensure loading state is set to false
+      setTimeout(() => {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }, 100);
     }
   };
 
+  // Add a forced reset of loading state in case something goes wrong
+  useEffect(() => {
+    // This acts as a final safety mechanism to prevent infinite loading state
+    const ultimateTimer = setTimeout(() => {
+      if (state.loading) {
+        console.warn("ULTIMATE SAFETY: Auth still loading after context mount, forcing reset");
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    }, 5000);
+    
+    return () => clearTimeout(ultimateTimer);
+  }, []);
+  
   // Create the context value object
   const value = {
     currentUser: state.user,

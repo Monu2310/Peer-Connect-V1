@@ -12,29 +12,46 @@ const processImageUrl = (imagePath) => {
 
 // Get user profile
 export const getUserProfile = async (userId) => {
-  try {
-    const response = await api.get(`/api/users/${userId}`);
-    
-    // Process profile picture URL if needed
-    if (response.data && response.data.profilePicture) {
-      response.data.profilePicture = processImageUrl(response.data.profilePicture);
+  let retries = 2; // Number of retries
+  
+  while (retries >= 0) {
+    try {
+      console.log(`Fetching profile for user ${userId}${retries < 2 ? ` (retry ${2-retries}/2)` : ''}`);
+      
+      const response = await api.get(`/api/users/${userId}`, { 
+        timeout: 10000 // 10 second timeout
+      });
+      
+      // Process profile picture URL if needed
+      if (response.data && response.data.profilePicture) {
+        response.data.profilePicture = processImageUrl(response.data.profilePicture);
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching user profile (${retries} retries left):`, error);
+      
+      // Only retry for network errors or timeouts, not for 4xx responses
+      if (retries > 0 && (!error.response || error.code === 'ECONNABORTED')) {
+        retries--;
+        // Wait before retrying (exponential backoff: 1s, then 2s)
+        await new Promise(resolve => setTimeout(resolve, 1000 * (3-retries)));
+        continue;
+      }
+      
+      // Return a minimal valid profile to prevent UI crashes
+      return {
+        username: 'User',
+        email: '',
+        bio: '',
+        interests: [],
+        hobbies: [],
+        favoriteSubjects: [],
+        sports: [],
+        musicGenres: [],
+        movieGenres: []
+      };
     }
-    
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching user profile:', error);
-    // Return a minimal valid profile to prevent UI crashes
-    return {
-      username: 'User',
-      email: '',
-      bio: '',
-      interests: [],
-      hobbies: [],
-      favoriteSubjects: [],
-      sports: [],
-      musicGenres: [],
-      movieGenres: []
-    };
   }
 };
 
