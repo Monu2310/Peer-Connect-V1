@@ -24,11 +24,35 @@ const CreateActivity = () => {
   const onSubmit = async e => {
     e.preventDefault();
     
+    // Clear previous errors
+    setError('');
+    
     // Set minimum date to today
     const today = new Date();
     const selectedDate = new Date(date);
     if (selectedDate < today) {
       setError('Activity date cannot be in the past');
+      return;
+    }
+    
+    // Check for empty required fields
+    if (!title.trim()) {
+      setError('Title is required');
+      return;
+    }
+    
+    if (!description.trim()) {
+      setError('Description is required');
+      return;
+    }
+    
+    if (!location.trim()) {
+      setError('Location is required');
+      return;
+    }
+    
+    if (!category) {
+      setError('Category is required');
       return;
     }
     
@@ -41,11 +65,18 @@ const CreateActivity = () => {
         maxParticipants: maxParticipants ? parseInt(maxParticipants) : null
       };
       
+      console.log('Submitting activity data:', activityData);
       const newActivity = await createActivity(activityData);
-      navigate(`/activities/${newActivity._id}`);
+      
+      if (newActivity && newActivity._id) {
+        navigate(`/activities/${newActivity._id}`);
+      } else {
+        setError('Activity created but returned unexpected response');
+        setLoading(false);
+      }
     } catch (err) {
       console.error('Error creating activity:', err);
-      setError(err.response?.data?.message || 'Failed to create activity');
+      setError(err.message || 'Failed to create activity. Check your connection and try again.');
       setLoading(false);
     }
   };

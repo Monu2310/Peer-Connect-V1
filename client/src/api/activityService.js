@@ -64,6 +64,8 @@ export const getActivityById = async (activityId) => {
 // Create new activity
 export const createActivity = async (activityData) => {
   try {
+    console.log('Creating activity with data:', activityData);
+    
     // Handle file uploads if present
     if (activityData.image && activityData.image instanceof File) {
       const formData = new FormData();
@@ -71,6 +73,7 @@ export const createActivity = async (activityData) => {
         formData.append(key, activityData[key]);
       });
       
+      console.log('Sending form data to API');
       const response = await api.post(`/api/activities`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
@@ -82,8 +85,13 @@ export const createActivity = async (activityData) => {
         response.data.image = processImageUrl(response.data.image);
       }
       
+      console.log('Activity created successfully:', response.data);
       return response.data;
     } else {
+      console.log('Sending JSON data to API');
+      const token = localStorage.getItem('token');
+      console.log('Using token:', token ? 'Present' : 'Missing');
+      
       const response = await api.post(`/api/activities`, activityData);
       
       // Process image URL in response if needed
@@ -91,11 +99,21 @@ export const createActivity = async (activityData) => {
         response.data.image = processImageUrl(response.data.image);
       }
       
+      console.log('Activity created successfully:', response.data);
       return response.data;
     }
   } catch (error) {
     console.error('Error creating activity:', error);
-    throw error;
+    
+    if (error.response) {
+      console.error('Server response:', error.response.data);
+      throw new Error(error.response.data.message || 'Failed to create activity');
+    } else if (error.request) {
+      console.error('No response received');
+      throw new Error('No response received from server. Please check your connection.');
+    } else {
+      throw error;
+    }
   }
 };
 

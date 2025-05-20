@@ -1,8 +1,8 @@
 // API Configuration
 import axios from 'axios';
 
-// Use the explicit URL to avoid any environment variable issues
-export const API_URL = process.env.REACT_APP_API_URL || 'https://peer-connect-api.onrender.com';
+// Use localhost for development unless specified otherwise
+export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5111';
 
 console.log('Using API URL:', API_URL); // Debug log
 
