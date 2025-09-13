@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { BrowserRouter } from 'react-router-dom'; // Import BrowserRouter
 
 // Initialize dark mode from local storage or system preference before rendering
 const initializeTheme = () => {
@@ -25,7 +26,9 @@ initializeTheme();
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <App />
+    <BrowserRouter> {/* Wrap App with BrowserRouter */}
+      <App />
+    </BrowserRouter>
   </React.StrictMode>
 );
 

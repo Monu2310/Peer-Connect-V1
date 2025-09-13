@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import DarkModeToggle from './DarkModeToggle';
+import { Button } from '../ui/button';
+import { Menu, X, User, LogOut } from 'lucide-react';
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -10,15 +12,22 @@ const Navbar = () => {
   const { isAuthenticated, currentUser, logout } = useAuth();
   const location = useLocation();
 
-  // Handle scroll effect
+  // Handle scroll effect with proper debouncing
   useEffect(() => {
+    let ticking = false;
+    
     const handleScroll = () => {
-      setScrolled(window.scrollY > 10);
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          setScrolled(window.scrollY > 10);
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
-    window.addEventListener('scroll', handleScroll);
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const toggleMobileMenu = () => {
@@ -27,6 +36,7 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout();
+    setMobileMenuOpen(false);
   };
 
   const getUserDisplayName = () => {
@@ -34,297 +44,261 @@ const Navbar = () => {
     return currentUser.name || currentUser.username || '';
   };
   
-  // Different styling for home page
   const isHomePage = location.pathname === '/';
-  
-  // Navbar styling variations
-  const navbarClasses = `w-full transition-all duration-300 ${
-    scrolled 
-      ? 'bg-white dark:bg-gray-800 shadow-lg' 
-      : 'bg-primary dark:bg-gray-800'
-  }`;
 
-  const linkClasses = `
-    px-3 py-2 rounded-md text-sm font-medium
-    ${scrolled 
-      ? 'text-gray-700 dark:text-gray-200 hover:text-primary dark:hover:text-primary' 
-      : 'text-white hover:text-gray-200'
-    }`;
-
-  const authButtonClasses = `
-    inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm font-medium
-    ${scrolled || !isHomePage
-      ? 'bg-primary text-white hover:bg-primary-dark'
-      : 'bg-white text-primary hover:bg-gray-100'
-    }`;
+  const navLinks = [
+    { path: '/dashboard', label: 'Dashboard', auth: true },
+    { path: '/activities', label: 'Activities', auth: true },
+    { path: '/friends', label: 'Friends', auth: true },
+    { path: '/messages', label: 'Messages', auth: true },
+  ];
 
   return (
-    <nav className={`fixed-navbar ${navbarClasses}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 backdrop-blur-sm">
-        <div className="flex items-center justify-between h-16">
+    <motion.nav 
+      className={`
+        fixed top-0 left-0 right-0 z-30 transition-all duration-300
+        ${scrolled || !isHomePage 
+          ? 'bg-background/80 backdrop-blur-xl border-b border-border/50 shadow-lg' 
+          : 'bg-transparent'
+        }
+      `}
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      {/* Main navbar container with 8pt grid spacing */}
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 md:h-20">
+          
+          {/* Logo section - Touch-friendly */}
           <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <Link to="/" className="flex items-center">
-                <motion.span 
-                  className={`font-bold text-xl ${
-                    scrolled 
-                      ? 'gradient-text' 
-                      : isHomePage
-                        ? 'text-white'
-                        : 'text-white'
-                  }`}
-                  whileHover={{ scale: 1.05 }}
-                >
-                  PeerConnect
-                </motion.span>
-              </Link>
-            </div>
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-4">
-                <Link
-                  to="/dashboard"
-                  className={linkClasses}
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  to="/activities"
-                  className={linkClasses}
-                >
-                  Activities
-                </Link>
-                {isAuthenticated && (
-                  <>
-                    <Link
-                      to="/activities/new"
-                      className={linkClasses}
-                    >
-                      Create Activity
-                    </Link>
-                    <Link
-                      to="/friends"
-                      className={linkClasses}
-                    >
-                      Friends
-                    </Link>
-                  </>
-                )}
-              </div>
-            </div>
+            <Link 
+              to="/" 
+              className="flex items-center space-x-2 group rounded-lg p-2 -m-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
+            >
+              <motion.div
+                className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-gradient-btn-primary flex items-center justify-center shadow-md"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <span className="text-white font-bold text-lg md:text-xl drop-shadow-sm">P</span>
+              </motion.div>
+              <span className="font-heading font-bold text-lg md:text-xl gradient-text">
+                PeerConnect
+              </span>
+            </Link>
           </div>
-          <div className="hidden md:block">
-            <div className="ml-4 flex items-center md:ml-6">
-              <div className="flex items-center space-x-4">
-                <DarkModeToggle />
-                
-                {isAuthenticated ? (
-                  <div className="flex items-center space-x-4">
-                    <span className={`text-sm font-medium ${
-                      scrolled 
-                        ? 'text-gray-700 dark:text-gray-200' 
-                        : isHomePage
-                          ? 'text-white' 
-                          : 'text-gray-700 dark:text-gray-200'
-                    }`}>
-                      {getUserDisplayName()}
-                    </span>
-                    <button
-                      onClick={handleLogout}
-                      className={`${authButtonClasses} !bg-white-500 hover:!bg-white-600`}
-                    >
-                      Logout
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-3">
-                    <Link to="/login" className={authButtonClasses}>
-                      Login
-                    </Link>
-                    <Link 
-                      to="/signup" 
-                      className={`${authButtonClasses} !bg-white !text-primary border border-primary hover:!bg-gray-50 dark:!bg-gray-800 dark:!text-white dark:border-gray-700 dark:hover:!bg-gray-700`}
-                    >
-                      Sign Up
-                    </Link>
-                  </div>
-                )}
 
-                {/* Mobile menu button */}
-                <button
-                  onClick={toggleMobileMenu}
-                  className={`md:hidden inline-flex items-center justify-center p-2 rounded-md transition-colors ${
-                    scrolled 
-                      ? 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800' 
-                      : isHomePage
-                        ? 'text-white hover:bg-white/10' 
-                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
-                  }`}
-                >
-                  <span className="sr-only">Open main menu</span>
-                  {!mobileMenuOpen ? (
-                    <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                  ) : (
-                    <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  )}
-                </button>
-              </div>
+          {/* Desktop navigation links */}
+          <div className="hidden md:block">
+            <div className="flex items-center space-x-2">
+              {navLinks.map((link) => (
+                (!link.auth || isAuthenticated) && (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    className={`
+                      relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200
+                      h-10 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50
+                      ${location.pathname === link.path
+                        ? 'text-primary bg-primary/10'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+                      }
+                    `}
+                  >
+                    {link.label}
+                    {location.pathname === link.path && (
+                      <motion.div
+                        className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-6 h-0.5 bg-primary rounded-full"
+                        layoutId="activeLink"
+                        initial={false}
+                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                  </Link>
+                )
+              ))}
             </div>
           </div>
-          <div className="-mr-2 flex md:hidden">
-            {/* Dark Mode Toggle for Mobile */}
+
+          {/* Desktop auth section and theme toggle */}
+          <div className="hidden md:flex items-center space-x-3">
             <DarkModeToggle />
             
-            <button
-              type="button"
-              onClick={toggleMobileMenu}
-              className={`inline-flex items-center justify-center p-2 rounded-md ${
-                scrolled || !isHomePage
-                  ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light' 
-                  : 'text-white hover:bg-primary/30'
-              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary`}
-              aria-controls="mobile-menu"
-              aria-expanded="false"
-            >
-              <span className="sr-only">Open main menu</span>
-              {!mobileMenuOpen ? (
-                <svg
-                  className="block h-6 w-6"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
+            {isAuthenticated ? (
+              <div className="flex items-center space-x-3">
+                <Link 
+                  to="/profile"
+                  className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors duration-200 group"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  className="block h-6 w-6"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors duration-200">
+                    <User className="w-5 h-5 text-primary" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors duration-200">
+                    {getUserDisplayName()}
+                  </span>
+                </Link>
+                
+                <Button
+                  onClick={handleLogout}
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground h-10"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              )}
-            </button>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-3">
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="h-10"
+                >
+                  <Link to="/login">Login</Link>
+                </Button>
+                <Button
+                  asChild
+                  size="sm"
+                  className="btn-gradient-primary text-white font-semibold h-10 px-6 shadow-md"
+                >
+                  <Link to="/register">Sign Up</Link>
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile menu button */}
+          <div className="md:hidden flex items-center space-x-2">
+            <DarkModeToggle />
+            {isAuthenticated && (
+              <Button
+                onClick={toggleMobileMenu}
+                variant="ghost"
+                size="sm"
+                className="h-10 w-10"
+                aria-label="Toggle mobile menu"
+              >
+                <motion.div
+                  animate={{ rotate: mobileMenuOpen ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {mobileMenuOpen ? (
+                    <X className="w-5 h-5" />
+                  ) : (
+                    <Menu className="w-5 h-5" />
+                  )}
+                </motion.div>
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Mobile menu, show/hide based on menu state */}
-      <div
-        className={`${mobileMenuOpen ? 'block' : 'hidden'} md:hidden`}
-        id="mobile-menu"
-      >
-        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white dark:bg-dark-card shadow-md">
-          <Link
-            to="/dashboard"
-            className={`block px-3 py-2 rounded-md font-medium ${
-              scrolled || !isHomePage
-                ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light'
-                : 'text-white hover:bg-primary/30'
-            }`}
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Dashboard
-          </Link>
-          <Link
-            to="/activities"
-            className={`block px-3 py-2 rounded-md font-medium ${
-              scrolled || !isHomePage
-                ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light'
-                : 'text-white hover:bg-primary/30'
-            }`}
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Activities
-          </Link>
-          {isAuthenticated && (
-            <>
-              <Link
-                to="/activities/new"
-                className={`block px-3 py-2 rounded-md font-medium ${
-                  scrolled || !isHomePage
-                    ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light'
-                    : 'text-white hover:bg-primary/30'
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Create Activity
-              </Link>
-              <Link
-                to="/friends"
-                className={`block px-3 py-2 rounded-md font-medium ${
-                  scrolled || !isHomePage
-                    ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light'
-                    : 'text-white hover:bg-primary/30'
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Friends
-              </Link>
-            </>
-          )}
-          {isAuthenticated ? (
-            <button
-              onClick={() => {
-                handleLogout();
-                setMobileMenuOpen(false);
-              }}
-              className={`w-full text-left px-3 py-2 rounded-md font-medium ${
-                scrolled || !isHomePage
-                  ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light'
-                  : 'text-white hover:bg-primary/30'
-              }`}
+      {/* Mobile menu overlay */}
+      <AnimatePresence>
+        {mobileMenuOpen && isAuthenticated && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              className="fixed inset-0 bg-background/50 backdrop-blur-sm z-40 md:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            
+            {/* Mobile menu panel */}
+            <motion.div
+              className="fixed top-16 left-0 right-0 bg-card/95 backdrop-blur-xl border-b border-border/20 shadow-lg z-50 md:hidden"
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -20, opacity: 0 }}
+              transition={{ duration: 0.2 }}
             >
-              Logout
-            </button>
-          ) : (
-            <>
-              <Link
-                to="/login"
-                className={`block px-3 py-2 rounded-md font-medium ${
-                  scrolled || !isHomePage
-                    ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light'
-                    : 'text-white hover:bg-primary/30'
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Login
-              </Link>
-              <Link
-                to="/register"
-                className={`block px-3 py-2 rounded-md font-medium ${
-                  scrolled || !isHomePage
-                    ? 'text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-light'
-                    : 'text-white hover:bg-primary/30'
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Sign Up
-              </Link>
-            </>
-          )}
-        </div>
-      </div>
-    </nav>
+              <div className="px-4 py-6 space-y-4">
+                
+                {/* User info for mobile */}
+                {isAuthenticated && (
+                  <Link 
+                    to="/profile"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center space-x-3 p-4 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors duration-200 mb-4 group"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors duration-200">
+                      <User className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground group-hover:text-primary transition-colors duration-200">{getUserDisplayName()}</p>
+                      <p className="text-sm text-muted-foreground">Tap to view profile</p>
+                    </div>
+                  </Link>
+                )}
+
+                {/* Mobile navigation links */}
+                <div className="space-y-2">
+                  {navLinks.map((link) => (
+                    (!link.auth || isAuthenticated) && (
+                      <Link
+                        key={link.path}
+                        to={link.path}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`
+                          block px-4 py-3 rounded-lg text-base font-medium transition-all duration-200
+                          h-12
+                          ${location.pathname === link.path
+                            ? 'text-primary bg-primary/10'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+                          }
+                        `}
+                      >
+                        {link.label}
+                      </Link>
+                    )
+                  ))}
+                </div>
+
+                {/* Mobile auth buttons */}
+                <div className="pt-4 border-t border-border/20">
+                  {isAuthenticated ? (
+                    <Button
+                      onClick={handleLogout}
+                      variant="ghost"
+                      className="w-full justify-start h-12"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </Button>
+                  ) : (
+                    <div className="space-y-2">
+                      <Button
+                        asChild
+                        variant="ghost"
+                        className="w-full h-12"
+                      >
+                        <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
+                          Login
+                        </Link>
+                      </Button>
+                      <Button
+                        asChild
+                        className="w-full btn-gradient-primary text-white font-semibold h-12 shadow-md"
+                      >
+                        <Link to="/register" onClick={() => setMobileMenuOpen(false)}>
+                          Sign Up
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </motion.nav>
   );
 };
 

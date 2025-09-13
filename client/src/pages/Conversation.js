@@ -5,6 +5,12 @@ import { getMessages, sendMessage } from '../api/messageService';
 import { getUserProfile } from '../api/userService';
 import io from 'socket.io-client';
 import { API_URL } from '../api/config';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Card, CardContent } from '../components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/button';
+import { Send, Loader2 } from 'lucide-react';
 
 const Conversation = () => {
   const { userId } = useParams();
@@ -115,88 +121,107 @@ const Conversation = () => {
     }
   };
   
-  if (loading) return <div className="p-4 text-center">Loading conversation...</div>;
+  if (loading) return (
+    <div className="container mx-auto p-4 sm:p-6 lg:p-8 bg-background text-foreground min-h-screen flex items-center justify-center">
+      <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      <p className="ml-4 text-lg">Loading conversation...</p>
+    </div>
+  );
   
-  if (error) return <div className="p-4 text-center text-red-500">{error}</div>;
+  if (error) return (
+    <div className="container mx-auto p-4 sm:p-6 lg:p-8 text-center text-destructive-foreground">
+      <h2 className="text-2xl font-bold">Error</h2>
+      <p>{error}</p>
+    </div>
+  );
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="flex flex-col h-screen bg-background text-foreground">
       {/* Header with recipient info */}
-      <div className="flex items-center pb-4 border-b mb-4">
-        <div className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden">
-          {recipient?.profilePicture ? (
-            <img 
-              src={recipient.profilePicture} 
-              alt={recipient.username} 
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="h-full w-full flex items-center justify-center bg-blue-500 text-white">
-              {recipient?.username.charAt(0).toUpperCase()}
-            </div>
-          )}
-        </div>
-        <h1 className="text-xl font-medium ml-3">{recipient?.username}</h1>
-      </div>
+      <Card className="rounded-none border-b border-border p-4 flex items-center shadow-sm">
+        <Avatar className="h-10 w-10">
+          <AvatarImage src={recipient?.profilePicture || '/avatar.svg'} />
+          <AvatarFallback>{recipient?.username.charAt(0).toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <h1 className="text-xl font-semibold ml-3 gradient-text">{recipient?.username}</h1>
+      </Card>
       
       {/* Messages container */}
-      <div className="flex-1 overflow-y-auto mb-4 space-y-4" style={{ maxHeight: 'calc(100vh - 220px)' }}>
-        {messages.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">No messages yet</p>
-            <p className="mt-2">Send a message to start the conversation.</p>
-          </div>
-        ) : (
-          messages.map(message => (
-            <div 
-              key={message._id} 
-              className={`flex ${message.sender === currentUser._id ? 'justify-end' : 'justify-start'}`}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+        <AnimatePresence initial={false}>
+          {messages.length === 0 ? (
+            <motion.div 
+              key="no-messages"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="text-center py-8 text-muted-foreground"
             >
-              <div 
-                className={`px-4 py-2 rounded-lg max-w-xs md:max-w-md break-words ${
-                  message.sender === currentUser._id 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-100'
-                }`}
+              <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted" />
+              <p className="text-lg mb-2">No messages yet</p>
+              <p>Send a message to start the conversation.</p>
+            </motion.div>
+          ) : (
+            messages.map(message => (
+              <motion.div 
+                key={message._id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                transition={{ duration: 0.3 }}
+                className={`flex ${message.sender === currentUser._id ? 'justify-end' : 'justify-start'}`}
               >
-                {message.content}
-                <div className={`text-xs mt-1 ${message.sender === currentUser._id ? 'text-blue-100' : 'text-gray-500'}`}>
-                  {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <div 
+                  className={`px-4 py-2 rounded-lg max-w-xs md:max-w-md break-words shadow-md ${
+                    message.sender === currentUser._id 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'bg-card text-foreground'
+                  }`}
+                >
+                  {message.content}
+                  <div className={`text-xs mt-1 ${message.sender === currentUser._id ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                    {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))
-        )}
+              </motion.div>
+            ))
+          )}
+        </AnimatePresence>
         {isTyping && (
-          <div className="flex justify-start">
-            <div className="bg-gray-100 px-4 py-2 rounded-lg">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-start"
+          >
+            <div className="bg-card px-4 py-2 rounded-lg shadow-md">
               <div className="typing-indicator">
                 <span></span>
                 <span></span>
                 <span></span>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
         <div ref={messagesEndRef} />
       </div>
       
       {/* Message input form */}
-      <form onSubmit={handleSubmit} className="flex items-center mt-auto">
-        <input
+      <form onSubmit={handleSubmit} className="flex items-center p-4 border-t border-border bg-card shadow-lg">
+        <Input
           type="text"
           placeholder="Type a message..."
-          className="flex-1 border rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 mr-2 input shadow-md"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           onKeyPress={handleTyping}
         />
-        <button 
+        <Button 
           type="submit"
-          className="bg-blue-500 text-white px-4 py-2 rounded-r-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="btn-primary"
+          disabled={!newMessage.trim()}
         >
-          Send
-        </button>
+          <Send className="h-5 w-5" />
+        </Button>
       </form>
     </div>
   );

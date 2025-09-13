@@ -26,19 +26,23 @@ module.exports = async (req, res, next) => {
     
     // Check if no token
     if (!token) {
+      console.log('Auth: No token found, authorization denied');
       return res.status(401).json({ message: 'No token, authorization denied' });
     }
     
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Auth: Token decoded payload:', decoded);
     
     // Add user from payload
     req.user = await User.findById(decoded.id).select('-password');
     
     if (!req.user) {
+      console.log('Auth: User not found for decoded ID:', decoded.id);
       return res.status(401).json({ message: 'User not found' });
     }
     
+    console.log('Auth: User authenticated:', req.user.username, 'ID:', req.user.id);
     next();
   } catch (err) {
     console.error('Auth middleware error:', err.message);

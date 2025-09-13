@@ -64,6 +64,10 @@ const UserSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  location: {
+    type: String,
+    default: ''
+  },
   major: {
     type: String,
     default: ''

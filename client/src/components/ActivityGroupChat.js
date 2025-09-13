@@ -4,6 +4,10 @@ import io from 'socket.io-client';
 import { API_URL } from '../api/config';
 import axios from 'axios';
 import { sendActivityMessage, getActivityMessages } from '../api/messageService';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { MessageSquare, Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 // Create a shared socket instance at the module level
 let sharedSocket = null;
@@ -689,9 +693,9 @@ const ActivityGroupChat = ({ activityId, activityTitle, hasJoined, currentUser: 
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+    <div className="card shadow-lg">
       <div 
-        className="bg-primary text-white px-4 py-3 flex justify-between items-center cursor-pointer"
+        className="bg-primary text-primary-foreground px-4 py-3 flex justify-between items-center cursor-pointer rounded-t-lg"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <h2 className="font-semibold">Activity Group Chat</h2>
@@ -716,29 +720,29 @@ const ActivityGroupChat = ({ activityId, activityTitle, hasJoined, currentUser: 
       {isExpanded && (
         <>
           <div 
-            className="p-4 h-64 overflow-y-auto bg-gray-50"
+            className="p-4 h-64 overflow-y-auto bg-background custom-scrollbar"
             style={{ scrollBehavior: 'smooth' }}
           >
             {(!isConnected && !connectionError) || loadingMessages ? (
-              <div className="flex flex-col items-center justify-center h-full text-gray-500">
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                 <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary mb-2"></div>
                 <p>{loadingMessages ? "Loading messages..." : "Connecting to chat..."}</p>
               </div>
             ) : connectionError ? (
-              <div className="flex flex-col items-center justify-center h-full text-red-500">
+              <div className="flex flex-col items-center justify-center h-full text-destructive-foreground">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <p>Failed to connect to chat.</p>
-                <button 
+                <Button 
                   onClick={handleReconnect}
-                  className="mt-2 px-4 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  className="mt-2 btn-primary"
                 >
                   Reconnect
-                </button>
+                </Button>
               </div>
             ) : messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-gray-500">
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
@@ -762,15 +766,15 @@ const ActivityGroupChat = ({ activityId, activityTitle, hasJoined, currentUser: 
                       className={`px-3 py-2 rounded-lg max-w-xs md:max-w-md lg:max-w-lg inline-block ${
                         message.isSystem
                           ? message.error
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-gray-100 text-gray-600'
+                            ? 'bg-destructive/10 text-destructive-foreground'
+                            : 'bg-muted text-muted-foreground'
                           : message.error 
-                            ? 'bg-red-100 text-red-800 cursor-pointer' 
+                            ? 'bg-destructive/10 text-destructive-foreground cursor-pointer' 
                             : message.pending
-                              ? 'bg-blue-50 text-primary'
+                              ? 'bg-primary/10 text-primary'
                               : isCurrentUser(message) 
-                                ? 'bg-primary text-white' 
-                                : 'bg-gray-200 text-gray-800'
+                                ? 'bg-primary text-primary-foreground' 
+                                : 'bg-card text-foreground'
                       }`}
                     >
                       {!message.isSystem && !isCurrentUser(message) && (
@@ -783,7 +787,7 @@ const ActivityGroupChat = ({ activityId, activityTitle, hasJoined, currentUser: 
                           ? message.content.replace(" (Failed to send)", "") 
                           : message.content}
                         {message.error && message.canRetry && (
-                          <span className="text-red-600 ml-1 text-xs">(Tap to retry)</span>
+                          <span className="text-destructive ml-1 text-xs">(Tap to retry)</span>
                         )}
                       </p>
                       {!message.isSystem && (

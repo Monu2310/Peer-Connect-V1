@@ -206,12 +206,12 @@ const Register = () => {
       {items.map((item, index) => (
         <span 
           key={index} 
-          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"
+          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground"
         >
           {item}
           <button
             type="button"
-            className="ml-1.5 inline-flex text-blue-400 hover:text-blue-600 dark:text-blue-300 dark:hover:text-blue-100"
+            className="ml-1.5 inline-flex text-muted-foreground hover:text-foreground"
             onClick={() => handleRemovePreference(item, category)}
           >
             <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
@@ -227,12 +227,12 @@ const Register = () => {
   const renderProgressBar = () => (
     <div className="mb-6">
       <div className="flex justify-between mb-1">
-        <div className="text-xs font-medium text-blue-700 dark:text-blue-400">Account Setup</div>
-        <div className="text-xs font-medium text-blue-700 dark:text-blue-400">{step} of 3</div>
+        <div className="text-xs font-medium text-primary">Account Setup</div>
+        <div className="text-xs font-medium text-primary">{step} of 3</div>
       </div>
-      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+      <div className="w-full bg-muted rounded-full h-2.5">
         <div 
-          className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" 
+          className="bg-primary h-2.5 rounded-full transition-all duration-300" 
           style={{ width: `${Math.min((step / 3) * 100, 100)}%` }}
         ></div>
       </div>
@@ -258,13 +258,13 @@ const Register = () => {
         {renderProgressBar()}
         
         {(formError || error) && (
-          <div className="bg-red-100 dark:bg-red-900/20 border-l-4 border-red-500 text-red-700 dark:text-red-400 p-4 mb-4" role="alert">
+          <div className="bg-destructive/10 border-l-4 border-destructive text-destructive p-4 mb-4" role="alert">
             <p>{formError || error}</p>
           </div>
         )}
         
         {apiResponse && !apiResponse.success && (
-          <div className="bg-red-100 dark:bg-red-900/20 border-l-4 border-red-500 text-red-700 dark:text-red-400 p-4 mb-4" role="alert">
+          <div className="bg-destructive/10 border-l-4 border-destructive text-destructive p-4 mb-4" role="alert">
             <p>Server Error: {apiResponse.error}</p>
           </div>
         )}

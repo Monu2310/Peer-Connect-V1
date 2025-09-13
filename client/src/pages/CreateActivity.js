@@ -1,245 +1,339 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { createActivity } from '../api/activityService';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
+import { Calendar } from '../components/ui/calendar';
+import { Calendar as CalendarIcon, Loader2, Clock, Sparkles, MapPin, Users } from 'lucide-react';
+import { format, isBefore, startOfDay, isToday, parseISO } from 'date-fns';
+import { cn } from '../lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const CreateActivity = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    date: '',
     location: '',
     category: '',
-    maxParticipants: ''
+    maxParticipants: '',
   });
+  const [date, setDate] = useState(null);
+  const [time, setTime] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { title, description, date, location, category, maxParticipants } = formData;
+  const { title, description, location, category, maxParticipants } = formData;
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    show: { y: 0, opacity: 1 }
+  };
 
   const onChange = e => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleDateSelect = (selectedDate) => {
+    const today = startOfDay(new Date());
+    if (selectedDate && isBefore(selectedDate, today)) {
+      setError('Cannot select a date in the past.');
+      return;
+    }
+    setDate(selectedDate);
+    setError('');
+  };
+
+  const handleTimeChange = (e) => {
+    const selectedTime = e.target.value;
+    setTime(selectedTime);
+    
+    if (date && isToday(date)) {
+      const now = new Date();
+      const selectedDateTime = parseISO(`${format(date, 'yyyy-MM-dd')}T${selectedTime}`);
+      
+      if (isBefore(selectedDateTime, now)) {
+        setError('Cannot select a time in the past for today.');
+        return;
+      }
+    }
+    setError('');
+  };
+
+  const validateDateTime = () => {
+    if (!date || !time) {
+      setError('Please select both date and time.');
+      return false;
+    }
+
+    const now = new Date();
+    const selectedDateTime = parseISO(`${format(date, 'yyyy-MM-dd')}T${time}`);
+    
+    if (isBefore(selectedDateTime, now)) {
+      setError('Cannot create an activity in the past.');
+      return false;
+    }
+    return true;
+  };
+
   const onSubmit = async e => {
     e.preventDefault();
     
-    // Clear previous errors
+    if (!validateDateTime()) return;
+
+    setLoading(true);
     setError('');
-    
-    // Set minimum date to today
-    const today = new Date();
-    const selectedDate = new Date(date);
-    if (selectedDate < today) {
-      setError('Activity date cannot be in the past');
-      return;
-    }
-    
-    // Check for empty required fields
-    if (!title.trim()) {
-      setError('Title is required');
-      return;
-    }
-    
-    if (!description.trim()) {
-      setError('Description is required');
-      return;
-    }
-    
-    if (!location.trim()) {
-      setError('Location is required');
-      return;
-    }
-    
-    if (!category) {
-      setError('Category is required');
-      return;
-    }
-    
+
+    const activityData = {
+      ...formData,
+      date: format(date, 'yyyy-MM-dd'),
+      time: time,
+    };
+
     try {
-      setLoading(true);
-      
-      // Convert maxParticipants to number if provided
-      const activityData = {
-        ...formData,
-        maxParticipants: maxParticipants ? parseInt(maxParticipants) : null
-      };
-      
-      console.log('Submitting activity data:', activityData);
-      const newActivity = await createActivity(activityData);
-      
-      if (newActivity && newActivity._id) {
-        navigate(`/activities/${newActivity._id}`);
-      } else {
-        setError('Activity created but returned unexpected response');
-        setLoading(false);
-      }
+      await createActivity(activityData);
+      navigate('/activities');
     } catch (err) {
-      console.error('Error creating activity:', err);
-      setError(err.message || 'Failed to create activity. Check your connection and try again.');
+      setError(err.message || 'Failed to create activity.');
       setLoading(false);
     }
   };
 
   return (
-    <div className="pt-16 min-h-screen bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
-        <div className="mb-6">
-          <Link to="/activities" className="text-primary hover:text-primary-dark flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-            </svg>
-            Back to Activities
-          </Link>
-        </div>
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* S-tier background effects */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,hsl(var(--primary)/0.1),transparent_50%)]"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,hsl(var(--accent)/0.1),transparent_50%)]"></div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-          <div className="p-8">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-indigo-500">Create New Activity</h1>
+      {/* Container with 8pt grid spacing */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 lg:py-20">
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+          className="max-w-4xl mx-auto"
+        >
+          {/* Header - Mobile-first typography */}
+          <motion.div variants={itemVariants} className="text-center mb-8 md:mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6 backdrop-blur-sm">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-primary">Create Something Amazing</span>
+            </div>
             
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 font-heading">
+              <span className="gradient-text">
+                Create Activity
+              </span>
+            </h1>
+            <p className="text-lg leading-relaxed text-muted-foreground max-w-2xl mx-auto">
+              Share your passion with the world. Create an experience that brings people together.
+            </p>
+          </motion.div>
+
+          {/* Error message - Consistent styling */}
+          <AnimatePresence>
             {error && (
-              <div className="bg-red-100 dark:bg-red-900/30 border-l-4 border-red-500 text-red-700 dark:text-red-400 p-4 mb-6" role="alert">
-                <p>{error}</p>
-              </div>
+              <motion.div
+                initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/20 backdrop-blur-sm"
+              >
+                <p className="text-destructive text-center text-sm leading-relaxed font-medium">{error}</p>
+              </motion.div>
             )}
-            
-            <form onSubmit={onSubmit} className="space-y-6">
-              <div>
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Activity Title *
-                </label>
-                <input
-                  type="text"
-                  id="title"
-                  name="title"
-                  value={title}
-                  onChange={onChange}
-                  required
-                  className="w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  placeholder="Give your activity a clear title"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Description *
-                </label>
-                <textarea
-                  id="description"
-                  name="description"
-                  value={description}
-                  onChange={onChange}
-                  required
-                  rows="5"
-                  className="w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  placeholder="Describe your activity, what participants should expect, what to bring, etc."
-                />
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Date and Time *
-                  </label>
-                  <input
-                    type="datetime-local"
-                    id="date"
-                    name="date"
-                    value={date}
-                    onChange={onChange}
-                    required
-                    className="w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  />
-                </div>
+          </AnimatePresence>
+
+          {/* Form card - S-tier elevation and spacing */}
+          <motion.div variants={itemVariants}>
+            <div className="bg-card/50 backdrop-blur-md border border-border/20 rounded-lg shadow-lg p-6 md:p-8 transition-all duration-300">
+              <form onSubmit={onSubmit} className="space-y-6">
                 
-                <div>
-                  <label htmlFor="location" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Location *
-                  </label>
-                  <input
-                    type="text"
-                    id="location"
-                    name="location"
-                    value={location}
-                    onChange={onChange}
-                    required
-                    className="w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    placeholder="Where will this activity take place?"
-                  />
+                {/* Title and Category - Responsive grid with 8pt spacing */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  
+                  {/* Title field - Touch-friendly sizing */}
+                  <motion.div variants={itemVariants} className="space-y-2">
+                    <label className="text-sm font-medium text-foreground mb-2 block flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      Activity Title
+                    </label>
+                    <Input
+                      type="text"
+                      name="title"
+                      value={title}
+                      onChange={onChange}
+                      placeholder="Enter an exciting title..."
+                      required
+                      className="w-full px-4 py-3 bg-input/50 backdrop-blur-sm border border-border/30 rounded-lg text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent hover:border-border/50 min-h-12"
+                    />
+                  </motion.div>
+
+                  {/* Category field */}
+                  <motion.div variants={itemVariants} className="space-y-2">
+                    <label className="text-sm font-medium text-foreground mb-2 block flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary" />
+                      Category
+                    </label>
+                    <Select 
+                      value={category} 
+                      onValueChange={(value) => setFormData({ ...formData, category: value })}
+                    >
+                      <SelectTrigger className="w-full px-4 py-3 bg-input/50 backdrop-blur-sm border border-border/30 rounded-lg text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent hover:border-border/50 min-h-12">
+                        <SelectValue placeholder="Choose a category..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-card/70 backdrop-blur-lg border border-border/30 rounded-lg shadow-lg">
+                        <SelectItem value="sports" className="transition-all duration-200 hover:bg-muted/20 active:bg-muted/30 p-3 min-h-touch">Sports & Fitness</SelectItem>
+                        <SelectItem value="social" className="transition-all duration-200 hover:bg-muted/20 active:bg-muted/30 p-3 min-h-touch">Social</SelectItem>
+                        <SelectItem value="educational" className="transition-all duration-200 hover:bg-muted/20 active:bg-muted/30 p-3 min-h-touch">Educational</SelectItem>
+                        <SelectItem value="entertainment" className="transition-all duration-200 hover:bg-muted/20 active:bg-muted/30 p-3 min-h-touch">Entertainment</SelectItem>
+                        <SelectItem value="volunteer" className="transition-all duration-200 hover:bg-muted/20 active:bg-muted/30 p-3 min-h-touch">Volunteer</SelectItem>
+                        <SelectItem value="other" className="transition-all duration-200 hover:bg-muted/20 active:bg-muted/30 p-3 min-h-touch">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </motion.div>
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Category *
-                  </label>
-                  <select
-                    id="category"
-                    name="category"
-                    value={category}
+
+                {/* Description - Full width with proper spacing */}
+                <motion.div variants={itemVariants} className="space-y-2">
+                  <label className="text-sm font-medium text-foreground mb-2 block">Description</label>
+                  <Textarea
+                    name="description"
+                    value={description}
                     onChange={onChange}
+                    placeholder="Describe your activity in detail..."
                     required
-                    className="w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    rows={4}
+                    className="w-full px-4 py-3 bg-input/50 backdrop-blur-sm border border-border/30 rounded-lg text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent hover:border-border/50 resize-none"
+                  />
+                </motion.div>
+
+                {/* Location and Participants - Responsive grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  
+                  {/* Location field */}
+                  <motion.div variants={itemVariants} className="space-y-2">
+                    <label className="text-sm font-medium text-foreground mb-2 block flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-primary" />
+                      Location
+                    </label>
+                    <Input
+                      type="text"
+                      name="location"
+                      value={location}
+                      onChange={onChange}
+                      placeholder="Where will this happen?"
+                      required
+                      className="w-full px-4 py-3 bg-input/50 backdrop-blur-sm border border-border/30 rounded-lg text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent hover:border-border/50 min-h-12"
+                    />
+                  </motion.div>
+
+                  {/* Max participants field */}
+                  <motion.div variants={itemVariants} className="space-y-2">
+                    <label className="text-sm font-medium text-foreground mb-2 block flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary" />
+                      Max Participants
+                    </label>
+                    <Input
+                      type="number"
+                      name="maxParticipants"
+                      value={maxParticipants}
+                      onChange={onChange}
+                      placeholder="How many people?"
+                      required
+                      min="1"
+                      className="w-full px-4 py-3 bg-input/50 backdrop-blur-sm border border-border/30 rounded-lg text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent hover:border-border/50 min-h-12"
+                    />
+                  </motion.div>
+                </div>
+
+                {/* Date and Time - Mobile-first responsive */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  
+                  {/* Date picker - Touch-friendly */}
+                  <motion.div variants={itemVariants} className="space-y-2">
+                    <label className="text-sm font-medium text-foreground mb-2 block flex items-center gap-2">
+                      <CalendarIcon className="w-4 h-4 text-primary" />
+                      Date
+                    </label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "relative inline-flex items-center justify-center font-medium transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-manipulation select-none bg-secondary/50 backdrop-blur-md text-secondary-foreground border border-border/50 rounded-lg px-6 py-3 hover:bg-secondary/70 hover:border-border transform hover:scale-[1.02] active:scale-[0.98] w-full justify-start text-left min-h-safe",
+                            !date && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {date ? format(date, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 bg-card/70 backdrop-blur-lg border border-border/30 rounded-lg shadow-lg" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={date}
+                          onSelect={handleDateSelect}
+                          initialFocus
+                          disabled={(date) => isBefore(date, startOfDay(new Date()))}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </motion.div>
+
+                  {/* Time field */}
+                  <motion.div variants={itemVariants} className="space-y-2">
+                    <label className="text-sm font-medium text-foreground mb-2 block flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-primary" />
+                      Time
+                    </label>
+                    <Input
+                      type="time"
+                      value={time}
+                      onChange={handleTimeChange}
+                      required
+                      className="w-full px-4 py-3 bg-input/50 backdrop-blur-sm border border-border/30 rounded-lg text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent hover:border-border/50 min-h-12"
+                    />
+                  </motion.div>
+                </div>
+
+                {/* Submit button - Thumb-friendly with proper elevation */}
+                <motion.div variants={itemVariants} className="pt-4">
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="btn-gradient-primary text-white rounded-lg px-6 py-3 shadow-lg transform hover:scale-[1.02] active:scale-[0.98] w-full min-h-safe text-base font-semibold relative inline-flex items-center justify-center font-medium transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-manipulation select-none"
                   >
-                    <option value="" disabled>Select a category</option>
-                    <option value="Academic">Academic</option>
-                    <option value="Social">Social</option>
-                    <option value="Sports">Sports</option>
-                    <option value="Career">Career</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Creating Activity...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-5 w-5" />
+                        Create Activity
+                      </>
+                    )}
+                  </Button>
+                </motion.div>
                 
-                <div>
-                  <label htmlFor="maxParticipants" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Max Participants (optional)
-                  </label>
-                  <input
-                    type="number"
-                    id="maxParticipants"
-                    name="maxParticipants"
-                    value={maxParticipants}
-                    onChange={onChange}
-                    min="1"
-                    className="w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    placeholder="Leave empty for unlimited"
-                  />
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave empty for unlimited participants</p>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Image Upload
-                </label>
-                <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-md p-6 text-center bg-gray-50 dark:bg-gray-700">
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">
-                    Image upload is coming in a future update. 
-                    <br />
-                    For now, activities will use default images based on category.
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex justify-end space-x-3">
-                <Link
-                  to="/activities"
-                  className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
-                  Cancel
-                </Link>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`px-6 py-2 bg-primary text-white rounded-md hover:bg-primary-dark ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-                >
-                  {loading ? 'Creating...' : 'Create Activity'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+              </form>
+            </div>
+          </motion.div>
+        </motion.div>
       </div>
     </div>
   );

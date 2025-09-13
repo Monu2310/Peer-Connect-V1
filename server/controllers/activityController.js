@@ -17,6 +17,7 @@ const getDefaultImageForCategory = (category) => {
 // Create a new activity
 exports.createActivity = async (req, res) => {
   try {
+    console.log('Activity Controller: createActivity - req.user.id:', req.user.id);
     const { 
       title, 
       description, 
@@ -47,6 +48,7 @@ exports.createActivity = async (req, res) => {
       .populate('creator', 'username profilePicture')
       .populate('participants', 'username profilePicture');
 
+    console.log('Activity Controller: createActivity - Created Activity:', populatedActivity);
     res.status(201).json(populatedActivity);
   } catch (err) {
     console.error(err.message);
@@ -57,6 +59,7 @@ exports.createActivity = async (req, res) => {
 // Get all activities with optional filtering
 exports.getActivities = async (req, res) => {
   try {
+    console.log('Activity Controller: getActivities - req.user.id:', req.user.id);
     const { category, search } = req.query;
     
     let query = {};
@@ -83,6 +86,7 @@ exports.getActivities = async (req, res) => {
       .populate('creator', 'username profilePicture')
       .populate('participants', 'username profilePicture');
     
+    console.log('Activity Controller: getActivities - Activities found:', activities.length);
     res.json(activities);
   } catch (err) {
     console.error(err.message);
@@ -93,6 +97,8 @@ exports.getActivities = async (req, res) => {
 // Get activity by ID
 exports.getActivityById = async (req, res) => {
   try {
+    console.log('Activity Controller: getActivityById - req.user.id:', req.user.id);
+    console.log('Activity Controller: getActivityById - activityId:', req.params.activityId);
     const activity = await Activity.findById(req.params.activityId)
       .populate('creator', 'username profilePicture bio')
       .populate('participants', 'username profilePicture');
@@ -101,6 +107,8 @@ exports.getActivityById = async (req, res) => {
       return res.status(404).json({ message: 'Activity not found' });
     }
     
+    console.log('Activity Controller: getActivityById - Activity Creator:', activity.creator._id);
+    console.log('Activity Controller: getActivityById - Activity Participants:', activity.participants.map(p => p._id));
     res.json(activity);
   } catch (err) {
     console.error(err.message);
@@ -114,6 +122,8 @@ exports.getActivityById = async (req, res) => {
 // Join an activity
 exports.joinActivity = async (req, res) => {
   try {
+    console.log('Activity Controller: joinActivity - req.user.id:', req.user.id);
+    console.log('Activity Controller: joinActivity - activityId:', req.params.activityId);
     const activity = await Activity.findById(req.params.activityId);
     
     if (!activity) {
@@ -122,11 +132,13 @@ exports.joinActivity = async (req, res) => {
     
     // Check if user has already joined
     if (activity.participants.includes(req.user.id)) {
+      console.log('Activity Controller: joinActivity - User already joined.');
       return res.status(400).json({ message: 'You have already joined this activity' });
     }
     
     // Check if activity is full
     if (activity.maxParticipants && activity.participants.length >= activity.maxParticipants) {
+      console.log('Activity Controller: joinActivity - Activity is full.');
       return res.status(400).json({ message: 'This activity is full' });
     }
     
@@ -139,6 +151,7 @@ exports.joinActivity = async (req, res) => {
       .populate('creator', 'username profilePicture')
       .populate('participants', 'username profilePicture');
     
+    console.log('Activity Controller: joinActivity - User joined activity. New participants:', updatedActivity.participants.map(p => p._id));
     res.json(updatedActivity);
   } catch (err) {
     console.error(err.message);
@@ -152,6 +165,8 @@ exports.joinActivity = async (req, res) => {
 // Leave an activity
 exports.leaveActivity = async (req, res) => {
   try {
+    console.log('Activity Controller: leaveActivity - req.user.id:', req.user.id);
+    console.log('Activity Controller: leaveActivity - activityId:', req.params.activityId);
     const activity = await Activity.findById(req.params.activityId);
     
     if (!activity) {
@@ -160,11 +175,13 @@ exports.leaveActivity = async (req, res) => {
     
     // Check if user is the creator
     if (activity.creator.toString() === req.user.id) {
+      console.log('Activity Controller: leaveActivity - Creator cannot leave.');
       return res.status(400).json({ message: 'Creator cannot leave the activity' });
     }
     
     // Check if user has joined the activity
     if (!activity.participants.includes(req.user.id)) {
+      console.log('Activity Controller: leaveActivity - User not joined.');
       return res.status(400).json({ message: 'You have not joined this activity' });
     }
     
@@ -180,6 +197,7 @@ exports.leaveActivity = async (req, res) => {
       .populate('creator', 'username profilePicture')
       .populate('participants', 'username profilePicture');
     
+    console.log('Activity Controller: leaveActivity - User left activity. New participants:', updatedActivity.participants.map(p => p._id));
     res.json(updatedActivity);
   } catch (err) {
     console.error(err.message);
@@ -193,6 +211,8 @@ exports.leaveActivity = async (req, res) => {
 // Update activity
 exports.updateActivity = async (req, res) => {
   try {
+    console.log('Activity Controller: updateActivity - req.user.id:', req.user.id);
+    console.log('Activity Controller: updateActivity - activityId:', req.params.activityId);
     const activity = await Activity.findById(req.params.activityId);
     
     if (!activity) {
@@ -201,6 +221,7 @@ exports.updateActivity = async (req, res) => {
     
     // Check if user is the creator
     if (activity.creator.toString() !== req.user.id) {
+      console.log('Activity Controller: updateActivity - Not authorized. Creator:', activity.creator.toString(), 'User:', req.user.id);
       return res.status(401).json({ message: 'Not authorized to update this activity' });
     }
     
@@ -236,6 +257,7 @@ exports.updateActivity = async (req, res) => {
       .populate('creator', 'username profilePicture')
       .populate('participants', 'username profilePicture');
     
+    console.log('Activity Controller: updateActivity - Updated Activity:', updatedActivity);
     res.json(updatedActivity);
   } catch (err) {
     console.error(err.message);
@@ -249,6 +271,8 @@ exports.updateActivity = async (req, res) => {
 // Delete activity
 exports.deleteActivity = async (req, res) => {
   try {
+    console.log('Activity Controller: deleteActivity - req.user.id:', req.user.id);
+    console.log('Activity Controller: deleteActivity - activityId:', req.params.activityId);
     const activity = await Activity.findById(req.params.activityId);
     
     if (!activity) {
@@ -257,11 +281,13 @@ exports.deleteActivity = async (req, res) => {
     
     // Check if user is the creator
     if (activity.creator.toString() !== req.user.id) {
+      console.log('Activity Controller: deleteActivity - Not authorized. Creator:', activity.creator.toString(), 'User:', req.user.id);
       return res.status(401).json({ message: 'Not authorized to delete this activity' });
     }
     
     await activity.deleteOne();
     
+    console.log('Activity Controller: deleteActivity - Activity removed.');
     res.json({ message: 'Activity removed' });
   } catch (err) {
     console.error(err.message);
@@ -275,11 +301,13 @@ exports.deleteActivity = async (req, res) => {
 // Get activities created by the current user
 exports.getMyCreatedActivities = async (req, res) => {
   try {
+    console.log('Activity Controller: getMyCreatedActivities - req.user.id:', req.user.id);
     const activities = await Activity.find({ creator: req.user.id })
       .sort({ date: -1 })
       .populate('creator', 'username profilePicture')
       .populate('participants', 'username profilePicture');
     
+    console.log('Activity Controller: getMyCreatedActivities - Found activities:', activities.length);
     res.json(activities);
   } catch (err) {
     console.error(err.message);
@@ -290,14 +318,15 @@ exports.getMyCreatedActivities = async (req, res) => {
 // Get activities joined by the current user
 exports.getMyJoinedActivities = async (req, res) => {
   try {
+    console.log('Activity Controller: getMyJoinedActivities - req.user.id:', req.user.id);
     const activities = await Activity.find({ 
       participants: req.user.id,
-      creator: { $ne: req.user.id } // Exclude activities created by the user
     })
       .sort({ date: -1 })
       .populate('creator', 'username profilePicture')
       .populate('participants', 'username profilePicture');
     
+    console.log('Activity Controller: getMyJoinedActivities - Found activities:', activities.length);
     res.json(activities);
   } catch (err) {
     console.error(err.message);

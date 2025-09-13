@@ -19,7 +19,7 @@ const DarkModeToggle = () => {
         transition={{ type: "spring", stiffness: 100 }}
         className={`w-6 h-6 ${
           isDarkMode 
-            ? 'text-blue-500 dark:text-blue-300' 
+            ? 'text-primary' 
             : 'text-amber-500 dark:text-amber-400'
         }`}
       >

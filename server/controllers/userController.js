@@ -57,6 +57,8 @@ exports.getUserById = async (req, res) => {
 // Update user profile
 exports.updateProfile = async (req, res) => {
   try {
+    console.log('User Controller: updateProfile - req.user.id:', req.user.id);
+    console.log('User Controller: updateProfile - req.body:', req.body);
     const { 
       username, 
       email, 
@@ -105,6 +107,7 @@ exports.updateProfile = async (req, res) => {
       { new: true }
     ).select('-password');
     
+    console.log('User Controller: updateProfile - User after update:', user);
     res.json(user);
   } catch (err) {
     console.error(err.message);
