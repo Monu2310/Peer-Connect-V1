@@ -5,7 +5,16 @@ const http = require('http');
 const socketIo = require('socket.io');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
+const compression = require('compression');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const slowDown = require('express-slow-down');
 const GroupMessage = require('./models/GroupMessage');
+
+// Import performance configurations
+const { dbConfig, queryOptimizer, connectionMonitor } = require('./config/database');
+const { cache, warmCache } = require('./middleware/cache');
+const { cacheResponse, preloadCriticalData } = require('./middleware/cache');
 
 // Load environment variables
 dotenv.config();
@@ -13,6 +22,46 @@ dotenv.config();
 // Initialize Express app
 const app = express();
 const server = http.createServer(app);
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable for development
+  crossOriginEmbedderPolicy: false
+}));
+
+// Compression middleware for better performance
+app.use(compression({
+  level: 6,
+  threshold: 1024,
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  }
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // limit each IP to 1000 requests per windowMs
+  message: {
+    error: 'Too many requests from this IP, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Speed limiting for expensive operations
+const speedLimiter = slowDown({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  delayAfter: 100, // allow 100 requests per 15 minutes, then...
+  delayMs: () => 500, // add 500ms delay per request above 100
+  validate: { delayMs: false } // disable warning
+});
+
+app.use('/api/', limiter);
+app.use('/api/', speedLimiter);
 
 // Force setting the MongoDB URI for Render.com
 if (process.env.RENDER) {
@@ -79,12 +128,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); // Add cookie-parser middleware
 
-// Database connection with updated options to ensure connection is ready
+// Database connection with performance optimizations
+let retryCount = 0;
+const maxRetries = 3;
+
 const connectWithRetry = () => {
   // Get the MongoDB URI from environment or use a fallback for MongoDB Atlas
   const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://monu:mehta2310@cluster1.ofyyuwa.mongodb.net/peerconnect?retryWrites=true&w=majority&appName=Cluster1';
   
   const mongooseOptions = {
+    ...dbConfig.options,
     serverSelectionTimeoutMS: 30000,
     socketTimeoutMS: 45000,
     connectTimeoutMS: 30000,
@@ -93,24 +146,49 @@ const connectWithRetry = () => {
   
   // Log the connection string with credentials masked
   const maskedUri = mongoUri.replace(/mongodb\+srv:\/\/([^:]+):([^@]+)@/, 'mongodb+srv://****:****@');
-  console.log('MongoDB connection attempt with URI:', maskedUri);
+  console.log('MongoDB connection attempt with optimized configuration:', maskedUri);
   
   return mongoose.connect(mongoUri, mongooseOptions)
-    .then(() => {
-      console.log('MongoDB connected successfully');
+    .then(async () => {
+      console.log('✅ MongoDB connected successfully with optimizations');
+      retryCount = 0; // Reset retry count on successful connection
+      
+      // Setup connection pool monitoring
+      dbConfig.setupConnectionPool();
+      
+      // Create database indexes for performance
+      await dbConfig.createIndexes();
+      
       // Check if we can ping the database
       try {
-        mongoose.connection.db.admin().ping()
-          .then(() => console.log('MongoDB ping successful - database is responsive'))
-          .catch(err => console.error('MongoDB ping failed:', err));
+        const health = await connectionMonitor.healthCheck();
+        console.log('📊 Database health check:', health);
+        
+        // Warm up the cache with popular data
+        setTimeout(async () => {
+          await warmCache();
+        }, 2000);
+        
       } catch (err) {
-        console.error('Error pinging MongoDB:', err);
+        console.error('❌ Database health check failed:', err);
       }
     })
     .catch(err => {
-      console.error('MongoDB connection error:', err);
-      console.log('Retrying MongoDB connection in 5 seconds...');
-      setTimeout(connectWithRetry, 5000);
+      console.error('❌ MongoDB connection error:', err);
+      retryCount++;
+      
+      if (retryCount >= maxRetries) {
+        console.log('⚠️ Maximum retries reached. Starting server in cache-only mode.');
+        console.log('� Please check your MongoDB Atlas IP whitelist and connection string.');
+        return Promise.resolve(); // Continue without MongoDB
+      }
+      
+      console.log(`�🔄 Retrying MongoDB connection in 5 seconds... (${retryCount}/${maxRetries})`);
+      return new Promise(resolve => {
+        setTimeout(() => {
+          connectWithRetry().then(resolve);
+        }, 5000);
+      });
     });
 };
 
@@ -120,13 +198,32 @@ const initializeApp = async () => {
     // First establish the database connection
     await connectWithRetry();
     
-    // Only set up routes after DB connection is established
-    app.use('/api/users', require('./routes/users'));
-    app.use('/api/auth', require('./routes/auth'));
-    app.use('/api/activities', require('./routes/activities'));
-    app.use('/api/messages', require('./routes/messages'));
-    app.use('/api/friends', require('./routes/friends'));
-    app.use('/api/recommendations', require('./routes/recommendations'));
+    // Add performance monitoring endpoint
+    app.get('/api/performance', async (req, res) => {
+      const dbStats = connectionMonitor.getConnectionStats();
+      const healthCheck = await connectionMonitor.healthCheck();
+      
+      res.json({
+        database: {
+          ...dbStats,
+          health: healthCheck
+        },
+        server: {
+          uptime: process.uptime(),
+          memory: process.memoryUsage(),
+          nodeVersion: process.version
+        },
+        timestamp: new Date().toISOString()
+      });
+    });
+    
+    // Only set up routes after DB connection is established with caching
+    app.use('/api/users', cacheResponse(300), require('./routes/users')); // 5 minutes cache
+    app.use('/api/auth', require('./routes/auth')); // No cache for auth
+    app.use('/api/activities', cacheResponse(180), require('./routes/activities')); // 3 minutes cache
+    app.use('/api/messages', require('./routes/messages')); // No cache for real-time messages
+    app.use('/api/friends', cacheResponse(600), require('./routes/friends')); // 10 minutes cache
+    app.use('/api/recommendations', cacheResponse(900), require('./routes/recommendations')); // 15 minutes cache
     
     // Add health check endpoint for client wake-up pings
     app.get('/api/health', (req, res) => {
@@ -139,7 +236,7 @@ const initializeApp = async () => {
     
     // Default route and catch-all for client-side routing
     app.get('/', (req, res) => {
-      res.send('PeerConnect API is running');
+      res.send('PeerConnect API is running with enterprise performance optimizations 🚀');
     });
     
     // Better error handler
@@ -154,7 +251,7 @@ const initializeApp = async () => {
     // Start server
     const PORT = process.env.PORT || 5111;
     server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      console.log(`🚀 Server running on port ${PORT} with enterprise optimizations`);
     });
   } catch (error) {
     console.error('Failed to initialize application:', error);

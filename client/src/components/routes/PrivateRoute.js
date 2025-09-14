@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 // PrivateRoute component to protect routes that require authentication
 const PrivateRoute = ({ children }) => {
-  const { isAuthenticated, loading, loadUser } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const [localLoading, setLocalLoading] = useState(true);
 
   // Set a timeout to prevent infinite loading

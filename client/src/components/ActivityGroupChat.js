@@ -4,15 +4,12 @@ import io from 'socket.io-client';
 import { API_URL } from '../api/config';
 import axios from 'axios';
 import { sendActivityMessage, getActivityMessages } from '../api/messageService';
-import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { MessageSquare, Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 // Create a shared socket instance at the module level
 let sharedSocket = null;
 
-const ActivityGroupChat = ({ activityId, activityTitle, hasJoined, currentUser: parentCurrentUser }) => {
+const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUser }) => {
   const { currentUser: authCurrentUser, token } = useAuth();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -609,7 +606,7 @@ const ActivityGroupChat = ({ activityId, activityTitle, hasJoined, currentUser: 
             if (socketRef.current && socketRef.current.connected) {
               socketRef.current.emit('get-activity-messages', { roomId }, messages => {
                 if (Array.isArray(messages) && messages.length > 0) {
-                  setMessages(prevMessages => {
+                  setMessages(() => {
                     // Just replace all messages for simplicity
                     return messages.sort((a, b) => {
                       const timeA = new Date(a.timestamp || a.createdAt);

@@ -5,10 +5,8 @@ import { getMyJoinedActivities, getMyCreatedActivities } from '../api/activitySe
 import { getFriends, sendFriendRequestById } from '../api/friendService';
 import { getFriendRecommendations, getActivityRecommendations, getUserInsights } from '../api/recommendationService';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { Calendar, Users, PlusCircle, UserPlus, Mail, User, Sparkles, TrendingUp, Heart, Zap } from 'lucide-react';
-import SkeletonCard from '../components/ui/SkeletonCard';
+import { Calendar, Users, PlusCircle, UserPlus, Mail, User, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Dashboard = () => {

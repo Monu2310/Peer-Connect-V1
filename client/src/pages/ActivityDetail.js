@@ -10,7 +10,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
-import { Calendar, MapPin, Users, Trash2, Edit, MessageSquare, UserPlus, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, MapPin, Users, Trash2, Edit, UserPlus, Loader2, CheckCircle } from 'lucide-react';
 import SkeletonCard from '../components/ui/SkeletonCard';
 import { motion, AnimatePresence } from 'framer-motion';
 

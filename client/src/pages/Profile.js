@@ -7,17 +7,15 @@ import {
   uploadProfilePicture,
   generateRandomAvatar 
 } from '../api/userService';
-import api from '../api/config'; // Add api import for health check
 import { getFriends, sendFriendRequestById } from '../api/friendService';
 import { getMyCreatedActivities, getMyJoinedActivities } from '../api/activityService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Calendar, Users, PlusCircle, UserPlus, Mail, MessageSquare, Edit, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, Users, PlusCircle, UserPlus, MessageSquare, Edit, Trash2, CheckCircle, XCircle } from 'lucide-react';
 
 const Profile = () => {
   const { userId } = useParams();
@@ -69,7 +67,6 @@ const Profile = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
   const [friendRequestStatus, setFriendRequestStatus] = useState('none'); // none, sending, sent, error
-  const [hasLoadedProfile, setHasLoadedProfile] = useState(false); 
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
@@ -304,6 +301,24 @@ const Profile = () => {
     } catch (err) {
       console.error('Error unfriending user:', err);
       setError('Failed to remove friend.');
+    } finally {
+      setTimeout(() => setSuccess(''), 3000);
+      setTimeout(() => setError(''), 5000);
+    }
+  };
+
+  const handleSendFriendRequest = async () => {
+    if (!userId) return;
+    
+    try {
+      setFriendRequestStatus('sending');
+      await sendFriendRequestById(userId);
+      setFriendRequestStatus('sent');
+      setSuccess('Friend request sent successfully');
+    } catch (err) {
+      console.error('Error sending friend request:', err);
+      setError('Failed to send friend request.');
+      setFriendRequestStatus('none');
     } finally {
       setTimeout(() => setSuccess(''), 3000);
       setTimeout(() => setError(''), 5000);

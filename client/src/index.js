@@ -20,8 +20,39 @@ const initializeTheme = () => {
   }
 };
 
+// Register service worker for better performance
+const registerServiceWorker = () => {
+  if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('SW registered: ', registration);
+          
+          // Check for updates
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // New update available
+                if (confirm('A new version is available. Refresh to update?')) {
+                  window.location.reload();
+                }
+              }
+            });
+          });
+        })
+        .catch((registrationError) => {
+          console.log('SW registration failed: ', registrationError);
+        });
+    });
+  }
+};
+
 // Run theme initialization
 initializeTheme();
+
+// Register service worker
+registerServiceWorker();
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

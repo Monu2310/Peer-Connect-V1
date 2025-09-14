@@ -6,7 +6,7 @@ import { getUserProfile } from '../api/userService';
 import io from 'socket.io-client';
 import { API_URL } from '../api/config';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, CardContent } from '../components/ui/card';
+import { Card } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';

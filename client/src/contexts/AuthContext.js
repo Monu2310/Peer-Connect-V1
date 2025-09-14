@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useReducer, useState } from 'react';
 import axios from 'axios';
 import { API_URL, setAuthToken } from '../api/config';
+import dataPreloader from '../lib/dataPreloader';
+import intelligentCache from '../lib/intelligentCache';
 
 // Create context
 const AuthContext = createContext();
@@ -26,6 +28,15 @@ const authReducer = (state, action) => {
       localStorage.setItem(USER_DATA_KEY, JSON.stringify(action.payload));
       localStorage.setItem(AUTH_TIMESTAMP_KEY, Date.now().toString());
       
+      // Warm cache with user data
+      intelligentCache.warmCache('user', action.payload);
+      
+      // Start aggressive preloading for critical data
+      dataPreloader.preloadCriticalData(action.payload.id);
+      
+      // Start background sync
+      dataPreloader.startBackgroundSync(action.payload.id);
+      
       return {
         ...state,
         isAuthenticated: true,
@@ -39,6 +50,15 @@ const authReducer = (state, action) => {
       // Save user data to localStorage for persistence
       if (action.payload.user) {
         localStorage.setItem(USER_DATA_KEY, JSON.stringify(action.payload.user));
+        
+        // Immediate cache warming and preloading
+        intelligentCache.warmCache('user', action.payload.user);
+        
+        // Start critical data preloading immediately
+        setTimeout(() => {
+          dataPreloader.preloadCriticalData(action.payload.user.id);
+          dataPreloader.startBackgroundSync(action.payload.user.id);
+        }, 100);
       }
       localStorage.setItem(AUTH_TIMESTAMP_KEY, Date.now().toString());
       
@@ -58,6 +78,9 @@ const authReducer = (state, action) => {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_DATA_KEY);
       localStorage.removeItem(AUTH_TIMESTAMP_KEY);
+      
+      // Clear intelligent cache
+      intelligentCache.clear();
       
       return {
         ...state,
@@ -271,7 +294,7 @@ export const AuthProvider = ({ children }) => {
       console.log('Pinging server to wake it up...');
       try {
         await axios.get(`${API_URL}/api/health`, { timeout: 5000 })
-          .catch(e => console.log('Wake-up ping failed, proceeding anyway'));
+          .catch(() => console.log('Wake-up ping failed, proceeding anyway'));
       } catch (pingErr) {
         console.log('Wake-up ping error (expected for cold starts):', pingErr.message);
       }

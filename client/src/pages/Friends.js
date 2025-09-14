@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Input } from '../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { UserPlus, UserCheck, UserX, Mail, MessageSquare, Loader2, Users } from 'lucide-react';
+import { UserCheck, UserX, Mail, MessageSquare, Loader2, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Friends = () => {
