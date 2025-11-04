@@ -3,6 +3,9 @@ import intelligentCache from './intelligentCache';
 import dataPreloader from './dataPreloader';
 import realTimeManager from './realTimeManager';
 
+// API configuration
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5111';
+
 class BackgroundSyncManager {
   constructor() {
     this.syncWorker = null;
@@ -397,7 +400,7 @@ class BackgroundSyncManager {
     const activities = intelligentCache.get('predicted-activities');
     if (!activities) {
       // Fetch and cache predicted activities
-      const response = await fetch('/api/activities?limit=20&featured=true');
+      const response = await fetch(`${API_URL}/api/activities?limit=20&featured=true`);
       const data = await response.json();
       intelligentCache.set('predicted-activities', data, {
         ttl: 5 * 60 * 1000,
@@ -409,7 +412,7 @@ class BackgroundSyncManager {
 
   async prefetchUsers() {
     // Prefetch user suggestions or recent users
-    const response = await fetch('/api/users/suggestions?limit=10');
+    const response = await fetch(`${API_URL}/api/users/suggestions?limit=10`);
     const data = await response.json();
     intelligentCache.set('predicted-users', data, {
       ttl: 10 * 60 * 1000,
@@ -421,7 +424,7 @@ class BackgroundSyncManager {
   async prefetchConversations() {
     const conversations = intelligentCache.get('predicted-conversations');
     if (!conversations) {
-      const response = await fetch('/api/messages/conversations?limit=10');
+      const response = await fetch(`${API_URL}/api/messages/conversations?limit=10`);
       const data = await response.json();
       intelligentCache.set('predicted-conversations', data, {
         ttl: 2 * 60 * 1000,
@@ -539,7 +542,7 @@ class BackgroundSyncManager {
   async performMainThreadSync(syncData) {
     const results = await Promise.allSettled(
       syncData.endpoints.map(endpoint => 
-        fetch(endpoint).then(res => res.json())
+        fetch(`${API_URL}${endpoint}`).then(res => res.json())
       )
     );
     
