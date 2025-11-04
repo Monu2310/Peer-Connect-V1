@@ -67,12 +67,6 @@ const speedLimiter = slowDown({
 app.use('/api/', limiter);
 app.use('/api/', speedLimiter);
 
-// Force setting the MongoDB URI for Render.com
-if (process.env.RENDER) {
-  console.log('Running on Render.com - setting explicit MongoDB URI');
-  process.env.MONGODB_URI = 'mongodb+srv://monu:mehta2310@cluster1.ofyyuwa.mongodb.net/peerconnect?retryWrites=true&w=majority&appName=Cluster1';
-}
-
 // Log environment variables for debugging (masking sensitive info)
 console.log('Environment Variables:');
 console.log('NODE_ENV:', process.env.NODE_ENV);
@@ -137,8 +131,14 @@ let retryCount = 0;
 const maxRetries = 3;
 
 const connectWithRetry = () => {
-  // Get the MongoDB URI from environment or use a fallback for MongoDB Atlas
-  const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://monu:mehta2310@cluster1.ofyyuwa.mongodb.net/peerconnect?retryWrites=true&w=majority&appName=Cluster1';
+  // Get the MongoDB URI from environment variable (REQUIRED)
+  const mongoUri = process.env.MONGODB_URI;
+  
+  if (!mongoUri) {
+    console.error('❌ FATAL: MONGODB_URI environment variable is not set!');
+    console.error('Please set MONGODB_URI in your .env file or environment variables.');
+    process.exit(1);
+  }
   
   const mongooseOptions = {
     ...dbConfig.options,
