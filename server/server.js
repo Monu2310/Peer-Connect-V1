@@ -23,6 +23,10 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
+// Trust proxy - REQUIRED for Render.com to get real client IPs
+// This allows express-rate-limit to work correctly behind Render's proxy
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet({
   contentSecurityPolicy: false, // Disable for development
