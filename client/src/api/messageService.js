@@ -2,8 +2,13 @@ import api from './config';
 
 // Get conversations
 export const getConversations = async () => {
-  const response = await api.get('/api/messages/conversations');
-  return response.data;
+  try {
+    const response = await api.get('/api/messages/conversations');
+    return response.data || [];
+  } catch (error) {
+    console.error('Error fetching conversations:', error);
+    throw error;
+  }
 };
 
 // Get messages for a conversation
@@ -24,10 +29,16 @@ export const markAsRead = async (conversationId) => {
   return response.data;
 };
 
-// Get unread message count
+// Get unread message count (not implemented in backend - use getConversations instead)
 export const getUnreadCount = async () => {
-  const response = await api.get('/api/messages/unread/count');
-  return response.data;
+  try {
+    const conversations = await getConversations();
+    const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
+    return { unreadCount: totalUnread };
+  } catch (error) {
+    console.error('Error fetching unread count:', error);
+    return { unreadCount: 0 };
+  }
 };
 
 // Get messages for an activity group chat

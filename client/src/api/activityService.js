@@ -24,9 +24,15 @@ export const getActivities = async (category, search) => {
     console.log('Fetching activities from:', `${API_URL}/api/activities?${queryParams}`);
     const response = await api.get(`/api/activities?${queryParams}`);
     
+    // Handle response object with activities array
+    let activitiesData = response.data;
+    if (response.data && response.data.activities && Array.isArray(response.data.activities)) {
+      activitiesData = response.data.activities;
+    }
+    
     // Process image URLs if needed
-    if (response.data && Array.isArray(response.data)) {
-      response.data = response.data.map(activity => {
+    if (activitiesData && Array.isArray(activitiesData)) {
+      activitiesData = activitiesData.map(activity => {
         if (activity.image) {
           activity.image = processImageUrl(activity.image);
         }
@@ -34,7 +40,7 @@ export const getActivities = async (category, search) => {
       });
     }
     
-    return response.data;
+    return activitiesData;
   } catch (error) {
     console.error('Error fetching activities:', error);
     if (error.message.includes('Network Error')) {

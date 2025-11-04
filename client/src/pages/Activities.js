@@ -141,23 +141,23 @@ const Activities = () => {
   }
 
   return (
-    <motion.div 
-      className="min-h-screen bg-gradient-to-br from-background to-muted/20 relative"
-      variants={containerVariants}
-      initial="hidden"
-      animate="show"
-    >
-      
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 overflow-hidden">
+    <div className="w-full min-h-screen bg-gradient-to-br from-background to-muted/20 overflow-x-hidden">
+      {/* Background decorative elements - FIXED position to prevent cutoff */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
         <div className="absolute top-[15%] right-[5%] w-64 h-64 md:w-80 md:h-80 bg-gradient-to-r from-primary/15 to-accent/15 rounded-full blur-3xl" />
         <div className="absolute bottom-[25%] left-[10%] w-48 h-48 md:w-64 md:h-64 bg-gradient-to-r from-secondary/10 to-primary/10 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative z-10 w-full max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
-        
-        {/* Header Section */}
-        <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-8 md:mb-12">
+      <motion.div
+        className="relative z-0 w-full"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
+        <div className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+          
+          {/* Header Section */}
+          <motion.div variants={itemVariants} className="pt-6 md:pt-8 pb-6 md:pb-8 flex flex-col md:flex-row md:items-start md:justify-between gap-6">
           <div className="space-y-2">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold gradient-text">
               Activities
@@ -179,28 +179,28 @@ const Activities = () => {
         </motion.div>
 
         {/* Search and Filter Section */}
-        <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-4 mb-8 md:mb-12">
+        <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-3 mb-8 md:mb-12">
           
-          {/* Search input */}
+          {/* Search input - CLEAN & READABLE */}
           <div className="relative flex-1">
-            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="Search activities by title, description, or location..."
+              placeholder="Search activities..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-12 pr-4 h-12 bg-card/50 border-border/50 rounded-xl focus:bg-card focus:border-border transition-all duration-200"
+              className="pl-11 pr-4 py-2.5 h-11 bg-background border border-border/50 rounded-lg font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200"
             />
           </div>
           
-          {/* Category filter */}
+          {/* Category filter - CLEAN & CONSISTENT */}
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-full md:w-48 h-12 bg-card/50 border-border/50 rounded-xl focus:bg-card focus:border-border">
-              <div className="flex items-center gap-2">
+            <SelectTrigger className="w-full md:w-40 h-11 bg-background border border-border/50 rounded-lg font-medium focus:ring-2 focus:ring-primary/50 focus:border-primary hover:border-border transition-all duration-200">
+              <div className="flex items-center gap-2 text-foreground">
                 <Filter className="w-4 h-4 text-muted-foreground" />
                 <SelectValue placeholder="Category" />
               </div>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent side="bottom" align="start" className="bg-background border border-border rounded-lg overflow-y-auto max-h-60">
               <SelectItem value="all">All Categories</SelectItem>
               {categories.map(category => (
                 <SelectItem key={category} value={category}>{category}</SelectItem>
@@ -208,15 +208,15 @@ const Activities = () => {
             </SelectContent>
           </Select>
           
-          {/* Sort options */}
+          {/* Sort options - CLEAN & CONSISTENT */}
           <Select value={sortOption} onValueChange={setSortOption}>
-            <SelectTrigger className="w-full md:w-48 h-12 bg-card/50 border-border/50 rounded-xl focus:bg-card focus:border-border">
-              <div className="flex items-center gap-2">
+            <SelectTrigger className="w-full md:w-40 h-11 bg-background border border-border/50 rounded-lg font-medium focus:ring-2 focus:ring-primary/50 focus:border-primary hover:border-border transition-all duration-200">
+              <div className="flex items-center gap-2 text-foreground">
                 <SortAsc className="w-4 h-4 text-muted-foreground" />
                 <SelectValue placeholder="Sort by" />
               </div>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent side="bottom" align="start" className="bg-background border border-border rounded-lg overflow-y-auto max-h-60">
               <SelectItem value="newest">Newest First</SelectItem>
               <SelectItem value="oldest">Oldest First</SelectItem>
               <SelectItem value="alphabetical">Alphabetical</SelectItem>
@@ -323,19 +323,19 @@ const Activities = () => {
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 24 }}
-              className="text-center py-16"
+              className="flex items-center justify-center py-8"
             >
-              <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-8 max-w-md mx-auto">
-                <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 max-w-md w-full">
+                <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
                   <SearchIcon className="w-8 h-8 text-muted-foreground" />
                 </div>
                 
-                <h2 className="text-xl font-semibold mb-2">No activities found</h2>
-                <p className="text-muted-foreground mb-6">
+                <h2 className="text-lg font-semibold mb-2 text-center">No activities found</h2>
+                <p className="text-sm text-muted-foreground mb-4 text-center">
                   Try adjusting your search terms or filters, or create a new activity.
                 </p>
                 
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <div className="flex flex-col gap-3">
                   <Button 
                     onClick={() => {
                       setSearchTerm('');
@@ -343,15 +343,15 @@ const Activities = () => {
                       setSortOption('newest');
                     }}
                     variant="outline"
-                    className="min-h-10"
+                    className="h-10 w-full"
                   >
                     Clear Filters
                   </Button>
                   <Button 
                     asChild 
-                    className="min-h-10 btn-gradient-primary"
+                    className="h-10 btn-gradient-primary w-full"
                   >
-                    <Link to="/activities/new" className="flex items-center gap-2">
+                    <Link to="/activities/new" className="flex items-center justify-center gap-2">
                       <PlusCircle className="w-4 h-4" /> 
                       Create Activity
                     </Link>
@@ -361,8 +361,9 @@ const Activities = () => {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-    </motion.div>
+        </div>
+      </motion.div>
+    </div>
   );
 };
 

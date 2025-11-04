@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../core/AuthContext';
 import DarkModeToggle from './DarkModeToggle';
 import { Button } from '../ui/button';
-import { Menu, X, User, LogOut } from 'lucide-react';
+import { Menu, X, User, LogOut, Home, Compass, Users, MessageSquare } from 'lucide-react';
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -12,7 +12,7 @@ const Navbar = () => {
   const { isAuthenticated, currentUser, logout } = useAuth();
   const location = useLocation();
 
-  // Handle scroll effect with proper debouncing
+  // High-performance scroll handler
   useEffect(() => {
     let ticking = false;
     
@@ -46,253 +46,204 @@ const Navbar = () => {
   
   const isHomePage = location.pathname === '/';
 
-  const navLinks = [
-    { path: '/dashboard', label: 'Dashboard', auth: true },
-    { path: '/activities', label: 'Activities', auth: true },
-    { path: '/friends', label: 'Friends', auth: true },
-    { path: '/messages', label: 'Messages', auth: true },
-  ];
+  const navLinks = useMemo(() => [
+    { path: '/dashboard', label: 'Dashboard', icon: Home, auth: true },
+    { path: '/activities', label: 'Activities', icon: Compass, auth: true },
+    { path: '/friends', label: 'Friends', icon: Users, auth: true },
+    { path: '/messages', label: 'Messages', icon: MessageSquare, auth: true },
+  ], []);
+
+  // Memoize nav bar classes to prevent recalculation
+  const navBarClasses = useMemo(() => {
+    return scrolled || !isHomePage 
+      ? 'bg-background/80 backdrop-blur-lg border-b border-border/50' 
+      : 'bg-transparent border-b border-transparent';
+  }, [scrolled, isHomePage]);
 
   return (
     <motion.nav 
-      className={`
-        fixed top-0 left-0 right-0 z-30 transition-all duration-300
-        ${scrolled || !isHomePage 
-          ? 'bg-background/80 backdrop-blur-xl border-b border-border/50 shadow-lg' 
-          : 'bg-transparent'
-        }
-      `}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${navBarClasses}`}
       initial={{ y: -100 }}
       animate={{ y: 0 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.4, type: "spring", stiffness: 100 }}
     >
-      {/* Main navbar container with 8pt grid spacing */}
+      {/* Main navbar container */}
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           
-          {/* Logo section - Touch-friendly */}
-          <div className="flex items-center">
-            <Link 
-              to="/" 
-              className="flex items-center space-x-2 group rounded-lg p-2 -m-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
-            >
-              <motion.div
-                className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-gradient-btn-primary flex items-center justify-center shadow-md"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <span className="text-white font-bold text-lg md:text-xl drop-shadow-sm">P</span>
-              </motion.div>
-              <span className="font-heading font-bold text-lg md:text-xl gradient-text">
-                PeerConnect
-              </span>
-            </Link>
-          </div>
+          {/* Logo section */}
+          <Link 
+            to="/" 
+            className="flex items-center space-x-2 group"
+          >
+            <div className="w-9 h-9 md:w-10 md:h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md">
+              <span className="text-white font-bold text-lg md:text-xl">P</span>
+            </div>
+            <span className="font-heading font-bold text-lg md:text-xl gradient-text">
+              PeerConnect
+            </span>
+          </Link>
 
-          {/* Desktop navigation links */}
+          {/* Desktop navigation - CLEAN & PERFORMANT */}
           <div className="hidden md:block">
-            <div className="flex items-center space-x-2">
-              {navLinks.map((link) => (
-                (!link.auth || isAuthenticated) && (
-                  <Link
-                    key={link.path}
-                    to={link.path}
-                    className={`
-                      relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200
-                      h-10 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50
-                      ${location.pathname === link.path
-                        ? 'text-primary bg-primary/10'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
-                      }
-                    `}
-                  >
-                    {link.label}
-                    {location.pathname === link.path && (
-                      <motion.div
-                        className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-6 h-0.5 bg-primary rounded-full"
-                        layoutId="activeLink"
-                        initial={false}
-                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                      />
-                    )}
-                  </Link>
-                )
-              ))}
+            <div className="flex items-center gap-1 px-2 py-1.5 rounded-xl">
+              {navLinks.map((link) => {
+                const Icon = link.icon;
+                const isActive = location.pathname === link.path;
+                return (
+                  (!link.auth || isAuthenticated) && (
+                    <Link
+                      key={link.path}
+                      to={link.path}
+                      className={`
+                        flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm
+                        transition-all duration-200 relative group
+                        ${isActive
+                          ? 'bg-primary text-white shadow-md'
+                          : 'text-foreground hover:bg-muted/60'
+                        }
+                      `}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span>{link.label}</span>
+                    </Link>
+                  )
+                );
+              })}
             </div>
           </div>
 
-          {/* Desktop auth section and theme toggle */}
-          <div className="hidden md:flex items-center space-x-3">
+          {/* Desktop auth section - CLEAN & MINIMAL */}
+          <div className="hidden md:flex items-center gap-4">
             <DarkModeToggle />
             
             {isAuthenticated ? (
-              <div className="flex items-center space-x-3">
+              <>
                 <Link 
                   to="/profile"
-                  className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors duration-200 group"
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-primary/30 hover:border-primary/60 hover:bg-primary/5 transition-all duration-200 group"
                 >
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors duration-200">
-                    <User className="w-5 h-5 text-primary" />
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-sm">
+                    <User className="w-4 h-4 text-white" />
                   </div>
-                  <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors duration-200">
-                    {getUserDisplayName()}
-                  </span>
+                  <span className="text-sm font-bold text-foreground">{getUserDisplayName()}</span>
                 </Link>
                 
                 <Button
                   onClick={handleLogout}
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground hover:text-foreground h-10"
+                  className="px-5 h-10 rounded-lg font-semibold text-sm bg-destructive/80 hover:bg-destructive text-white transition-all duration-200"
                 >
                   <LogOut className="w-4 h-4 mr-2" />
                   Logout
                 </Button>
-              </div>
+              </>
             ) : (
-              <div className="flex items-center space-x-3">
+              <>
                 <Button
                   asChild
                   variant="ghost"
-                  size="sm"
-                  className="h-10"
+                  className="h-10 px-5 rounded-lg font-semibold text-sm hover:bg-muted/60 transition-all duration-200"
                 >
                   <Link to="/login">Login</Link>
                 </Button>
                 <Button
                   asChild
-                  size="sm"
-                  className="btn-gradient-primary text-white font-semibold h-10 px-6 shadow-md"
+                  className="h-10 px-5 rounded-lg font-semibold text-sm btn-gradient-primary text-white transition-all duration-200"
                 >
                   <Link to="/register">Sign Up</Link>
                 </Button>
-              </div>
+              </>
             )}
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden flex items-center space-x-2">
+          <div className="md:hidden flex items-center gap-2">
             <DarkModeToggle />
             {isAuthenticated && (
               <Button
                 onClick={toggleMobileMenu}
                 variant="ghost"
                 size="sm"
-                className="h-10 w-10"
-                aria-label="Toggle mobile menu"
+                className="h-10 w-10 p-0"
               >
-                <motion.div
-                  animate={{ rotate: mobileMenuOpen ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {mobileMenuOpen ? (
-                    <X className="w-5 h-5" />
-                  ) : (
-                    <Menu className="w-5 h-5" />
-                  )}
-                </motion.div>
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </Button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Mobile menu overlay */}
+      {/* Mobile menu - CLEAN & PERFORMANT */}
       <AnimatePresence>
         {mobileMenuOpen && isAuthenticated && (
           <>
-            {/* Backdrop */}
             <motion.div
-              className="fixed inset-0 bg-background/50 backdrop-blur-sm z-40 md:hidden"
+              className="fixed inset-0 bg-background/40 backdrop-blur-sm z-40 md:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
               onClick={() => setMobileMenuOpen(false)}
             />
             
-            {/* Mobile menu panel */}
             <motion.div
-              className="fixed top-16 left-0 right-0 bg-card/95 backdrop-blur-xl border-b border-border/20 shadow-lg z-50 md:hidden"
-              initial={{ y: -20, opacity: 0 }}
+              className="fixed top-16 left-0 right-0 bg-background border-b border-border/50 z-50 md:hidden"
+              initial={{ y: -10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -20, opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              exit={{ y: -10, opacity: 0 }}
+              transition={{ duration: 0.15 }}
             >
-              <div className="px-4 py-6 space-y-4">
+              <div className="px-4 py-4 space-y-2 max-w-md">
                 
-                {/* User info for mobile */}
-                {isAuthenticated && (
-                  <Link 
-                    to="/profile"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center space-x-3 p-4 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors duration-200 mb-4 group"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors duration-200">
-                      <User className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground group-hover:text-primary transition-colors duration-200">{getUserDisplayName()}</p>
-                      <p className="text-sm text-muted-foreground">Tap to view profile</p>
-                    </div>
-                  </Link>
-                )}
+                {/* User profile card - mobile */}
+                <Link 
+                  to="/profile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 p-3 rounded-lg border border-primary/30 hover:bg-primary/5 transition-all duration-200 mb-3"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-sm">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                  <p className="font-semibold text-sm">{getUserDisplayName()}</p>
+                </Link>
 
                 {/* Mobile navigation links */}
-                <div className="space-y-2">
-                  {navLinks.map((link) => (
+                {navLinks.map((link) => {
+                  const Icon = link.icon;
+                  const isActive = location.pathname === link.path;
+                  return (
                     (!link.auth || isAuthenticated) && (
                       <Link
                         key={link.path}
                         to={link.path}
                         onClick={() => setMobileMenuOpen(false)}
                         className={`
-                          block px-4 py-3 rounded-lg text-base font-medium transition-all duration-200
-                          h-12
-                          ${location.pathname === link.path
-                            ? 'text-primary bg-primary/10'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+                          flex items-center gap-3 px-4 py-3 rounded-lg font-semibold text-sm
+                          transition-all duration-200
+                          ${isActive
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'text-foreground hover:bg-muted/60'
                           }
                         `}
                       >
-                        {link.label}
+                        <Icon className="w-5 h-5" />
+                        <span>{link.label}</span>
                       </Link>
                     )
-                  ))}
-                </div>
+                  );
+                })}
 
-                {/* Mobile auth buttons */}
-                <div className="pt-4 border-t border-border/20">
-                  {isAuthenticated ? (
-                    <Button
-                      onClick={handleLogout}
-                      variant="ghost"
-                      className="w-full justify-start h-12"
-                    >
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Logout
-                    </Button>
-                  ) : (
-                    <div className="space-y-2">
-                      <Button
-                        asChild
-                        variant="ghost"
-                        className="w-full h-12"
-                      >
-                        <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
-                          Login
-                        </Link>
-                      </Button>
-                      <Button
-                        asChild
-                        className="w-full btn-gradient-primary text-white font-semibold h-12 shadow-md"
-                      >
-                        <Link to="/register" onClick={() => setMobileMenuOpen(false)}>
-                          Sign Up
-                        </Link>
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                {/* Mobile logout button */}
+                <Button
+                  onClick={() => {
+                    handleLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full mt-2 px-4 py-2.5 rounded-lg font-semibold text-sm bg-destructive/80 hover:bg-destructive text-white transition-all duration-200"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
               </div>
             </motion.div>
           </>

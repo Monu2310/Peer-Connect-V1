@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../core/AuthContext';
 import { Button } from '../components/ui/button';
 import { motion } from 'framer-motion';
-import { ArrowRight, Users, Search, PlusCircle, Sparkles, Zap, Heart } from 'lucide-react';
+import { ArrowRight, Users, Search, PlusCircle, Heart } from 'lucide-react';
 
 const Home = () => {
   const { isAuthenticated } = useAuth();
@@ -42,25 +42,13 @@ const Home = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
           >
-            {/* Badge */}
-            <motion.div
-              className="inline-flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 rounded-full bg-primary/10 border border-primary/20 mb-4 md:mb-6 backdrop-blur-sm"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.4 }}
-            >
-              <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-primary" />
-              <span className="text-xs md:text-sm font-semibold gradient-text">
-                New & Improved Experience
-              </span>
-            </motion.div>
             
             {/* Main heading with responsive typography */}
             <motion.h1
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-4 md:mb-6 leading-tight"
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-6 md:mb-8 leading-tight"
             >
               <span className="block gradient-text">
                 Connect with Your
@@ -74,8 +62,8 @@ const Home = () => {
             <motion.p
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.5 }}
-              className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-4xl mx-auto mb-6 md:mb-10 leading-relaxed px-4"
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-4xl mx-auto mb-8 md:mb-12 leading-relaxed px-4"
             >
               Discover a world of possibilities with <span className="gradient-text font-semibold">PeerConnect</span>. 
               From study groups to weekend adventures, find your tribe and create unforgettable experiences.
@@ -85,7 +73,7 @@ const Home = () => {
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.7 }}
+              transition={{ duration: 0.6, delay: 0.6 }}
               className="flex flex-col sm:flex-row gap-4 justify-center items-center px-4"
             >
               {isAuthenticated ? (
@@ -94,8 +82,7 @@ const Home = () => {
                   size="lg" 
                   className="w-full sm:w-auto min-h-12 btn-gradient-primary text-white font-semibold px-8 py-4 rounded-xl shadow-lg transform hover:scale-[1.02] transition-all duration-300"
                 >
-                  <Link to="/dashboard" className="flex items-center justify-center gap-3">
-                    <Zap className="w-5 h-5" />
+                  <Link to="/dashboard" className="flex items-center justify-center gap-2">
                     Go to Dashboard 
                     <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
                   </Link>
@@ -281,8 +268,7 @@ const Home = () => {
                 size="lg" 
                 className="min-h-12 btn-gradient-primary text-white font-semibold px-8 py-4 rounded-xl shadow-lg transform hover:scale-[1.02] transition-all duration-300"
               >
-                <Link to="/register" className="flex items-center gap-3">
-                  <Sparkles className="w-5 h-5" />
+                <Link to="/register" className="flex items-center gap-2">
                   Start Your Journey
                   <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
                 </Link>

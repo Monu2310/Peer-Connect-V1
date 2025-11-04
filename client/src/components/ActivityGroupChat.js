@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../core/AuthContext';
 import io from 'socket.io-client';
 import { API_URL } from '../api/config';
 import axios from 'axios';

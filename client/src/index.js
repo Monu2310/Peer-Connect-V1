@@ -22,27 +22,30 @@ const initializeTheme = () => {
 
 // Register service worker for better performance
 const registerServiceWorker = () => {
-  if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+  if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
+      navigator.serviceWorker.register('/service-worker.js')
         .then((registration) => {
-          console.log('SW registered: ', registration);
+          console.log('Service Worker registered: ', registration);
           
-          // Check for updates
+          // Check for updates every hour
+          setInterval(() => {
+            registration.update();
+          }, 3600000);
+          
+          // Listen for updates
           registration.addEventListener('updatefound', () => {
             const newWorker = registration.installing;
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // New update available
-                if (confirm('A new version is available. Refresh to update?')) {
-                  window.location.reload();
-                }
+                // New update available - notify user
+                console.log('New app version available');
               }
             });
           });
         })
         .catch((registrationError) => {
-          console.log('SW registration failed: ', registrationError);
+          console.log('Service Worker registration failed: ', registrationError);
         });
     });
   }

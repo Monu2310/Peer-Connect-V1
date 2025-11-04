@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import './BlobCursor.css';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../core/ThemeContext';
 
 const BlobCursor = ({ fillColor }) => {
   const [position, setPosition] = useState({ x: 0, y: 0 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -8,26 +8,33 @@ import './App.css';
 // Components
 import Navbar from './components/layout/Navbar';
 
-// Pages
-import Home from './pages/Home';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import Profile from './pages/Profile';
-import Activities from './pages/Activities';
-import ActivityDetail from './pages/ActivityDetail';
-import CreateActivity from './pages/CreateActivity';
-import Messages from './pages/Messages';
-import Conversation from './pages/Conversation';
-import Friends from './pages/Friends';
-import NotFound from './pages/NotFound';
+// Lazy load pages for code splitting
+const Home = lazy(() => import('./pages/Home'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Activities = lazy(() => import('./pages/Activities'));
+const ActivityDetail = lazy(() => import('./pages/ActivityDetail'));
+const CreateActivity = lazy(() => import('./pages/CreateActivity'));
+const Messages = lazy(() => import('./pages/Messages'));
+const Conversation = lazy(() => import('./pages/Conversation'));
+const Friends = lazy(() => import('./pages/Friends'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Contexts
-import { AuthProvider } from './contexts/AuthContext';
-import { ThemeProvider } from './contexts/ThemeContext';
+import { AuthProvider } from './core/AuthContext';
+import { ThemeProvider } from './core/ThemeContext';
 
 // Routes
 import PrivateRoute from './components/routes/PrivateRoute';
+
+// Loading component for Suspense
+const PageLoader = () => (
+  <div className="flex justify-center items-center h-screen bg-background text-primary">
+    <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-primary"></div>
+  </div>
+);
 
 const pageVariants = {
   initial: {
@@ -96,8 +103,9 @@ function App() {
       <AuthProvider>
         <Navbar />
           <div className="main-container min-h-screen bg-background text-foreground transition-colors duration-300 pt-16">
-            <AnimatePresence mode="wait" initial={false}>
-              <Routes location={location} key={location.pathname}>
+            <Suspense fallback={<PageLoader />}>
+              <AnimatePresence mode="wait" initial={false}>
+                <Routes location={location} key={location.pathname}>
                 <Route path="/" element={
                   <motion.div
                     initial="initial"
@@ -245,6 +253,7 @@ function App() {
                 } />
               </Routes>
             </AnimatePresence>
+            </Suspense>
           </div>
       </AuthProvider>
     </ThemeProvider>

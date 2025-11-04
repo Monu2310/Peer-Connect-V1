@@ -19,7 +19,10 @@ const api = axios.create({
   withCredentials: false // Important: changed to false to avoid CORS preflight issues
 });
 
-// Add request interceptor to include auth token in all requests
+// Request deduplication cache for GET requests
+const pendingRequests = new Map();
+
+// Add request interceptor to include auth token and deduplicate GET requests
 api.interceptors.request.use(
   config => {
     // Get the latest token from localStorage each time a request is made
@@ -28,6 +31,19 @@ api.interceptors.request.use(
       config.headers['x-auth-token'] = token;
       config.headers['Authorization'] = `Bearer ${token}`;
     }
+    
+    // Deduplicate GET requests
+    if (config.method === 'get') {
+      const requestKey = `${config.url}?${JSON.stringify(config.params || {})}`;
+      if (pendingRequests.has(requestKey)) {
+        config.cancelToken = pendingRequests.get(requestKey).token;
+      } else {
+        const source = axios.CancelToken.source();
+        pendingRequests.set(requestKey, source);
+        config.cancelToken = source.token;
+      }
+    }
+    
     return config;
   },
   error => {
@@ -35,10 +51,23 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor to handle common errors
+// Add response interceptor to handle common errors and clear pending requests
 api.interceptors.response.use(
-  response => response,
+  response => {
+    // Clear pending request after successful response
+    if (response.config.method === 'get') {
+      const requestKey = `${response.config.url}?${JSON.stringify(response.config.params || {})}`;
+      pendingRequests.delete(requestKey);
+    }
+    return response;
+  },
   error => {
+    // Clear pending request on error
+    if (error.config && error.config.method === 'get') {
+      const requestKey = `${error.config.url}?${JSON.stringify(error.config.params || {})}`;
+      pendingRequests.delete(requestKey);
+    }
+    
     // Handle network errors gracefully
     if (!error.response) {
       console.error('Network Error: Please check your connection');

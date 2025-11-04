@@ -101,7 +101,6 @@
     --shadow-strong: 0 16px 64px -16px rgba(0, 0, 0, 0.6);
     --shadow-glow: 0 0 32px -8px hsl(252, 100%, 70%, 0.4);
   }
-  }
 
   body {
     @apply bg-background text-foreground;
@@ -113,6 +112,8 @@
       radial-gradient(circle at 20% 50%, hsl(252, 100%, 65%, 0.05) 0%, transparent 50%),
       radial-gradient(circle at 80% 20%, hsl(272, 87%, 58%, 0.05) 0%, transparent 50%),
       radial-gradient(circle at 40% 80%, hsl(316, 100%, 65%, 0.05) 0%, transparent 50%);
+    overflow-x: hidden;
+    width: 100%;
   }
 
   ::selection {
@@ -122,6 +123,7 @@
   /* Smooth scroll behavior */
   html {
     scroll-behavior: smooth;
+    overflow-y: scroll;
   }
 
   /* Custom Scrollbars */
@@ -151,6 +153,7 @@
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--primary)) hsl(var(--muted));
   }
+}
 
 /* Advanced animations and effects */
 @keyframes float {
@@ -200,17 +203,30 @@
 .animate-blob { animation: blob 7s infinite; }
 .animate-particle-float { animation: particle-float 8s ease-in-out infinite; }
 
-/* Glass morphism with enhanced effects */
-.glassmorphism {
-  @apply bg-background/60 backdrop-blur-xl border border-white/20;
-  box-shadow: var(--shadow-medium);
-  backdrop-filter: blur(20px) saturate(180%);
-}
+@layer components {
+  /* Glass morphism with enhanced effects */
+  .glassmorphism {
+    @apply bg-background/60 backdrop-blur-xl border border-white/20;
+    box-shadow: var(--shadow-medium);
+    backdrop-filter: blur(20px) saturate(180%);
+  }
 
-.glassmorphism-strong {
-  @apply bg-background/40 backdrop-blur-2xl border border-white/30;
-  box-shadow: var(--shadow-strong);
-  backdrop-filter: blur(40px) saturate(200%);
+  .glassmorphism-strong {
+    @apply bg-background/40 backdrop-blur-2xl border border-white/30;
+    box-shadow: var(--shadow-strong);
+    backdrop-filter: blur(40px) saturate(200%);
+  }
+
+  /* Interactive elements */
+  .interactive-card {
+    @apply transition-all duration-300 ease-out;
+    transform-style: preserve-3d;
+  }
+
+  /* Magnetic effect for buttons */
+  .magnetic {
+    @apply transition-transform duration-300 ease-out;
+  }
 }
 
 /* Gradient backgrounds */
@@ -227,20 +243,9 @@
   opacity: 0.7;
 }
 
-/* Interactive elements */
-.interactive-card {
-  @apply transition-all duration-300 ease-out;
-  transform-style: preserve-3d;
-}
-
 .interactive-card:hover {
   transform: translateY(-8px) scale(1.02);
   box-shadow: var(--shadow-strong), var(--shadow-glow);
-}
-
-/* Magnetic effect for buttons */
-.magnetic {
-  @apply transition-transform duration-300 ease-out;
 }
 
 .magnetic:hover {

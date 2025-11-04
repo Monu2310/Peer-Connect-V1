@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../core/AuthContext';
 import { getMyJoinedActivities, getMyCreatedActivities } from '../api/activityService';
 import { getFriends, sendFriendRequestById } from '../api/friendService';
 import { getFriendRecommendations, getActivityRecommendations, getUserInsights } from '../api/recommendationService';

@@ -4,7 +4,7 @@ import { getActivityById, joinActivity, leaveActivity, deleteActivity } from '..
 import { getSimilarActivities } from '../api/recommendationService';
 import { sendFriendRequestById } from '../api/friendService';
 import { getFriends } from '../api/friendService';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../core/AuthContext';
 import ActivityGroupChat from '../components/ActivityGroupChat';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';

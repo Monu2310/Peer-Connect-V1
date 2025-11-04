@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../core/AuthContext';
 import { getMessages, sendMessage } from '../api/messageService';
 import { getUserProfile } from '../api/userService';
 import io from 'socket.io-client';
