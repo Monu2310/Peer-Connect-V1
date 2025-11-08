@@ -104,7 +104,7 @@ const corsOptions = {
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token', 'cache-control'],
   credentials: false, // Keep false to avoid cookie issues
   preflightContinue: false,
   optionsSuccessStatus: 204
