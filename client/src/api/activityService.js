@@ -11,7 +11,7 @@ const processImageUrl = (imagePath) => {
 };
 
 // Get all activities with optional filtering
-export const getActivities = async (category, search) => {
+export const getActivities = async (category, search, includePast = true) => {
   try {
     const queryParams = new URLSearchParams();
     if (category && category !== 'All') {
@@ -20,6 +20,8 @@ export const getActivities = async (category, search) => {
     if (search) {
       queryParams.append('search', search);
     }
+    // Include past activities by default
+    queryParams.append('includePast', includePast);
     
     console.log('Fetching activities from:', `${API_URL}/api/activities?${queryParams}`);
     const response = await api.get(`/api/activities?${queryParams}`);
@@ -76,7 +78,10 @@ export const createActivity = async (activityData) => {
     if (activityData.image && activityData.image instanceof File) {
       const formData = new FormData();
       Object.keys(activityData).forEach(key => {
-        formData.append(key, activityData[key]);
+        const value = activityData[key];
+        if (value !== undefined && value !== null && value !== '') {
+          formData.append(key, value);
+        }
       });
       
       console.log('Sending form data to API');
@@ -98,7 +103,14 @@ export const createActivity = async (activityData) => {
       const token = localStorage.getItem('token');
       console.log('Using token:', token ? 'Present' : 'Missing');
       
-      const response = await api.post(`/api/activities`, activityData);
+      const sanitizedActivityData = Object.entries(activityData).reduce((acc, [key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
+
+      const response = await api.post(`/api/activities`, sanitizedActivityData);
       
       // Process image URL in response if needed
       if (response.data && response.data.image) {
@@ -253,5 +265,22 @@ export const getMyJoinedActivities = async () => {
   } catch (error) {
     console.error('Error fetching joined activities:', error);
     return [];
+  }
+};
+
+// Remove a participant from activity (creator only)
+export const removeParticipant = async (activityId, userId) => {
+  try {
+    const response = await api.delete(`/api/activities/${activityId}/participants/${userId}`);
+    
+    // Process image URL if needed
+    if (response.data && response.data.image) {
+      response.data.image = processImageUrl(response.data.image);
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error removing participant:', error);
+    throw error;
   }
 };

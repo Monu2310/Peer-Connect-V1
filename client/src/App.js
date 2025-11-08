@@ -16,6 +16,7 @@ const Profile = lazy(() => import(/* webpackChunkName: "profile" */ './pages/Pro
 const Activities = lazy(() => import(/* webpackChunkName: "activities" */ './pages/Activities'));
 const ActivityDetail = lazy(() => import(/* webpackChunkName: "activities" */ './pages/ActivityDetail'));
 const CreateActivity = lazy(() => import(/* webpackChunkName: "activities" */ './pages/CreateActivity'));
+const EditActivity = lazy(() => import(/* webpackChunkName: "activities" */ './pages/EditActivity'));
 const Messages = lazy(() => import(/* webpackChunkName: "messages" */ './pages/Messages'));
 const Conversation = lazy(() => import(/* webpackChunkName: "messages" */ './pages/Conversation'));
 const Friends = lazy(() => import(/* webpackChunkName: "friends" */ './pages/Friends'));
@@ -65,6 +66,7 @@ function App() {
               <Route path="/activities" element={<PrivateRoute><Activities /></PrivateRoute>} />
               <Route path="/activities/:activityId" element={<PrivateRoute><ActivityDetail /></PrivateRoute>} />
               <Route path="/activities/new" element={<PrivateRoute><CreateActivity /></PrivateRoute>} />
+              <Route path="/activities/edit/:activityId" element={<PrivateRoute><EditActivity /></PrivateRoute>} />
               <Route path="/messages" element={<PrivateRoute><Messages /></PrivateRoute>} />
               <Route path="/messages/:userId" element={<PrivateRoute><Conversation /></PrivateRoute>} />
               <Route path="/friends" element={<PrivateRoute><Friends /></PrivateRoute>} />

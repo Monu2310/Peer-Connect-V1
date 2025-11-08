@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { getActivities } from '../api/activityService';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -7,8 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { PlusCircle, Search as SearchIcon, Filter, SortAsc, Calendar, MapPin, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BeautifulBackground from '../components/effects/BeautifulBackground';
+import { useAuth } from '../core/AuthContext';
+import { Badge } from '../components/ui/badge';
 
 const Activities = () => {
+  const location = useLocation();
+  const { currentUser } = useAuth();
   const [activities, setActivities] = useState([]);
   const [filteredActivities, setFilteredActivities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +21,7 @@ const Activities = () => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [sortOption, setSortOption] = useState('newest');
   const [categories, setCategories] = useState([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -41,24 +46,39 @@ const Activities = () => {
     }
   };
 
+  // Refresh when navigating back with refresh state
+  useEffect(() => {
+    if (location.state?.refresh) {
+      setRefreshTrigger(prev => prev + 1);
+    }
+  }, [location]);
+
   useEffect(() => {
     const fetchActivities = async () => {
       try {
         setLoading(true);
+        setError('');
+        console.log('Fetching activities...');
         const data = await getActivities();
-        setActivities(data);
-        setFilteredActivities(data);
-        const uniqueCategories = [...new Set(data.map(activity => activity.category))];
+        console.log('Activities fetched:', data);
+        
+        // Ensure data is an array
+        const activitiesArray = Array.isArray(data) ? data : [];
+        
+        setActivities(activitiesArray);
+        setFilteredActivities(activitiesArray);
+        const uniqueCategories = [...new Set(activitiesArray.map(activity => activity.category))];
         setCategories(uniqueCategories);
         setLoading(false);
       } catch (err) {
-        setError('Failed to load activities.');
+        console.error('Error fetching activities:', err);
+        setError('Failed to load activities. Please try again.');
         setLoading(false);
       }
     };
 
     fetchActivities();
-  }, []);
+  }, [refreshTrigger]);
 
   useEffect(() => {
     let result = activities
@@ -237,7 +257,18 @@ const Activities = () => {
               exit="hidden"
               className="grid gap-4 md:gap-6 sm:grid-cols-2 lg:grid-cols-3"
             >
-              {filteredActivities.map((activity) => (
+              {filteredActivities.map((activity) => {
+                const participantsCount = activity.participants?.length || 0;
+                const maxParticipants = activity.maxParticipants || null;
+                const spotsLeft = maxParticipants ? Math.max(maxParticipants - participantsCount, 0) : null;
+                const isFull = Boolean(maxParticipants) && spotsLeft === 0;
+                const isCreator = currentUser && (activity.creator?._id === currentUser.id || activity.creator === currentUser.id);
+                const hasJoined = currentUser && activity.participants?.some(participant => {
+                  const participantId = participant?._id || participant;
+                  return participantId === currentUser.id;
+                });
+
+                return (
                 <motion.div 
                   key={activity._id}
                   variants={itemVariants}
@@ -269,6 +300,11 @@ const Activities = () => {
                           <Calendar className="w-4 h-4" />
                           {new Date(activity.date).toLocaleDateString()}
                         </div>
+                        {(isCreator || hasJoined || isFull) && (
+                          <Badge className={`${isCreator ? 'bg-primary/15 text-primary' : isFull ? 'bg-destructive/15 text-destructive' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'} text-[0.65rem] font-semibold px-2 py-0.5`}> 
+                            {isCreator ? 'You host' : isFull ? 'Full' : 'Joined'}
+                          </Badge>
+                        )}
                       </div>
                       
                       {/* Title */}
@@ -291,9 +327,16 @@ const Activities = () => {
                       
                       {/* Participants and action */}
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Users className="w-4 h-4" />
-                          <span>{activity.participants?.length || 0} joined</span>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <Users className="w-4 h-4" />
+                            <span>{participantsCount}{maxParticipants ? ` / ${maxParticipants}` : ''}</span>
+                          </span>
+                          {spotsLeft !== null && (
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isFull ? 'bg-destructive/15 text-destructive' : 'bg-primary/10 text-primary'}`}>
+                              {isFull ? 'No spots left' : `${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left`}
+                            </span>
+                          )}
                         </div>
                         
                         <Button 
@@ -310,7 +353,8 @@ const Activities = () => {
                     </div>
                   </div>
                 </motion.div>
-              ))}
+                );
+              })}
             </motion.div>
           ) : (
             <motion.div 

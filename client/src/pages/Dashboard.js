@@ -50,6 +50,7 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       setIsLoading(true);
       try {
+        console.log('Fetching dashboard data...');
         const [insights, joined, created, friends, friendRequests, friendRecs, activityRecs] = await Promise.all([
           getUserInsights(),
           getMyJoinedActivities(),
@@ -60,14 +61,35 @@ const Dashboard = () => {
           getActivityRecommendations(),
         ]);
 
+        console.log('Joined activities:', joined);
+        console.log('Created activities:', created);
+
+        // Ensure arrays
+        const joinedArray = Array.isArray(joined) ? joined : [];
+        const createdArray = Array.isArray(created) ? created : [];
+
         setStats({
-          activitiesJoined: insights.joinedActivities || joined.length,
-          activitiesCreated: insights.createdActivities || created.length,
+          activitiesJoined: insights.joinedActivities || joinedArray.length,
+          activitiesCreated: insights.createdActivities || createdArray.length,
           friendCount: friends.length,
           pendingInvitations: friendRequests.length,
         });
 
-        setRecentActivities([...joined, ...created].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3));
+        // Combine and remove duplicates by ID
+        const allActivitiesMap = new Map();
+        [...joinedArray, ...createdArray].forEach(activity => {
+          if (activity && activity._id) {
+            allActivitiesMap.set(activity._id, activity);
+          }
+        });
+        
+        const uniqueActivities = Array.from(allActivitiesMap.values());
+        const sortedActivities = uniqueActivities
+          .sort((a, b) => new Date(b.date) - new Date(a.date))
+          .slice(0, 3);
+        
+        console.log('Recent activities to display:', sortedActivities);
+        setRecentActivities(sortedActivities);
         setRecommendedFriends(friendRecs.slice(0, 4));
         setRecommendedActivities(activityRecs.slice(0, 3));
 
@@ -249,32 +271,47 @@ const Dashboard = () => {
             </h2>
             
             <div className="space-y-4">
-              {recentActivities.map((activity) => (
-                <div 
-                  key={activity._id} 
-                  className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-semibold text-lg">{activity.title}</h3>
-                    <span className="text-sm text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
-                      {new Date(activity.date).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <p className="text-muted-foreground text-sm md:text-base leading-relaxed line-clamp-2 mb-4">
-                    {activity.description}
-                  </p>
-                  <Button 
-                    asChild 
-                    variant="ghost" 
-                    size="sm"
-                    className="text-primary hover:text-primary/80 hover:bg-primary/10 p-0 h-auto font-medium"
+              {recentActivities.map((activity) => {
+                const isCreator = activity.creator?._id === currentUser?.id || activity.creator === currentUser?.id;
+                
+                return (
+                  <div 
+                    key={activity._id} 
+                    className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl"
                   >
-                    <Link to={`/activities/${activity._id}`}>
-                      View Details →
-                    </Link>
-                  </Button>
-                </div>
-              ))}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-lg">{activity.title}</h3>
+                          {isCreator && (
+                            <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                              Creator
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-sm text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
+                        {new Date(activity.date).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-muted-foreground text-sm md:text-base leading-relaxed line-clamp-2 mb-4">
+                      {activity.description}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        asChild 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-primary hover:text-primary/80 hover:bg-primary/10 p-0 h-auto font-medium"
+                      >
+                        <Link to={`/activities/${activity._id}`}>
+                          {isCreator ? 'Manage Activity' : 'View Details'} →
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
               
               {recentActivities.length === 0 && (
                 <div className="bg-card/30 rounded-2xl p-8 text-center border border-border/30">

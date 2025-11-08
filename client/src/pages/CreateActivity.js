@@ -96,17 +96,40 @@ const CreateActivity = () => {
     setLoading(true);
     setError('');
 
+    const parsedMaxParticipants = maxParticipants ? parseInt(maxParticipants, 10) : null;
+
+    if (parsedMaxParticipants !== null && (Number.isNaN(parsedMaxParticipants) || parsedMaxParticipants < 1)) {
+      setError('Max participants must be a positive number.');
+      setLoading(false);
+      return;
+    }
+
     const activityData = {
       ...formData,
+      maxParticipants: parsedMaxParticipants,
       date: format(date, 'yyyy-MM-dd'),
       time: time,
     };
 
     try {
-      await createActivity(activityData);
-      navigate('/activities');
+      console.log('Creating activity with data:', activityData);
+      const createdActivity = await createActivity(activityData);
+      console.log('Activity created successfully:', createdActivity);
+      
+      // Show success message briefly before redirecting
+      setError('');
+      
+      // Navigate to the newly created activity detail page
+      if (createdActivity && createdActivity._id) {
+        console.log('Navigating to activity:', createdActivity._id);
+        navigate(`/activities/${createdActivity._id}`);
+      } else {
+        // Fallback to activities list
+        navigate('/activities', { state: { refresh: true } });
+      }
     } catch (err) {
-      setError(err.message || 'Failed to create activity.');
+      console.error('Error creating activity:', err);
+      setError(err.message || 'Failed to create activity. Please try again.');
       setLoading(false);
     }
   };

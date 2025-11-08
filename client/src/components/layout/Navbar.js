@@ -4,10 +4,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../core/AuthContext';
 import DarkModeToggle from './DarkModeToggle';
 import { Button } from '../ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription
+} from '../ui/dialog';
 import { Menu, X, User, LogOut, Home, Compass, Users, MessageSquare } from 'lucide-react';
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { isAuthenticated, currentUser, logout } = useAuth();
   const location = useLocation();
@@ -34,8 +43,20 @@ const Navbar = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
 
-  const handleLogout = () => {
+  const openLogoutDialog = (closeMenu = false) => {
+    if (closeMenu) {
+      setMobileMenuOpen(false);
+    }
+    setLogoutDialogOpen(true);
+  };
+
+  const closeLogoutDialog = () => {
+    setLogoutDialogOpen(false);
+  };
+
+  const confirmLogout = () => {
     logout();
+    setLogoutDialogOpen(false);
     setMobileMenuOpen(false);
   };
 
@@ -43,6 +64,8 @@ const Navbar = () => {
     if (!currentUser) return '';
     return currentUser.name || currentUser.username || '';
   };
+  const userDisplayName = getUserDisplayName();
+  const userEmail = currentUser?.email;
   
   const isHomePage = location.pathname === '/';
 
@@ -126,11 +149,11 @@ const Navbar = () => {
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-sm">
                     <User className="w-4 h-4 text-white" />
                   </div>
-                  <span className="text-sm font-bold text-foreground">{getUserDisplayName()}</span>
+                  <span className="text-sm font-bold text-foreground">{userDisplayName}</span>
                 </Link>
                 
                 <Button
-                  onClick={handleLogout}
+                  onClick={() => openLogoutDialog(false)}
                   className="px-5 h-10 rounded-lg font-semibold text-sm bg-destructive/80 hover:bg-destructive text-white transition-all duration-200"
                 >
                   <LogOut className="w-4 h-4 mr-2" />
@@ -204,7 +227,7 @@ const Navbar = () => {
                   <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-sm">
                     <User className="w-5 h-5 text-white" />
                   </div>
-                  <p className="font-semibold text-sm">{getUserDisplayName()}</p>
+                  <p className="font-semibold text-sm">{userDisplayName}</p>
                 </Link>
 
                 {/* Mobile navigation links */}
@@ -235,10 +258,7 @@ const Navbar = () => {
 
                 {/* Mobile logout button */}
                 <Button
-                  onClick={() => {
-                    handleLogout();
-                    setMobileMenuOpen(false);
-                  }}
+                  onClick={() => openLogoutDialog(true)}
                   className="w-full mt-2 px-4 py-2.5 rounded-lg font-semibold text-sm bg-destructive/80 hover:bg-destructive text-white transition-all duration-200"
                 >
                   <LogOut className="w-4 h-4 mr-2" />
@@ -249,6 +269,45 @@ const Navbar = () => {
           </>
         )}
       </AnimatePresence>
+
+      <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="space-y-3 text-center sm:text-left">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive sm:mx-0">
+              <LogOut className="h-5 w-5" />
+            </div>
+            <DialogTitle className="text-2xl font-bold tracking-tight">Sign out?</DialogTitle>
+            <DialogDescription>
+              We'll save your preferences so you can pick up where you left off next time.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+            <p className="font-semibold text-foreground">{userDisplayName || 'Current session'}</p>
+            {userEmail && (
+              <p className="mt-1 text-xs text-muted-foreground/80 break-all">{userEmail}</p>
+            )}
+          </div>
+          <DialogFooter className="mt-6 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeLogoutDialog}
+              className="w-full sm:w-auto"
+            >
+              Stay logged in
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmLogout}
+              className="w-full sm:w-auto"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Log out
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.nav>
   );
 };

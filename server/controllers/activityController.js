@@ -31,6 +31,17 @@ exports.createActivity = async (req, res) => {
       image 
     } = req.body;
 
+    const normalizedMaxParticipants = maxParticipants === undefined || maxParticipants === null || maxParticipants === ''
+      ? null
+      : parseInt(maxParticipants, 10);
+
+    if (normalizedMaxParticipants !== null) {
+      if (Number.isNaN(normalizedMaxParticipants) || normalizedMaxParticipants < 1) {
+        console.error('Activity Controller: Invalid maxParticipants value provided');
+        return res.status(400).json({ message: 'Max participants must be a positive number' });
+      }
+    }
+
     // Validate required fields
     if (!title || !description || !category || !location || !date) {
       console.error('Activity Controller: Missing required fields');
@@ -48,7 +59,7 @@ exports.createActivity = async (req, res) => {
       location,
       date,
       time,
-      maxParticipants: maxParticipants || null,
+      maxParticipants: normalizedMaxParticipants,
       image: image || getDefaultImageForCategory(category), // Use default image if none provided
       creator: req.user.id,
       participants: [req.user.id] // Creator is automatically a participant
@@ -85,7 +96,7 @@ exports.getActivities = async (req, res) => {
     
     // Filter by category if provided
     if (category && category !== 'All') {
-      query.category = category;
+      query.category = category.toLowerCase();
     }
     
     // Search by title or description if provided
@@ -97,8 +108,13 @@ exports.getActivities = async (req, res) => {
       ];
     }
     
-    // Filter out past activities
-    query.date = { $gte: new Date() };
+    // Show all activities (including past ones) - users can see activity history
+    // Only filter if specifically requested
+    const { includePast } = req.query;
+    if (includePast !== 'true') {
+      // By default, show upcoming activities
+      query.date = { $gte: new Date() };
+    }
     
     // Use lean() for better performance - returns plain objects instead of Mongoose documents
     const activities = await Activity.find(query)
@@ -266,6 +282,21 @@ exports.updateActivity = async (req, res) => {
       maxParticipants,
       image 
     } = req.body;
+
+    const normalizedMaxParticipants = maxParticipants === undefined || maxParticipants === null || maxParticipants === ''
+      ? undefined
+      : parseInt(maxParticipants, 10);
+
+    if (normalizedMaxParticipants !== undefined) {
+      if (Number.isNaN(normalizedMaxParticipants) || normalizedMaxParticipants < 1) {
+        console.error('Activity Controller: updateActivity - Invalid maxParticipants value');
+        return res.status(400).json({ message: 'Max participants must be a positive number' });
+      }
+      if (normalizedMaxParticipants !== null && normalizedMaxParticipants < activity.participants.length) {
+        console.error('Activity Controller: updateActivity - maxParticipants less than current participants');
+        return res.status(400).json({ message: 'Max participants cannot be less than the current participant count' });
+      }
+    }
     
     // Update fields
     if (title) activity.title = title;
@@ -279,7 +310,9 @@ exports.updateActivity = async (req, res) => {
     }
     if (location) activity.location = location;
     if (date) activity.date = date;
-    if (maxParticipants) activity.maxParticipants = maxParticipants;
+    if (normalizedMaxParticipants !== undefined) {
+      activity.maxParticipants = normalizedMaxParticipants === null ? null : normalizedMaxParticipants;
+    }
     if (image) activity.image = image;
     
     await activity.save();
@@ -362,6 +395,58 @@ exports.getMyJoinedActivities = async (req, res) => {
     res.json(activities);
   } catch (err) {
     console.error(err.message);
+    res.status(500).send('Server error');
+  }
+};
+
+// Remove a participant from activity (creator only)
+exports.removeParticipant = async (req, res) => {
+  try {
+    console.log('Activity Controller: removeParticipant - req.user.id:', req.user.id);
+    console.log('Activity Controller: removeParticipant - activityId:', req.params.activityId);
+    console.log('Activity Controller: removeParticipant - userId:', req.params.userId);
+    
+    const activity = await Activity.findById(req.params.activityId);
+    
+    if (!activity) {
+      return res.status(404).json({ message: 'Activity not found' });
+    }
+    
+    // Check if user is the creator
+    if (activity.creator.toString() !== req.user.id) {
+      console.log('Activity Controller: removeParticipant - Not authorized.');
+      return res.status(401).json({ message: 'Only the creator can remove participants' });
+    }
+    
+    // Cannot remove the creator
+    if (req.params.userId === req.user.id) {
+      return res.status(400).json({ message: 'Creator cannot be removed' });
+    }
+    
+    // Check if user is in participants
+    if (!activity.participants.includes(req.params.userId)) {
+      return res.status(400).json({ message: 'User is not a participant' });
+    }
+    
+    // Remove user from participants
+    activity.participants = activity.participants.filter(
+      participant => participant.toString() !== req.params.userId
+    );
+    
+    await activity.save();
+    
+    // Return updated activity with populated fields
+    const updatedActivity = await Activity.findById(req.params.activityId)
+      .populate('creator', 'username profilePicture')
+      .populate('participants', 'username profilePicture');
+    
+    console.log('Activity Controller: removeParticipant - Participant removed. New participants:', updatedActivity.participants.map(p => p._id));
+    res.json(updatedActivity);
+  } catch (err) {
+    console.error(err.message);
+    if (err.kind === 'ObjectId') {
+      return res.status(404).json({ message: 'Activity not found' });
+    }
     res.status(500).send('Server error');
   }
 };

@@ -48,4 +48,9 @@ router.put('/:activityId', auth, activityController.updateActivity);
 // @access  Private (only creator)
 router.delete('/:activityId', auth, activityController.deleteActivity);
 
+// @route   DELETE /api/activities/:activityId/participants/:userId
+// @desc    Remove a participant from activity (creator only)
+// @access  Private (only creator)
+router.delete('/:activityId/participants/:userId', auth, activityController.removeParticipant);
+
 module.exports = router;
