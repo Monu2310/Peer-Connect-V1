@@ -30,15 +30,15 @@ router.get('/find-by-email', auth, userController.findUserByEmail);
 // @access  Private
 router.get('/notifications', auth, userController.getNotifications);
 
+// @route   POST /api/users/random-avatar
+// @desc    Generate a random profile avatar for the current user
+// @access  Private
+router.post('/random-avatar', auth, userController.generateRandomAvatar);
+
 // @route   GET /api/users/:userId
 // @desc    Get user by ID
 // @access  Private
 // MUST BE LAST - catches any path that doesn't match above
 router.get('/:userId', auth, userController.getUserById);
-
-// @route   POST /api/users/random-avatar
-// @desc    Generate a random profile avatar for the current user
-// @access  Private
-router.post('/random-avatar', auth, userController.generateRandomAvatar);
 
 module.exports = router;
