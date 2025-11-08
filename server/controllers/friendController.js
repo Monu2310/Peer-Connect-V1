@@ -106,6 +106,8 @@ exports.getFriendRequests = async (req, res) => {
   try {
     const userId = req.user.id;
     
+    console.log('🔍 Backend: Fetching friend requests for user:', userId);
+    
     // Find all pending friend requests where current user is the recipient
     const friendRequests = await Friend.find({
       recipient: userId,
@@ -115,9 +117,10 @@ exports.getFriendRequests = async (req, res) => {
       .populate('recipient', 'username profilePicture')
       .sort({ createdAt: -1 });
     
+    console.log('✅ Backend: Found', friendRequests.length, 'pending friend requests');
     res.json(friendRequests);
   } catch (err) {
-    console.error(err.message);
+    console.error('❌ Backend: Error fetching friend requests:', err.message);
     res.status(500).send('Server error');
   }
 };
@@ -128,30 +131,43 @@ exports.acceptFriendRequest = async (req, res) => {
     const { requestId } = req.params;
     const userId = req.user.id;
     
+    console.log('🔵 Backend: Accepting friend request:', { requestId, userId });
+    
     // Find the friend request
     const friendRequest = await Friend.findById(requestId);
     
     if (!friendRequest) {
+      console.log('❌ Backend: Friend request not found');
       return res.status(404).json({ message: 'Friend request not found' });
     }
     
+    console.log('📋 Backend: Found friend request:', {
+      id: friendRequest._id,
+      requester: friendRequest.requester,
+      recipient: friendRequest.recipient,
+      status: friendRequest.status
+    });
+    
     // Check if current user is the recipient
     if (friendRequest.recipient.toString() !== userId) {
+      console.log('❌ Backend: User not authorized to accept');
       return res.status(401).json({ message: 'Not authorized to accept this friend request' });
     }
     
     // Update the status to accepted
     friendRequest.status = 'accepted';
     await friendRequest.save();
+    console.log('✅ Backend: Friend request accepted, status updated to accepted');
     
     // Populate user info
     const populatedFriendRequest = await Friend.findById(requestId)
       .populate('requester', 'username profilePicture')
       .populate('recipient', 'username profilePicture');
     
+    console.log('✅ Backend: Sending response');
     res.json(populatedFriendRequest);
   } catch (err) {
-    console.error(err.message);
+    console.error('❌ Backend: Error accepting friend request:', err.message);
     if (err.kind === 'ObjectId') {
       return res.status(404).json({ message: 'Friend request not found' });
     }
@@ -165,25 +181,35 @@ exports.declineFriendRequest = async (req, res) => {
     const { requestId } = req.params;
     const userId = req.user.id;
     
+    console.log('🔵 Backend: Declining friend request:', { requestId, userId });
+    
     // Find the friend request
     const friendRequest = await Friend.findById(requestId);
     
     if (!friendRequest) {
+      console.log('❌ Backend: Friend request not found');
       return res.status(404).json({ message: 'Friend request not found' });
     }
     
+    console.log('📋 Backend: Found friend request to decline:', {
+      id: friendRequest._id,
+      status: friendRequest.status
+    });
+    
     // Check if current user is the recipient
     if (friendRequest.recipient.toString() !== userId) {
+      console.log('❌ Backend: User not authorized to decline');
       return res.status(401).json({ message: 'Not authorized to decline this friend request' });
     }
     
     // Update the status to declined
     friendRequest.status = 'declined';
     await friendRequest.save();
+    console.log('✅ Backend: Friend request declined, status updated to declined');
     
     res.json({ message: 'Friend request declined' });
   } catch (err) {
-    console.error(err.message);
+    console.error('❌ Backend: Error declining friend request:', err.message);
     if (err.kind === 'ObjectId') {
       return res.status(404).json({ message: 'Friend request not found' });
     }
@@ -196,6 +222,8 @@ exports.getFriends = async (req, res) => {
   try {
     const userId = req.user.id;
     
+    console.log('🔍 Backend: Fetching friends for user:', userId);
+    
     // Find all accepted friendships where current user is either requester or recipient
     const friendships = await Friend.find({
       $or: [
@@ -206,6 +234,8 @@ exports.getFriends = async (req, res) => {
       .populate('requester', 'username profilePicture')
       .populate('recipient', 'username profilePicture');
     
+    console.log('📋 Backend: Found', friendships.length, 'accepted friendships');
+    
     // Map friendships to users
     const friends = friendships.map(friendship => {
       // Return the other user in the friendship
@@ -214,9 +244,10 @@ exports.getFriends = async (req, res) => {
         : friendship.requester;
     });
     
+    console.log('✅ Backend: Returning', friends.length, 'friends');
     res.json(friends);
   } catch (err) {
-    console.error(err.message);
+    console.error('❌ Backend: Error fetching friends:', err.message);
     res.status(500).send('Server error');
   }
 };

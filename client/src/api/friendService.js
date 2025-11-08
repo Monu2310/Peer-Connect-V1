@@ -79,7 +79,9 @@ export const sendFriendRequestById = async (userId) => {
 // Accept friend request
 export const acceptFriendRequest = async (requestId) => {
   try {
+    console.log('📤 API: Accepting friend request:', requestId);
     const response = await api.put(`/api/friends/accept/${requestId}`);
+    console.log('📥 API: Accept response:', response.data);
     
     if (response.data && response.data.friend && response.data.friend.profilePicture) {
       response.data.friend.profilePicture = `${API_URL}${response.data.friend.profilePicture.startsWith('/') ? '' : '/'}${response.data.friend.profilePicture}`;
@@ -87,7 +89,7 @@ export const acceptFriendRequest = async (requestId) => {
     
     return response.data;
   } catch (error) {
-    console.error('Error accepting friend request:', error.response?.data || error.message);
+    console.error('❌ API: Error accepting friend request:', error.response?.data || error.message);
     throw error;
   }
 };
@@ -95,10 +97,12 @@ export const acceptFriendRequest = async (requestId) => {
 // Reject friend request
 export const rejectFriendRequest = async (requestId) => {
   try {
+    console.log('📤 API: Declining friend request:', requestId);
     const response = await api.put(`/api/friends/decline/${requestId}`);
+    console.log('📥 API: Decline response:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Error rejecting friend request:', error.response?.data || error.message);
+    console.error('❌ API: Error rejecting friend request:', error.response?.data || error.message);
     throw error;
   }
 };

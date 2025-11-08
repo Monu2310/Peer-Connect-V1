@@ -44,14 +44,20 @@ const Friends = () => {
     setLoading(true);
     setError('');
     try {
+      console.log('🔄 Fetching friends data...');
       const [friendsData, requestsData] = await Promise.all([
         getFriends(),
         getFriendRequests(),
       ]);
+      console.log('📊 Fetched:', {
+        friends: friendsData?.length || 0,
+        requests: requestsData?.length || 0
+      });
       setFriends(friendsData || []);
       setFriendRequests(requestsData || []);
       setLoading(false);
     } catch (err) {
+      console.error('❌ Error fetching friends data:', err);
       setError(err.message || 'Failed to load friends data.');
       setLoading(false);
     }
@@ -92,11 +98,22 @@ const Friends = () => {
       return;
     }
     try {
-      await acceptFriendRequest(requestId);
-      fetchFriendsData(); // Re-fetch all data to update lists
-      setSuccess('Friend request accepted!');
+      console.log('🔵 Accepting friend request:', requestId);
+      
+      // Optimistically remove from UI immediately
+      setFriendRequests(prev => prev.filter(req => req._id !== requestId));
+      
+      const result = await acceptFriendRequest(requestId);
+      console.log('✅ Friend request accepted successfully:', result);
+      
+      // Re-fetch all data to update lists with server data
+      await fetchFriendsData();
+      setSuccess('Friend request accepted! They are now in your friends list.');
     } catch (err) {
-      setError('Failed to accept friend request.');
+      console.error('❌ Error accepting friend request:', err);
+      // If error, refetch to restore accurate state
+      await fetchFriendsData();
+      setError(err.response?.data?.message || 'Failed to accept friend request.');
     } finally {
       setTimeout(() => setSuccess(''), 3000);
       setTimeout(() => setError(''), 5000);
@@ -109,11 +126,22 @@ const Friends = () => {
       return;
     }
     try {
+      console.log('🔵 Declining friend request:', requestId);
+      
+      // Optimistically remove from UI immediately
+      setFriendRequests(prev => prev.filter(req => req._id !== requestId));
+      
       await rejectFriendRequest(requestId);
-      fetchFriendsData(); // Re-fetch all data to update lists
+      console.log('✅ Friend request declined successfully');
+      
+      // Re-fetch all data to ensure consistency
+      await fetchFriendsData();
       setSuccess('Friend request declined!');
     } catch (err) {
-      setError('Failed to reject friend request.');
+      console.error('❌ Error declining friend request:', err);
+      // If error, refetch to restore accurate state
+      await fetchFriendsData();
+      setError(err.response?.data?.message || 'Failed to reject friend request.');
     } finally {
       setTimeout(() => setSuccess(''), 3000);
       setTimeout(() => setError(''), 5000);
@@ -261,7 +289,7 @@ const Friends = () => {
                   </motion.div>
                 ) : (
                   <motion.div key="requests-list" variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pb-12">
-                    {friendRequests.filter(request => request && request._id && request.sender).map(request => (
+                    {friendRequests.filter(request => request && request._id && request.requester).map(request => (
                       <motion.div key={request._id} variants={itemVariants} whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
                         <div className="group relative bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-md border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300 hover:shadow-lg h-full">
                           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity duration-300 pointer-events-none" />
@@ -269,12 +297,12 @@ const Friends = () => {
                           <div className="relative z-10">
                             <div className="flex items-center gap-4 mb-6">
                               <Avatar className="h-14 w-14 ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all">
-                                <AvatarImage src={request?.sender?.profilePicture || '/avatar.svg'} />
-                                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 font-semibold">{request?.sender?.username?.charAt(0) || 'U'}</AvatarFallback>
+                                <AvatarImage src={request?.requester?.profilePicture || '/avatar.svg'} />
+                                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 font-semibold">{request?.requester?.username?.charAt(0) || 'U'}</AvatarFallback>
                               </Avatar>
                               <div className="min-w-0 flex-1">
-                                <p className="font-semibold text-base truncate group-hover:text-primary transition-colors">{request?.sender?.username || 'Unknown'}</p>
-                                <p className="text-xs text-muted-foreground">{request?.sender?.major || 'No major'}</p>
+                                <p className="font-semibold text-base truncate group-hover:text-primary transition-colors">{request?.requester?.username || 'Unknown'}</p>
+                                <p className="text-xs text-muted-foreground">{request?.requester?.major || 'No major'}</p>
                               </div>
                             </div>
                             

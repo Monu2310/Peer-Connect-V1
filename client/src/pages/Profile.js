@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Calendar, Users, PlusCircle, UserPlus, MessageSquare, Edit, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, Users, PlusCircle, UserPlus, MessageSquare, Edit, Trash2, CheckCircle, XCircle, MapPin, FileText, Heart, User, Loader2 } from 'lucide-react';
 
 const Profile = () => {
   const { userId } = useParams();
@@ -362,10 +362,10 @@ const Profile = () => {
       initial="hidden"
       animate="visible"
     >
-      <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8 sm:px-6 lg:px-8">
-        <motion.div variants={itemVariants} className="mb-6 sm:mb-8">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-12">
+        <motion.div variants={itemVariants} className="mb-8 sm:mb-10">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h1 className="text-2xl sm:text-3xl font-bold font-bold">
+            <h1 className="text-3xl sm:text-4xl font-bold">
               {isOwnProfile ? 'My Profile' : `${formData.username}'s Profile`}
             </h1>
             {isOwnProfile ? (
@@ -390,15 +390,15 @@ const Profile = () => {
                 )}
               </div>
             ) : (
-              <div className="mt-4 md:mt-0 flex space-x-3">
-                <Button asChild className="btn-primary">
+              <div className="mt-4 md:mt-0 flex flex-wrap gap-3">
+                <Button asChild className="btn-primary h-11 px-6">
                   <Link to={`/messages/${userId}`}>
                     <MessageSquare className="mr-2 h-4 w-4" /> Message
                   </Link>
                 </Button>
                 <Button
                   onClick={handleSendFriendRequest}
-                  className={`btn-primary ${friendRequestStatus === 'sent' || friendRequestStatus === 'friends' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`btn-primary h-11 px-6 ${friendRequestStatus === 'sent' || friendRequestStatus === 'friends' ? 'opacity-50 cursor-not-allowed' : ''}`}
                   disabled={friendRequestStatus === 'sending' || friendRequestStatus === 'sent' || friendRequestStatus === 'friends'}
                 >
                   {friendRequestStatus === 'sending' ? (
@@ -419,6 +419,11 @@ const Profile = () => {
                       <UserPlus className="mr-2 h-4 w-4" /> Add Friend
                     </>
                   )}
+                </Button>
+                <Button asChild className="btn-outline h-11 px-6">
+                  <Link to="/activities/create">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Create Activity
+                  </Link>
                 </Button>
               </div>
             )}
@@ -454,11 +459,51 @@ const Profile = () => {
           )}
         </AnimatePresence>
 
-        <motion.div variants={itemVariants} className="card shadow-lg mb-6">
-          <div className="px-4 py-5 sm:px-6">
-            <h2 className="text-lg font-medium font-bold">
-              {isOwnProfile ? 'Edit Your Profile' : 'Profile Details'}
-            </h2>
+        {/* Profile Card - Readable in both light/dark modes */}
+        <motion.div 
+          variants={itemVariants} 
+          className="bg-white dark:bg-[#313647] rounded-2xl shadow-lg overflow-hidden mb-8 border border-[#435663]/20"
+        >
+          {/* Header Banner - 60% Navy */}
+          <div className="relative h-40 sm:h-48 bg-gradient-to-br from-[#313647] to-[#435663] overflow-hidden">
+            {/* Subtle 10% Sage accent */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#A3B087]/10 to-transparent"></div>
+          </div>
+
+          {/* Avatar & User Info Section */}
+          <div className="relative px-6 sm:px-8 lg:px-10 -mt-20 pb-8">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:space-x-6">
+              {/* Avatar with Sage accent ring */}
+              <Avatar className="h-32 w-32 sm:h-36 sm:w-36 ring-4 ring-[#A3B087] shadow-xl bg-white">
+                <AvatarImage src={formData.profilePicture || '/avatar.svg'} alt={formData.username} />
+                <AvatarFallback className="text-4xl sm:text-5xl bg-gradient-to-br from-[#313647] to-[#435663] text-white">
+                  {formData.username.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="mt-6 sm:mt-0 flex-1 min-w-0">
+                {/* Username - high contrast */}
+                <h2 className="text-3xl sm:text-4xl font-bold text-[#313647] dark:text-white truncate mb-2">
+                  {formData.username}
+                </h2>
+                {/* Email - readable secondary */}
+                <p className="text-base sm:text-lg text-[#435663] dark:text-gray-300">
+                  {formData.email}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-[#435663]/10 dark:border-[#435663]/30"></div>
+
+          {/* Section Title */}
+          <div className="px-6 py-5 sm:px-8 lg:px-10 bg-gray-50 dark:bg-[#313647]/50">
+            <h3 className="text-2xl sm:text-3xl font-bold text-[#313647] dark:text-white flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
+                <Edit className="h-5 w-5 text-[#A3B087]" />
+              </div>
+              {isOwnProfile ? (isEditing ? 'Edit Your Profile' : 'Profile Details') : 'Profile Details'}
+            </h3>
           </div>
           <AnimatePresence mode="wait">
             {isEditing ? (
@@ -603,50 +648,71 @@ const Profile = () => {
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.3 }}
-                className="px-4 py-5 sm:px-6"
+                className="px-4 py-5 sm:px-6 lg:px-8 space-y-6"
               >
-                <div className="grid grid-cols-1 gap-y-6 sm:grid-cols-2 sm:gap-x-4">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Username</p>
-                    <p className="mt-1 text-lg font-semibold text-foreground">{formData.username}</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Email</p>
-                    <p className="mt-1 text-lg font-semibold text-foreground">{formData.email}</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Location</p>
-                    <p className="mt-1 text-lg font-semibold text-foreground">{formData.location || 'Not specified'}</p>
-                  </div>
-
-                  <div className="sm:col-span-2 space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Bio</p>
-                    <p className="mt-1 text-lg text-foreground">{formData.bio || 'No bio available'}</p>
-                  </div>
-
-                  <div className="sm:col-span-2 space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Interests</p>
-                    <div className="mt-1 flex flex-wrap gap-2">
-                      {formData.interests.length > 0 ? (
-                        formData.interests.map((interest, index) => (
-                          <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-muted text-muted-foreground">
-                            {interest}
-                          </span>
-                        ))
-                      ) : (
-                        <p className="text-lg text-muted-foreground">No interests added</p>
-                      )}
+                {/* Info Cards Grid - Readable design */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {/* Location Card */}
+                  <div className="bg-gray-50 dark:bg-[#313647] rounded-xl p-5 border border-[#435663]/20 dark:border-[#435663]/40 hover:border-[#A3B087] transition-all duration-300 shadow-sm hover:shadow-md group">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-lg bg-[#A3B087]/20 flex items-center justify-center">
+                        <MapPin className="h-5 w-5 text-[#A3B087]" />
+                      </div>
+                      <p className="text-xs font-semibold text-[#435663] dark:text-gray-400 uppercase tracking-wide">Location</p>
                     </div>
+                    <p className="text-lg font-bold text-[#313647] dark:text-white">
+                      {formData.location || 'Not specified'}
+                    </p>
                   </div>
 
-                  <div className="sm:col-span-2 space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Profile Picture</p>
-                    <Avatar className="h-24 w-24">
-                      <AvatarImage src={formData.profilePicture || '/avatar.svg'} alt="Profile" />
-                      <AvatarFallback>{formData.username.charAt(0)}</AvatarFallback>
-                    </Avatar>
+                  {/* Member Since Card */}
+                  <div className="bg-gray-50 dark:bg-[#313647] rounded-xl p-5 border border-[#435663]/20 dark:border-[#435663]/40 hover:border-[#A3B087] transition-all duration-300 shadow-sm hover:shadow-md group">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-lg bg-[#A3B087]/20 flex items-center justify-center">
+                        <Calendar className="h-5 w-5 text-[#A3B087]" />
+                      </div>
+                      <p className="text-xs font-semibold text-[#435663] dark:text-gray-400 uppercase tracking-wide">Member Since</p>
+                    </div>
+                    <p className="text-lg font-bold text-[#313647] dark:text-white">
+                      {formatDate(formData.createdAt)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Bio Section */}
+                <div className="bg-gray-50 dark:bg-[#313647] rounded-xl p-6 border border-[#435663]/20 dark:border-[#435663]/40 shadow-sm">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-lg bg-[#A3B087]/20 flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-[#A3B087]" />
+                    </div>
+                    <p className="text-xs font-semibold text-[#435663] dark:text-gray-400 uppercase tracking-wide">Bio</p>
+                  </div>
+                  <p className="text-base text-[#313647] dark:text-gray-200 leading-relaxed">
+                    {formData.bio || 'No bio available'}
+                  </p>
+                </div>
+
+                {/* Interests Section */}
+                <div className="bg-gray-50 dark:bg-[#313647] rounded-xl p-6 border border-[#435663]/20 dark:border-[#435663]/40 shadow-sm">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-lg bg-[#A3B087]/20 flex items-center justify-center">
+                      <Heart className="h-5 w-5 text-[#A3B087]" />
+                    </div>
+                    <p className="text-xs font-semibold text-[#435663] dark:text-gray-400 uppercase tracking-wide">Interests</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.interests.length > 0 ? (
+                      formData.interests.map((interest, index) => (
+                        <span 
+                          key={index} 
+                          className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-[#A3B087]/10 text-[#313647] dark:text-white border border-[#A3B087]/30 hover:bg-[#A3B087]/20 hover:border-[#A3B087] transition-all duration-200"
+                        >
+                          {interest}
+                        </span>
+                      ))
+                    ) : (
+                      <p className="text-sm text-[#435663] dark:text-gray-400">No interests added</p>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -654,9 +720,16 @@ const Profile = () => {
           </AnimatePresence>
         </motion.div>
 
-        <motion.div variants={itemVariants} className="card shadow-lg mb-6">
-          <div className="px-4 py-5 sm:px-6">
-            <h2 className="text-lg font-medium font-bold">
+        {/* Activities Section */}
+        <motion.div 
+          variants={itemVariants} 
+          className="bg-white dark:bg-[#313647] rounded-2xl shadow-lg overflow-hidden mb-8 border border-[#435663]/20"
+        >
+          <div className="px-6 py-5 sm:px-8 lg:px-10 bg-gray-50 dark:bg-[#313647]/50 border-b border-[#435663]/10 dark:border-[#435663]/30">
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#313647] dark:text-white flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
+                <Users className="h-5 w-5 text-[#A3B087]" />
+              </div>
               {isOwnProfile ? 'My Activities' : `${formData.username}'s Activities`}
             </h2>
           </div>

@@ -105,20 +105,36 @@ const Home = () => {
           </motion.div>
         </div>
 
-        {/* Scroll indicator */}
+        {/* Minimal Scroll Indicator */}
         <motion.div
-          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 hidden md:block"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1, duration: 0.6 }}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 hidden md:block"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2, duration: 0.8 }}
         >
-          <div className="w-6 h-10 border-2 border-primary/50 rounded-full flex justify-center">
-            <motion.div
-              className="w-1 h-3 bg-primary rounded-full mt-2"
-              animate={{ y: [0, 12, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          <motion.svg
+            width="24"
+            height="32"
+            viewBox="0 0 24 32"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            animate={{ y: [0, 6, 0] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <motion.path
+              d="M12 8 L12 24 M12 24 L6 18 M12 24 L18 18"
+              stroke="#A3B087"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: [0.3, 1, 0.3] }}
+              transition={{ 
+                pathLength: { duration: 1.5, ease: "easeInOut" },
+                opacity: { duration: 1.8, repeat: Infinity, ease: "easeInOut" }
+              }}
             />
-          </div>
+          </motion.svg>
         </motion.div>
       </section>
 

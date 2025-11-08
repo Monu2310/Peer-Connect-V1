@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../core/AuthContext';
 import { getMyJoinedActivities, getMyCreatedActivities } from '../api/activityService';
-import { getFriends, sendFriendRequestById } from '../api/friendService';
+import { getFriends, sendFriendRequestById, getFriendRequests } from '../api/friendService';
 import { getFriendRecommendations, getActivityRecommendations, getUserInsights } from '../api/recommendationService';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
@@ -50,11 +50,12 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       setIsLoading(true);
       try {
-        const [insights, joined, created, friends, friendRecs, activityRecs] = await Promise.all([
+        const [insights, joined, created, friends, friendRequests, friendRecs, activityRecs] = await Promise.all([
           getUserInsights(),
           getMyJoinedActivities(),
           getMyCreatedActivities(),
           getFriends(),
+          getFriendRequests(),
           getFriendRecommendations(),
           getActivityRecommendations(),
         ]);
@@ -63,7 +64,7 @@ const Dashboard = () => {
           activitiesJoined: insights.joinedActivities || joined.length,
           activitiesCreated: insights.createdActivities || created.length,
           friendCount: friends.length,
-          pendingInvitations: 3, // Mocked for now
+          pendingInvitations: friendRequests.length,
         });
 
         setRecentActivities([...joined, ...created].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3));
@@ -127,8 +128,9 @@ const Dashboard = () => {
 
   return (
     <BeautifulBackground>
-      {/* Dashboard Main Content */}      <motion.div 
-        className="relative z-10 w-full max-w-7xl mx-auto p-4 md:p-6 lg:px-8"
+      {/* Dashboard Main Content */}
+      <motion.div 
+        className="relative z-10 w-full max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-12"
         variants={containerVariants}
         initial="hidden"
         animate="show"
@@ -149,11 +151,11 @@ const Dashboard = () => {
                 </p>
               </div>
               
-              {/* Action buttons with proper touch targets */}
+              {/* Action buttons with proper touch targets - same size */}
               <div className="flex flex-col sm:flex-row gap-3 lg:flex-shrink-0">
                 <Button 
                   asChild 
-                  className="min-h-12"
+                  className="h-11 px-6"
                 >
                   <Link to="/profile" className="flex items-center justify-center gap-2">
                     <User className="w-4 h-4" /> 
@@ -163,6 +165,7 @@ const Dashboard = () => {
                 <Button 
                   asChild 
                   variant="outline"
+                  className="h-11 px-6"
                 >
                   <Link to="/activities/new" className="flex items-center justify-center gap-2">
                     <PlusCircle className="w-4 h-4" /> 
@@ -180,8 +183,8 @@ const Dashboard = () => {
           {/* Activities Joined */}
           <div className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
             <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-primary" />
+              <div className="w-10 h-10 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-[#A3B087]" />
               </div>
               <div className="text-right">
                 <p className="text-2xl md:text-3xl font-bold">{stats.activitiesJoined}</p>
@@ -194,8 +197,8 @@ const Dashboard = () => {
           {/* Activities Created */}
           <div className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
             <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 rounded-xl bg-secondary/20 flex items-center justify-center">
-                <PlusCircle className="w-5 h-5 text-secondary" />
+              <div className="w-10 h-10 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
+                <PlusCircle className="w-5 h-5 text-[#A3B087]" />
               </div>
               <div className="text-right">
                 <p className="text-2xl md:text-3xl font-bold">{stats.activitiesCreated}</p>
@@ -208,8 +211,8 @@ const Dashboard = () => {
           {/* Friends */}
           <div className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
             <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center">
-                <Users className="w-5 h-5 text-accent" />
+              <div className="w-10 h-10 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
+                <Users className="w-5 h-5 text-[#A3B087]" />
               </div>
               <div className="text-right">
                 <p className="text-2xl md:text-3xl font-bold">{stats.friendCount}</p>
@@ -219,19 +222,21 @@ const Dashboard = () => {
             <p className="text-sm font-medium">Friends</p>
           </div>
 
-          {/* Pending Invitations */}
-          <div className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 rounded-xl bg-destructive/20 flex items-center justify-center">
-                <Mail className="w-5 h-5 text-destructive" />
+          {/* Friend Requests */}
+          <Link to="/friends">
+            <div className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
+                  <UserPlus className="w-5 h-5 text-[#A3B087]" />
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl md:text-3xl font-bold">{stats.pendingInvitations}</p>
+                  <p className="text-sm text-muted-foreground">Pending</p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-2xl md:text-3xl font-bold">{stats.pendingInvitations}</p>
-                <p className="text-sm text-muted-foreground">Pending</p>
-              </div>
+              <p className="text-sm font-medium">Friend Requests</p>
             </div>
-            <p className="text-sm font-medium">Invitations</p>
-          </div>
+          </Link>
         </motion.div>
 
         {/* Main content grid with proper responsive layout */}
