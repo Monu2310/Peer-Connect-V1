@@ -3,10 +3,7 @@ const router = express.Router();
 const userController = require('../controllers/userController');
 const auth = require('../middleware/auth');
 
-// @route   GET /api/users/:userId
-// @desc    Get user by ID
-// @access  Private
-router.get('/:userId', auth, userController.getUserById);
+// IMPORTANT: Specific routes MUST come before dynamic routes like /:userId
 
 // @route   PUT /api/users/profile
 // @desc    Update user profile
@@ -27,6 +24,17 @@ router.get('/dashboard/stats', auth, userController.getDashboardStats);
 // @desc    Find user by email
 // @access  Private
 router.get('/find-by-email', auth, userController.findUserByEmail);
+
+// @route   GET /api/users/notifications
+// @desc    Get notifications for current user
+// @access  Private
+router.get('/notifications', auth, userController.getNotifications);
+
+// @route   GET /api/users/:userId
+// @desc    Get user by ID
+// @access  Private
+// MUST BE LAST - catches any path that doesn't match above
+router.get('/:userId', auth, userController.getUserById);
 
 // @route   POST /api/users/random-avatar
 // @desc    Generate a random profile avatar for the current user

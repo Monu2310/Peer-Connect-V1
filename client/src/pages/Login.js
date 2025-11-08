@@ -2,16 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../core/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Mail, Lock, ArrowRight, Github, Chrome, Eye, EyeOff } from 'lucide-react';
 import axios from 'axios';
 import { API_URL } from '../api/config';
+import BeautifulBackground from '../components/effects/BeautifulBackground';
 
-// Button component (assuming you have a UI library, otherwise define it)
+// Button component
 const Button = ({ children, variant = 'default', type = 'button', className = '', disabled = false, onClick, ...props }) => {
-  const baseClasses = 'inline-flex items-center justify-center px-4 py-2 rounded-md font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseClasses = 'inline-flex items-center justify-center px-4 py-2 rounded-lg font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed';
   const variantClasses = {
-    default: 'bg-primary text-white hover:bg-primary/90',
-    outline: 'border border-border bg-transparent hover:bg-muted'
+    default: 'bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95',
+    outline: 'border-2 border-primary text-primary hover:bg-primary/10 font-medium active:scale-95'
   };
   
   return (
@@ -35,6 +36,7 @@ const Login = () => {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [serverStatus, setServerStatus] = useState('unknown'); // 'unknown', 'waking', 'ready'
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -157,128 +159,266 @@ const Login = () => {
   };
 
   return (
-    <div className="pt-16 min-h-screen bg-background text-foreground transition-colors duration-300 flex items-center justify-center">
-      <div className="relative w-full max-w-md px-4">
-        {/* Decorative elements */}
-        <div className="absolute -top-10 -left-10 w-32 h-32 bg-primary/10 dark:bg-primary/5 rounded-full blur-2xl z-0"></div>
-        <div className="absolute -bottom-8 -right-8 w-40 h-40 bg-secondary/10 dark:bg-secondary/5 rounded-full blur-3xl z-0"></div>
-        
+    <BeautifulBackground>
+      {/* Centered Content Container - Fits in viewport */}
+      <div className="flex items-center justify-center min-h-screen px-4 py-6">
         <motion.div 
-          className="relative z-10 bg-card shadow-xl dark:shadow-2xl dark:shadow-black/20 rounded-lg p-8 overflow-hidden"
+          className="w-full max-w-md"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-secondary"></div>
-          
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-            className="space-y-6"
-          >
-            <motion.div variants={itemVariants} className="text-center">
-              <h2 className="text-3xl font-bold gradient-text">Welcome Back</h2>
-              <p className="mt-2 text-gray-600 dark:text-gray-400">Sign in to your account to continue</p>
-            </motion.div>
+          {/* Glass-morphism Card with beautiful styling */}
+          <div className="backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 rounded-2xl shadow-2xl dark:shadow-2xl dark:shadow-black/40 p-6 sm:p-8 border border-white/20 dark:border-slate-700/30 overflow-hidden relative">
             
-            {/* Server status message */}
-            {getServerStatusMessage()}
+            {/* Decorative gradient accent top */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-sage-400 to-primary/50"></div>
             
-            {error && (
+            <motion.div
+              variants={{
+                hidden: { opacity: 0 },
+                show: {
+                  opacity: 1,
+                  transition: {
+                    staggerChildren: 0.12,
+                    delayChildren: 0.1
+                  }
+                }
+              }}
+              initial="hidden"
+              animate="show"
+              className="space-y-4"
+            >
+              {/* Header with Icon */}
               <motion.div 
-                className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-3 rounded-md text-sm"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
+                variants={{
+                  hidden: { opacity: 0, y: 10 },
+                  show: { opacity: 1, y: 0 }
+                }}
+                className="text-center space-y-1.5"
               >
-                {error}
-              </motion.div>
-            )}
-            
-            <motion.form variants={itemVariants} onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Email Address
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-background text-foreground"
-                  placeholder="you@example.com"
-                />
-              </div>
-              
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Password
-                  </label>
-                  <Link to="/forgot-password" className="text-sm text-primary dark:text-primary-light hover:underline">
-                    Forgot password?
-                  </Link>
+                <div className="flex justify-center mb-2">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg">
+                    <Lock className="w-6 h-6 text-white" strokeWidth={2.5} />
+                  </div>
                 </div>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-background text-foreground"
-                  placeholder="••••••••"
-                />
-              </div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Welcome Back</h1>
+                <p className="text-sm text-muted-foreground">
+                  Sign in to connect with peers
+                </p>
+              </motion.div>
               
-              <div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {serverStatus === 'waking' ? 'Waking Server...' : 'Signing In...'}
-                    </>
-                  ) : (
-                    "Sign In"
-                  )}
-                </Button>
-              </div>
-            </motion.form>
-            
-            <motion.div variants={itemVariants} className="text-center">
-              <p className="text-sm text-muted-foreground">
-                Don't have an account?{' '}
-                <Link to="/register" className="text-primary font-medium hover:underline">
-                  Create one now
-                </Link>
-              </p>
+              {/* Server Status Message */}
+              <motion.div
+                variants={{
+                  hidden: { opacity: 0, scale: 0.95 },
+                  show: { opacity: 1, scale: 1 }
+                }}
+              >
+                {getServerStatusMessage()}
+              </motion.div>
+              
+              {/* Error Message */}
+              <motion.div
+                variants={{
+                  hidden: { opacity: 0, scale: 0.95 },
+                  show: { opacity: 1, scale: 1 }
+                }}
+              >
+                {error && (
+                  <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 p-4 rounded-lg text-sm font-medium flex items-start">
+                    <div className="flex-shrink-0 mr-3 mt-0.5">
+                      <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5"></div>
+                    </div>
+                    {error}
+                  </div>
+                )}
+              </motion.div>
+              
+              {/* Login Form */}
+              <motion.form 
+                variants={{
+                  hidden: { opacity: 0 },
+                  show: {
+                    opacity: 1,
+                    transition: {
+                      staggerChildren: 0.1
+                    }
+                  }
+                }}
+                onSubmit={handleSubmit} 
+                className="space-y-4"
+              >
+                {/* Email Field */}
+                <motion.div
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    show: { opacity: 1, y: 0 }
+                  }}
+                >
+                  <label htmlFor="email" className="block text-sm font-semibold text-foreground mb-1.5 ml-0.5">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/60 pointer-events-none" strokeWidth={2} />
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="w-full pl-10 pr-4 py-2.5 text-sm rounded-lg border-2 border-primary/30 bg-background/50 dark:bg-slate-800/50 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                      placeholder="you@example.com"
+                    />
+                  </div>
+                </motion.div>
+                
+                {/* Password Field */}
+                <motion.div
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    show: { opacity: 1, y: 0 }
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-1.5 ml-0.5">
+                    <label htmlFor="password" className="block text-sm font-semibold text-foreground">
+                      Password
+                    </label>
+                    <Link to="/forgot-password" className="text-xs font-medium text-primary hover:text-primary/80 hover:underline transition-colors">
+                      Forgot?
+                    </Link>
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/60 pointer-events-none" strokeWidth={2} />
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      required
+                      value={formData.password}
+                      onChange={handleChange}
+                      className="w-full pl-10 pr-12 py-2.5 text-sm rounded-lg border-2 border-primary/30 bg-background/50 dark:bg-slate-800/50 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:text-primary"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </motion.div>
+                
+                {/* Sign In Button */}
+                <motion.div
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    show: { opacity: 1, y: 0 }
+                  }}
+                >
+                  <Button 
+                    type="submit" 
+                    className="w-full py-2.5 text-base"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <motion.div className="flex items-center" animate={{ opacity: [1, 0.6, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {serverStatus === 'waking' ? 'Waking Server...' : 'Signing In...'}
+                      </motion.div>
+                    ) : (
+                      <div className="flex items-center">
+                        Sign In
+                        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      </div>
+                    )}
+                  </Button>
+                </motion.div>
+              </motion.form>
+              
+              {/* Sign Up Link */}
+              <motion.div
+                variants={{
+                  hidden: { opacity: 0 },
+                  show: { opacity: 1 }
+                }}
+                className="text-center pt-1"
+              >
+                <p className="text-sm text-muted-foreground">
+                  Don't have an account?{' '}
+                  <Link to="/register" className="font-semibold text-primary hover:text-primary/80 hover:underline transition-colors">
+                    Create one now
+                  </Link>
+                </p>
+              </motion.div>
+              
+              {/* OAuth Buttons - Removed to save space */}
+              <motion.div
+                variants={{
+                  hidden: { opacity: 0 },
+                  show: {
+                    opacity: 1,
+                    transition: {
+                      staggerChildren: 0.08
+                    }
+                  }
+                }}
+                className="hidden"
+              >
+                <motion.button
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    show: { opacity: 1, y: 0 }
+                  }}
+                  type="button"
+                  className="flex items-center justify-center py-3 px-4 rounded-lg border-2 border-primary/30 bg-background/50 dark:bg-slate-800/50 hover:border-primary/60 hover:bg-primary/5 transition-all duration-200 font-medium text-sm group"
+                >
+                  <Github className="w-5 h-5 text-foreground mr-2 group-hover:text-primary transition-colors" strokeWidth={2} />
+                  GitHub
+                </motion.button>
+                <motion.button
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    show: { opacity: 1, y: 0 }
+                  }}
+                  type="button"
+                  className="flex items-center justify-center py-3 px-4 rounded-lg border-2 border-primary/30 bg-background/50 dark:bg-slate-800/50 hover:border-primary/60 hover:bg-primary/5 transition-all duration-200 font-medium text-sm group"
+                >
+                  <Chrome className="w-5 h-5 text-foreground mr-2 group-hover:text-primary transition-colors" strokeWidth={2} />
+                  Google
+                </motion.button>
+              </motion.div>
             </motion.div>
-            
-            <motion.div variants={itemVariants} className="relative flex items-center justify-center">
-              <div className="absolute border-t border-border w-full"></div>
-              <div className="relative bg-card px-4 text-sm text-muted-foreground">
-                or continue with
-              </div>
-            </motion.div>
+          </div>
 
-            <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4">
-              <Button variant="outline" type="button">
-                <img src="https://www.svgrepo.com/show/506499/github.svg" alt="GitHub" className="h-5 w-5 mr-2" />
-                GitHub
-              </Button>
-              <Button variant="outline" type="button">
-                <img src="https://www.svgrepo.com/show/506498/google.svg" alt="Google" className="h-5 w-5 mr-2" />
-                Google
-              </Button>
-            </motion.div>
-          </motion.div>
+          {/* Footer Text */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6, duration: 0.6 }}
+            className="text-center text-xs text-muted-foreground mt-3"
+          >
+            By signing in, you agree to our{' '}
+            <a href="#" className="text-primary hover:underline font-medium">
+              Terms
+            </a>
+            {' '}and{' '}
+            <a href="#" className="text-primary hover:underline font-medium">
+              Privacy
+            </a>
+          </motion.p>
         </motion.div>
       </div>
-    </div>
+    </BeautifulBackground>
   );
 };
 

@@ -75,17 +75,14 @@ export const updateUserProfile = async (profileData) => {
 // Upload profile picture
 export const uploadProfilePicture = async (formData) => {
   try {
-    const response = await api.post('/api/users/profile/picture', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
+    // Since backend doesn't have file upload, generate a random avatar instead
+    const response = await api.post('/api/users/random-avatar', {});
     
     // Process profile picture URL if needed
     if (response.data && response.data.profilePicture) {
       response.data.profilePicture = processImageUrl(response.data.profilePicture);
-    } else if (response.data && response.data.imageUrl) {
-      response.data.imageUrl = processImageUrl(response.data.imageUrl);
+    } else if (response.data && response.data.user && response.data.user.profilePicture) {
+      response.data.profilePicture = processImageUrl(response.data.user.profilePicture);
     }
     
     return response.data;

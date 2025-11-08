@@ -21,11 +21,11 @@ class DataPreloader {
     console.log('🚀 Starting critical data preload for user:', userId);
     
     const criticalRequests = [
-      { key: 'user-profile', fn: () => api.get(`/users/${userId}`), priority: 'immediate' },
-      { key: 'user-friends', fn: () => api.get('/friends'), priority: 'immediate' },
-      { key: 'recent-activities', fn: () => api.get('/activities?limit=20'), priority: 'fast' },
-      { key: 'notifications', fn: () => api.get('/users/notifications'), priority: 'fast' },
-      { key: 'recommendations', fn: () => api.get('/recommendations'), priority: 'normal' }
+      { key: 'user-profile', fn: () => api.get(`/api/users/${userId}`), priority: 'immediate' },
+      { key: 'user-friends', fn: () => api.get('/api/friends'), priority: 'immediate' },
+      { key: 'recent-activities', fn: () => api.get('/api/activities?limit=20'), priority: 'fast' },
+      { key: 'notifications', fn: () => api.get('/api/users/notifications'), priority: 'fast' },
+      { key: 'recommendations', fn: () => api.get('/api/recommendations'), priority: 'normal' }
     ];
 
     // Execute immediate requests in parallel
@@ -152,24 +152,24 @@ class DataPreloader {
   async preloadPageData(page) {
     const pageDataMap = {
       '/dashboard': [
-        { key: 'dashboard-activities', fn: () => api.get('/activities?featured=true'), priority: 'fast' },
-        { key: 'dashboard-stats', fn: () => api.get('/users/stats'), priority: 'normal' }
+        { key: 'dashboard-activities', fn: () => api.get('/api/activities?featured=true'), priority: 'fast' },
+        { key: 'dashboard-stats', fn: () => api.get('/api/users/stats'), priority: 'normal' }
       ],
       '/activities': [
-        { key: 'all-activities', fn: () => api.get('/activities?limit=50'), priority: 'fast' },
-        { key: 'activity-categories', fn: () => api.get('/activities/categories'), priority: 'normal' }
+        { key: 'all-activities', fn: () => api.get('/api/activities?limit=50'), priority: 'fast' },
+        { key: 'activity-categories', fn: () => api.get('/api/activities/categories'), priority: 'normal' }
       ],
       '/friends': [
-        { key: 'friend-requests', fn: () => api.get('/friends/requests'), priority: 'fast' },
-        { key: 'friend-suggestions', fn: () => api.get('/friends/suggestions'), priority: 'normal' }
+        { key: 'friend-requests', fn: () => api.get('/api/friends/requests'), priority: 'fast' },
+        { key: 'friend-suggestions', fn: () => api.get('/api/friends/suggestions'), priority: 'normal' }
       ],
       '/messages': [
-        { key: 'conversations', fn: () => api.get('/messages/conversations'), priority: 'fast' },
-        { key: 'unread-count', fn: () => api.get('/messages/unread-count'), priority: 'immediate' }
+        { key: 'conversations', fn: () => api.get('/api/messages/conversations'), priority: 'fast' },
+        { key: 'unread-count', fn: () => api.get('/api/messages/unread-count'), priority: 'immediate' }
       ],
       '/profile': [
-        { key: 'user-activities', fn: () => api.get('/activities/user'), priority: 'fast' },
-        { key: 'user-stats', fn: () => api.get('/users/profile/stats'), priority: 'normal' }
+        { key: 'user-activities', fn: () => api.get('/api/activities/user'), priority: 'fast' },
+        { key: 'user-stats', fn: () => api.get('/api/users/profile/stats'), priority: 'normal' }
       ]
     };
 
@@ -192,8 +192,8 @@ class DataPreloader {
 
   async syncCriticalData(userId) {
     const criticalSyncRequests = [
-      { key: 'notifications-sync', fn: () => api.get('/users/notifications?since=' + this.getLastSyncTime('notifications')), priority: 'immediate' },
-      { key: 'messages-sync', fn: () => api.get('/messages/latest'), priority: 'immediate' }
+      { key: 'notifications-sync', fn: () => api.get('/api/users/notifications?since=' + this.getLastSyncTime('notifications')), priority: 'immediate' },
+      { key: 'messages-sync', fn: () => api.get('/api/messages/latest'), priority: 'immediate' }
     ];
 
     await this.executeBatch(criticalSyncRequests);
@@ -201,8 +201,8 @@ class DataPreloader {
 
   async syncRegularData(userId) {
     const regularSyncRequests = [
-      { key: 'activities-sync', fn: () => api.get('/activities?updated_since=' + this.getLastSyncTime('activities')), priority: 'normal' },
-      { key: 'friends-sync', fn: () => api.get('/friends?updated_since=' + this.getLastSyncTime('friends')), priority: 'normal' }
+      { key: 'activities-sync', fn: () => api.get('/api/activities?updated_since=' + this.getLastSyncTime('activities')), priority: 'normal' },
+      { key: 'friends-sync', fn: () => api.get('/api/friends?updated_since=' + this.getLastSyncTime('friends')), priority: 'normal' }
     ];
 
     await this.executeBatch(regularSyncRequests);

@@ -5,9 +5,13 @@ import { useTheme } from '../../core/ThemeContext';
 const DarkModeToggle = () => {
   const { isDarkMode, toggleDarkMode } = useTheme();
 
+  const handleClick = (event) => {
+    toggleDarkMode(event);
+  };
+
   return (
     <motion.button
-      onClick={toggleDarkMode}
+      onClick={handleClick}
       className="relative inline-flex items-center justify-center p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none transition-all duration-200 hover:shadow-md active:scale-95"
       whileTap={{ scale: 0.9 }}
       whileHover={{ scale: 1.1 }}

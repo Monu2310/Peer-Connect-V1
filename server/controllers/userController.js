@@ -221,3 +221,23 @@ exports.generateRandomAvatar = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
+// Get notifications for current user
+exports.getNotifications = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { since } = req.query;
+    
+    // For now, return empty notifications array
+    // This endpoint is called by the frontend but notifications feature isn't fully implemented
+    // TODO: Implement full notification system with database storage
+    
+    res.json({
+      notifications: [],
+      total: 0
+    });
+  } catch (err) {
+    console.error('Error getting notifications:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};

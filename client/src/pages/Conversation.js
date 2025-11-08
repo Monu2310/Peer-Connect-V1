@@ -136,18 +136,20 @@ const Conversation = () => {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground">
+    <div className="flex flex-col min-h-screen h-screen max-h-screen bg-background text-foreground overflow-hidden">
       {/* Header with recipient info */}
-      <Card className="rounded-none border-b border-border p-4 flex items-center shadow-sm">
-        <Avatar className="h-10 w-10">
+      <Card className="rounded-none border-b border-border p-3 sm:p-4 flex items-center shadow-sm flex-shrink-0">
+        <Avatar className="h-9 w-9 sm:h-10 sm:w-10">
           <AvatarImage src={recipient?.profilePicture || '/avatar.svg'} />
           <AvatarFallback>{recipient?.username.charAt(0).toUpperCase()}</AvatarFallback>
         </Avatar>
-        <h1 className="text-xl font-semibold ml-3 gradient-text">{recipient?.username}</h1>
+        <h1 className="text-lg sm:text-xl font-semibold ml-3 font-bold truncate">{recipient?.username}</h1>
       </Card>
       
-      {/* Messages container */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+      {/* Messages container with proper flex-1 and overflow */}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 custom-scrollbar"
+           style={{ minHeight: 0 }} /* Critical for flex child with overflow */
+      >
         <AnimatePresence initial={false}>
           {messages.length === 0 ? (
             <motion.div 
@@ -205,22 +207,22 @@ const Conversation = () => {
         <div ref={messagesEndRef} />
       </div>
       
-      {/* Message input form */}
-      <form onSubmit={handleSubmit} className="flex items-center p-4 border-t border-border bg-card shadow-lg">
+      {/* Message input form - Fixed at bottom */}
+      <form onSubmit={handleSubmit} className="flex items-center p-3 sm:p-4 border-t border-border bg-card shadow-lg flex-shrink-0">
         <Input
           type="text"
           placeholder="Type a message..."
-          className="flex-1 mr-2 input shadow-md"
+          className="flex-1 mr-2 text-sm sm:text-base input shadow-md"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           onKeyPress={handleTyping}
         />
         <Button 
           type="submit"
-          className="btn-primary"
+          className="btn-primary flex-shrink-0 h-10 w-10 sm:h-auto sm:w-auto sm:px-4"
           disabled={!newMessage.trim()}
         >
-          <Send className="h-5 w-5" />
+          <Send className="h-4 w-4 sm:h-5 sm:w-5" />
         </Button>
       </form>
     </div>

@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { UserCheck, UserX, Mail, MessageSquare, Loader2, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import BeautifulBackground from '../components/effects/BeautifulBackground';
 
 const Friends = () => {
   const { currentUser } = useAuth();
@@ -121,37 +122,35 @@ const Friends = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-4 sm:p-6 lg:p-8 bg-background text-foreground min-h-screen flex items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="ml-4 text-lg">Loading friends data...</p>
-      </div>
+      <BeautifulBackground>
+        <div className="container mx-auto p-4 sm:p-6 lg:p-8 min-h-screen flex items-center justify-center">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="ml-4 text-lg">Loading friends data...</p>
+        </div>
+      </BeautifulBackground>
     );
   }
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-background to-muted/20">
-      {/* Background decorative elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
-        <div className="absolute top-[20%] right-[10%] w-72 h-72 bg-gradient-to-r from-primary/15 to-accent/15 rounded-full blur-3xl" />
-        <div className="absolute bottom-[15%] left-[5%] w-56 h-56 bg-gradient-to-r from-secondary/10 to-primary/10 rounded-full blur-3xl" />
-      </div>
-
+    <BeautifulBackground>
       <motion.div
-        className="relative z-0 w-full"
+        className="relative z-10 w-full"
         variants={containerVariants}
         initial="hidden"
         animate="show"
       >
-        <div className="w-full max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
+        <div className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           
           {/* Header */}
           <motion.div variants={itemVariants} className="pt-6 md:pt-8 pb-6 md:pb-8">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold gradient-text mb-2">
-              My Connections
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Manage your friendships and connect with new people.
-            </p>
+            <div className="space-y-2">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold gradient-text">
+                My Connections
+              </h1>
+              <p className="text-base md:text-lg text-muted-foreground">
+                Manage your friendships and connect with new people.
+              </p>
+            </div>
           </motion.div>
           
           {/* Alerts */}
@@ -310,7 +309,7 @@ const Friends = () => {
                           onChange={(e) => setNewFriendEmail(e.target.value)} 
                           placeholder="friend@example.com" 
                           required 
-                          className="h-11 bg-card/50 border-border/50 rounded-xl"
+                          className="h-11 bg-background border-border/50 rounded-xl"
                         />
                       </div>
                       <Button type="submit" className="w-full h-11 btn-gradient-primary font-semibold" disabled={sendRequestLoading}>
@@ -333,7 +332,7 @@ const Friends = () => {
           </Tabs>
         </div>
       </motion.div>
-    </div>
+    </BeautifulBackground>
   );
 };
 

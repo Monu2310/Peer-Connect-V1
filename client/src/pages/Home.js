@@ -3,6 +3,7 @@ import { useAuth } from '../core/AuthContext';
 import { Button } from '../components/ui/button';
 import { motion } from 'framer-motion';
 import { ArrowRight, Users, Search, PlusCircle, Heart } from 'lucide-react';
+import BeautifulBackground from '../components/effects/BeautifulBackground';
 
 const Home = () => {
   const { isAuthenticated } = useAuth();
@@ -24,18 +25,9 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 overflow-hidden">
-      
+    <BeautifulBackground>
       {/* Hero Section - Mobile-first with 8pt grid */}
       <section className="relative flex items-center justify-center px-4 pt-20 pb-16 md:pt-28 md:pb-24 lg:pt-32 lg:pb-32 min-h-[80vh]">
-        
-        {/* Background gradient orbs */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-[10%] left-[5%] w-72 h-72 md:w-96 md:h-96 bg-gradient-to-r from-primary/30 to-accent/30 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-[15%] right-[10%] w-64 h-64 md:w-80 md:h-80 bg-gradient-to-r from-accent/20 to-primary/20 rounded-full blur-3xl animate-pulse delay-700" />
-          <div className="absolute top-1/2 right-[5%] w-48 h-48 md:w-64 md:h-64 bg-gradient-to-r from-secondary/25 to-primary/25 rounded-full blur-3xl animate-pulse delay-1000" />
-        </div>
-
         <div className="relative z-10 w-full max-w-6xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 32, scale: 0.95 }}
@@ -48,12 +40,12 @@ const Home = () => {
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-6 md:mb-8 leading-tight"
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-6 md:mb-8 leading-tight text-foreground"
             >
-              <span className="block gradient-text">
+              <span className="block">
                 Connect with Your
               </span>
-              <span className="block gradient-text-2">
+              <span className="block text-primary">
                 Peers, Effortlessly
               </span>
             </motion.h1>
@@ -65,7 +57,7 @@ const Home = () => {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-4xl mx-auto mb-8 md:mb-12 leading-relaxed px-4"
             >
-              Discover a world of possibilities with <span className="gradient-text font-semibold">PeerConnect</span>. 
+              Discover a world of possibilities with <span className="font-semibold text-primary">PeerConnect</span>. 
               From study groups to weekend adventures, find your tribe and create unforgettable experiences.
             </motion.p>
             
@@ -80,11 +72,11 @@ const Home = () => {
                 <Button 
                   asChild 
                   size="lg" 
-                  className="w-full sm:w-auto min-h-12 btn-gradient-primary text-white font-semibold px-8 py-4 rounded-xl shadow-lg transform hover:scale-[1.02] transition-all duration-300"
+                  className="w-full sm:w-auto"
                 >
                   <Link to="/dashboard" className="flex items-center justify-center gap-2">
                     Go to Dashboard 
-                    <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                   </Link>
                 </Button>
               ) : (
@@ -92,10 +84,10 @@ const Home = () => {
                   <Button 
                     asChild 
                     size="lg" 
-                    className="w-full sm:w-auto min-h-12 btn-gradient-primary text-white font-semibold px-8 py-4 rounded-xl shadow-lg transform hover:scale-[1.02] transition-all duration-300"
+                    className="w-full sm:w-auto"
                   >
-                    <Link to="/register" className="flex items-center justify-center gap-3">
-                      <Heart className="w-5 h-5" />
+                    <Link to="/register" className="flex items-center justify-center gap-2">
+                      <Heart className="w-4 h-4" />
                       Get Started Free
                     </Link>
                   </Button>
@@ -299,7 +291,7 @@ const Home = () => {
           </p>
         </div>
       </footer>
-    </div>
+    </BeautifulBackground>
   );
 };
 

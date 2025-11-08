@@ -17,42 +17,61 @@ const getDefaultImageForCategory = (category) => {
 // Create a new activity
 exports.createActivity = async (req, res) => {
   try {
-    console.log('Activity Controller: createActivity - req.user.id:', req.user.id);
+    console.log('Activity Controller: createActivity - User ID:', req.user.id);
+    console.log('Activity Controller: createActivity - Request Body:', req.body);
+    
     const { 
       title, 
       description, 
       category, 
       location, 
-      date, 
+      date,
+      time,
       maxParticipants,
       image 
     } = req.body;
+
+    // Validate required fields
+    if (!title || !description || !category || !location || !date) {
+      console.error('Activity Controller: Missing required fields');
+      return res.status(400).json({ 
+        message: 'Missing required fields', 
+        required: ['title', 'description', 'category', 'location', 'date'] 
+      });
+    }
 
     // Create new activity
     const activity = new Activity({
       title,
       description,
-      category,
+      category: category?.toLowerCase(), // Ensure lowercase
       location,
       date,
-      maxParticipants,
+      time,
+      maxParticipants: maxParticipants || null,
       image: image || getDefaultImageForCategory(category), // Use default image if none provided
       creator: req.user.id,
       participants: [req.user.id] // Creator is automatically a participant
     });
 
+    console.log('Activity Controller: Saving activity...');
     await activity.save();
+    console.log('Activity Controller: Activity saved successfully');
     
     // Populate creator info
     const populatedActivity = await Activity.findById(activity._id)
       .populate('creator', 'username profilePicture')
       .populate('participants', 'username profilePicture');
 
-    console.log('Activity Controller: createActivity - Created Activity:', populatedActivity);
+    console.log('Activity Controller: Created Activity:', populatedActivity.title);
     res.status(201).json(populatedActivity);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    console.error('Activity Controller: Error creating activity:', err);
+    console.error('Error stack:', err.stack);
+    res.status(500).json({ 
+      message: 'Server error creating activity', 
+      error: err.message 
+    });
   }
 };
 
@@ -60,7 +79,7 @@ exports.createActivity = async (req, res) => {
 exports.getActivities = async (req, res) => {
   try {
     console.log('Activity Controller: getActivities - req.user.id:', req.user.id);
-    const { category, search } = req.query;
+    const { category, search, limit = 20, skip = 0 } = req.query;
     
     let query = {};
     
@@ -81,13 +100,26 @@ exports.getActivities = async (req, res) => {
     // Filter out past activities
     query.date = { $gte: new Date() };
     
+    // Use lean() for better performance - returns plain objects instead of Mongoose documents
     const activities = await Activity.find(query)
-      .sort({ date: 1 }) // Sort by upcoming date
+      .select('title description category location date creator participants maxParticipants image')
+      .sort({ date: 1 })
+      .limit(parseInt(limit))
+      .skip(parseInt(skip))
       .populate('creator', 'username profilePicture')
-      .populate('participants', 'username profilePicture');
+      .populate('participants', 'username profilePicture')
+      .lean();
+    
+    // Get total count for pagination
+    const total = await Activity.countDocuments(query);
     
     console.log('Activity Controller: getActivities - Activities found:', activities.length);
-    res.json(activities);
+    res.json({
+      activities,
+      total,
+      limit: parseInt(limit),
+      skip: parseInt(skip)
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');

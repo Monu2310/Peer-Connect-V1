@@ -63,27 +63,7 @@ export const getFriendRequests = async () => {
 export const sendFriendRequestById = async (userId) => {
   try {
     console.log("Sending friend request to userId:", userId);
-    
-    // Try different endpoint formats until one works
-    let response;
-    
-    try {
-      // First try the expected endpoint
-      response = await api.post('/api/friends/request', { userId });
-    } catch (err) {
-      console.log("First attempt failed, trying alternative endpoint");
-      
-      try {
-        // Try alternative endpoint
-        response = await api.post('/api/friends/request-by-id', { userId });
-      } catch (err) {
-        console.log("Second attempt failed, trying raw userId in URL");
-        
-        // Try sending in URL
-        response = await api.post(`/api/friends/request/${userId}`);
-      }
-    }
-    
+    const response = await api.post('/api/friends/request-by-id', { userId });
     console.log("Friend request response:", response.data);
     return response.data;
   } catch (error) {
@@ -115,7 +95,7 @@ export const acceptFriendRequest = async (requestId) => {
 // Reject friend request
 export const rejectFriendRequest = async (requestId) => {
   try {
-    const response = await api.put(`/api/friends/reject/${requestId}`);
+    const response = await api.put(`/api/friends/decline/${requestId}`);
     return response.data;
   } catch (error) {
     console.error('Error rejecting friend request:', error.response?.data || error.message);

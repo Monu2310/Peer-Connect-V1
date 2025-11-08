@@ -107,6 +107,10 @@ const UserSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+// Add indexes for faster queries (username and email are already indexed by unique: true)
+UserSchema.index({ createdAt: -1 });
+UserSchema.index({ interests: 1 });
+
 // Hash password before saving
 UserSchema.pre('save', async function(next) {
   if (!this.isModified('password')) {

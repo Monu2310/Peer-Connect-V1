@@ -1,21 +1,23 @@
 const Redis = require('ioredis');
 const NodeCache = require('node-cache');
 
-// Redis configuration - more forgiving for development
-const redisConfig = {
-  host: process.env.REDIS_HOST || 'localhost',
-  port: process.env.REDIS_PORT || 6379,
-  password: process.env.REDIS_PASSWORD || null,
-  retryDelayOnFailover: 100,
-  enableReadyCheck: false,
-  maxRetriesPerRequest: 3, // Limit retries
-  lazyConnect: true,
-  connectTimeout: 5000, // Shorter timeout
-  commandTimeout: 3000, // Shorter timeout
-  family: 4,
-  keepAlive: 30000,
-  db: 0
-};
+// Redis configuration - production-ready for Render.com
+const redisConfig = process.env.REDIS_URL 
+  ? process.env.REDIS_URL // Use Redis URL from Render (e.g., redis://...)
+  : {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: process.env.REDIS_PORT || 6379,
+      password: process.env.REDIS_PASSWORD || null,
+      retryDelayOnFailover: 100,
+      enableReadyCheck: false,
+      maxRetriesPerRequest: 3,
+      lazyConnect: true,
+      connectTimeout: 5000,
+      commandTimeout: 3000,
+      family: 4,
+      keepAlive: 30000,
+      db: 0
+    };
 
 // Primary Redis instance with error handling
 let redis;

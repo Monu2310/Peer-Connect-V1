@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Calendar, Users, PlusCircle, UserPlus, Mail, User, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
+import BeautifulBackground from '../components/effects/BeautifulBackground';
 
 const Dashboard = () => {
   const { currentUser } = useAuth();
@@ -81,7 +82,7 @@ const Dashboard = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4 md:p-6 lg:p-8">
+      <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
         <motion.div 
           variants={containerVariants} 
           initial="hidden" 
@@ -125,16 +126,9 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 relative">
-      
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-[10%] right-[5%] w-64 h-64 md:w-80 md:h-80 bg-gradient-to-r from-primary/20 to-accent/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-[20%] left-[10%] w-48 h-48 md:w-64 md:h-64 bg-gradient-to-r from-secondary/15 to-primary/15 rounded-full blur-3xl" />
-      </div>
-
-      <motion.div 
-        className="relative z-10 w-full max-w-7xl mx-auto p-4 md:p-6 lg:p-8"
+    <BeautifulBackground>
+      {/* Dashboard Main Content */}      <motion.div 
+        className="relative z-10 w-full max-w-7xl mx-auto p-4 md:p-6 lg:px-8"
         variants={containerVariants}
         initial="hidden"
         animate="show"
@@ -142,49 +136,40 @@ const Dashboard = () => {
         
         {/* Header Section with improved spacing */}
         <motion.div variants={itemVariants} className="mb-8 md:mb-12">
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+          <div className="flex flex-col gap-6">
             
-            {/* Welcome text */}
-            <div className="space-y-4">
-              <motion.div
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.4 }}
-              >
-                <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium text-primary">Your Personal Hub</span>
-              </motion.div>
+            {/* Welcome text with action buttons on the same line */}
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-2">
+                  Welcome back, {currentUser?.username || 'Friend'}!
+                </h1>
+                <p className="text-base md:text-lg lg:text-xl text-muted-foreground max-w-2xl">
+                  Ready to create some amazing memories today?
+                </p>
+              </div>
               
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold gradient-text">
-                Welcome back, {currentUser?.username || 'Friend'}!
-              </h1>
-              <p className="text-base md:text-lg lg:text-xl text-muted-foreground max-w-2xl">
-                Ready to create some amazing memories today?
-              </p>
-            </div>
-            
-            {/* Action buttons with proper touch targets */}
-            <div className="flex flex-col sm:flex-row gap-3 lg:flex-shrink-0">
-              <Button 
-                asChild 
-                className="min-h-12 btn-gradient-primary text-white font-semibold px-6 rounded-xl shadow-lg transform hover:scale-[1.02] transition-all duration-300"
-              >
-                <Link to="/profile" className="flex items-center justify-center gap-3">
-                  <User className="w-5 h-5" /> 
-                  My Profile
-                </Link>
-              </Button>
-              <Button 
-                asChild 
-                variant="outline"
-                className="min-h-12 border-2 border-primary/30 text-primary hover:bg-primary/10 font-semibold px-6 rounded-xl transition-all duration-300"
-              >
-                <Link to="/activities/new" className="flex items-center justify-center gap-3">
-                  <PlusCircle className="w-5 h-5" /> 
-                  Create Activity
-                </Link>
-              </Button>
+              {/* Action buttons with proper touch targets */}
+              <div className="flex flex-col sm:flex-row gap-3 lg:flex-shrink-0">
+                <Button 
+                  asChild 
+                  className="min-h-12"
+                >
+                  <Link to="/profile" className="flex items-center justify-center gap-2">
+                    <User className="w-4 h-4" /> 
+                    My Profile
+                  </Link>
+                </Button>
+                <Button 
+                  asChild 
+                  variant="outline"
+                >
+                  <Link to="/activities/new" className="flex items-center justify-center gap-2">
+                    <PlusCircle className="w-4 h-4" /> 
+                    Create Activity
+                  </Link>
+                </Button>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -254,7 +239,7 @@ const Dashboard = () => {
           
           {/* Recent Activities - Left column */}
           <motion.div variants={itemVariants} className="lg:col-span-2 space-y-6">
-            <h2 className="text-xl md:text-2xl font-bold gradient-text-2">
+            <h2 className="text-xl md:text-2xl font-bold font-bold">
               Recent Activity
             </h2>
             
@@ -297,7 +282,7 @@ const Dashboard = () => {
 
           {/* Friend Recommendations - Right column */}
           <motion.div variants={itemVariants} className="space-y-6">
-            <h2 className="text-xl md:text-2xl font-bold gradient-text-3">
+            <h2 className="text-xl md:text-2xl font-bold font-bold">
               Friend Recommendations
             </h2>
             
@@ -343,7 +328,7 @@ const Dashboard = () => {
                   <Button 
                     size="sm" 
                     onClick={() => sendFriendRequestById(friend._id)} 
-                    className="w-full min-h-8 btn-gradient-secondary text-white font-medium rounded-lg"
+                    className="w-full min-h-8  text-white font-medium rounded-lg"
                   >
                     <UserPlus className="w-4 h-4 mr-2" /> 
                     Add Friend
@@ -363,7 +348,7 @@ const Dashboard = () => {
 
         {/* Recommended Activities section */}
         <motion.div variants={itemVariants} className="mt-8 md:mt-12">
-          <h2 className="text-xl md:text-2xl font-bold gradient-text mb-6">
+          <h2 className="text-xl md:text-2xl font-bold font-bold mb-6">
             Recommended Activities
           </h2>
           
@@ -421,7 +406,7 @@ const Dashboard = () => {
           )}
         </motion.div>
       </motion.div>
-    </div>
+    </BeautifulBackground>
   );
 };
 

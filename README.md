@@ -85,6 +85,33 @@ A campus social network application that helps students connect with peers, join
 3. Make your changes
 4. Submit a pull request
 
+## � Quick Start
+
+```bash
+# Backend
+cd server
+npm install
+npm start
+
+# Frontend (new terminal)
+cd client
+npm install
+npm start
+```
+
+Visit http://localhost:3000
+
+**Build Cache Issues?** See [QUICK_FIX_GUIDE.md](./QUICK_FIX_GUIDE.md)
+
+## �📚 Documentation
+
+- **[START HERE](./START_HERE.md)** - Executive summary of the project
+- **[UI/UX Guidelines](./UI_UX_GUIDELINES.md)** - UI best practices and design principles
+- **[Redis Implementation](./REDIS_IMPLEMENTATION.md)** - Redis caching verification
+- **[Project Structure](./client/src/PROJECT_STRUCTURE.md)** - Frontend directory organization
+- **[Server Architecture](./SERVER_STRUCTURE.md)** - Backend API structure and endpoints
+- **[Performance Optimization](./PERFORMANCE_OPTIMIZATION.md)** - Performance improvements
+- **[Cleanup Report](./CLEANUP_REPORT.md)** - Project restructuring details
 
 ## 👤 Author
 

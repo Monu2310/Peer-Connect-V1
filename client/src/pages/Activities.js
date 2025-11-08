@@ -6,6 +6,7 @@ import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { PlusCircle, Search as SearchIcon, Filter, SortAsc, Calendar, MapPin, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import BeautifulBackground from '../components/effects/BeautifulBackground';
 
 const Activities = () => {
   const [activities, setActivities] = useState([]);
@@ -81,7 +82,7 @@ const Activities = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4 md:p-6 lg:p-8">
+      <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
         <div className="w-full max-w-7xl mx-auto">
           
           {/* Loading header */}
@@ -123,7 +124,7 @@ const Activities = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-4 md:p-6 lg:p-8">
+      <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
         <div className="w-full max-w-4xl mx-auto text-center">
           <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-8">
             <h2 className="text-2xl font-bold text-destructive mb-4">Something went wrong</h2>
@@ -141,13 +142,7 @@ const Activities = () => {
   }
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-background to-muted/20 overflow-x-hidden">
-      {/* Background decorative elements - FIXED position to prevent cutoff */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
-        <div className="absolute top-[15%] right-[5%] w-64 h-64 md:w-80 md:h-80 bg-gradient-to-r from-primary/15 to-accent/15 rounded-full blur-3xl" />
-        <div className="absolute bottom-[25%] left-[10%] w-48 h-48 md:w-64 md:h-64 bg-gradient-to-r from-secondary/10 to-primary/10 rounded-full blur-3xl" />
-      </div>
-
+    <BeautifulBackground>
       <motion.div
         className="relative z-0 w-full"
         variants={containerVariants}
@@ -363,7 +358,7 @@ const Activities = () => {
         </AnimatePresence>
         </div>
       </motion.div>
-    </div>
+    </BeautifulBackground>
   );
 };
 

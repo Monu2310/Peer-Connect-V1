@@ -7,10 +7,11 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { Calendar } from '../components/ui/calendar';
-import { Calendar as CalendarIcon, Loader2, Clock, Sparkles, MapPin, Users } from 'lucide-react';
+import { Calendar as CalendarIcon, Loader2, Clock, PlusCircle, MapPin, Users, Sparkles } from 'lucide-react';
 import { format, isBefore, startOfDay, isToday, parseISO } from 'date-fns';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import BeautifulBackground from '../components/effects/BeautifulBackground';
 
 const CreateActivity = () => {
   const navigate = useNavigate();
@@ -111,121 +112,100 @@ const CreateActivity = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* S-tier background effects */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10"></div>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,hsl(var(--primary)/0.1),transparent_50%)]"></div>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,hsl(var(--accent)/0.1),transparent_50%)]"></div>
-
-      {/* Container with 8pt grid spacing */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 lg:py-20">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="show"
-          className="max-w-4xl mx-auto"
-        >
-          {/* Header - Mobile-first typography */}
-          <motion.div variants={itemVariants} className="text-center mb-8 md:mb-12">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6 backdrop-blur-sm">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Create Something Amazing</span>
-            </div>
-            
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 font-heading">
-              <span className="gradient-text">
+    <BeautifulBackground>
+      <motion.div
+        className="relative z-10 w-full"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
+        <div className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+          
+          {/* Header Section - Consistent with Dashboard & Activities */}
+          <motion.div variants={itemVariants} className="pt-6 md:pt-8 pb-6 md:pb-8">
+            <div className="space-y-2">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold gradient-text">
                 Create Activity
-              </span>
-            </h1>
-            <p className="text-lg leading-relaxed text-muted-foreground max-w-2xl mx-auto">
-              Share your passion with the world. Create an experience that brings people together.
-            </p>
+              </h1>
+              <p className="text-base md:text-lg text-muted-foreground max-w-3xl">
+                Bring people together. Create an activity and start building connections.
+              </p>
+            </div>
           </motion.div>
 
-          {/* Error message - Consistent styling */}
+          {/* Error message */}
           <AnimatePresence>
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/20 backdrop-blur-sm"
+                className="mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/30 backdrop-blur-sm"
               >
-                <p className="text-destructive text-center text-sm leading-relaxed font-medium">{error}</p>
+                <p className="text-destructive text-sm font-medium">{error}</p>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Form card - S-tier elevation and spacing */}
-          <motion.div variants={itemVariants}>
-            <div className="bg-card/50 backdrop-blur-md border border-border/20 rounded-lg shadow-lg p-6 md:p-8 transition-all duration-300">
-              <form onSubmit={onSubmit} className="space-y-6">
+          {/* Main Content */}
+          <motion.div variants={itemVariants} className="pb-8">
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 md:p-8 lg:p-10">
+              <form onSubmit={onSubmit} className="space-y-8">
+              
+              {/* Activity Details Section */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-border"></div>
+                  <h2 className="text-lg font-semibold text-foreground">Activity Details</h2>
+                  <div className="h-px flex-1 bg-gradient-to-r from-border via-border to-transparent"></div>
+                </div>
                 
-                {/* Title and Category - Responsive grid with 8pt spacing */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  
-                  {/* Title field - Touch-friendly sizing */}
-                  <motion.div variants={itemVariants} className="space-y-2">
-                    <label className="text-sm font-medium text-foreground mb-2 block flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-primary" />
-                      Activity Title
-                    </label>
-                    <Input
-                      type="text"
-                      name="title"
-                      value={title}
-                      onChange={onChange}
-                      placeholder="Enter an exciting title..."
-                      required
-                      className="w-full px-4 py-3 bg-input/50 backdrop-blur-sm border border-border/30 rounded-lg text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent hover:border-border/50 min-h-12"
-                    />
-                  </motion.div>
+                
+                {/* Title field */}
+                <motion.div variants={itemVariants} className="space-y-2.5">
+                  <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <PlusCircle className="w-4 h-4 text-primary" />
+                    Activity Title
+                  </label>
+                  <Input
+                    type="text"
+                    name="title"
+                    value={title}
+                    onChange={onChange}
+                    placeholder="e.g., Basketball Game at the Park"
+                    required
+                    className="h-11 bg-background border border-border/50 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                  />
+                </motion.div>
 
                   {/* Category field */}
-                  <motion.div variants={itemVariants} className="space-y-2">
-                    <label className="text-sm font-medium text-foreground mb-2 block flex items-center gap-2">
-                      <Users className="w-4 h-4 text-primary" />
+                  <motion.div variants={itemVariants} className="space-y-2.5">
+                    <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-primary" />
                       Category
                     </label>
                     <Select 
                       value={category} 
                       onValueChange={(value) => setFormData({ ...formData, category: value })}
                     >
-                      <SelectTrigger className="w-full px-4 py-3 bg-input/50 backdrop-blur-sm border border-border/30 rounded-lg text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent hover:border-border/50 min-h-12">
-                        <SelectValue placeholder="Choose a category..." />
+                      <SelectTrigger className="h-11 bg-background border border-border/50 rounded-lg focus:ring-2 focus:ring-primary/50">
+                        <SelectValue placeholder="Select category" />
                       </SelectTrigger>
-                      <SelectContent className="bg-card/70 backdrop-blur-lg border border-border/30 rounded-lg shadow-lg">
-                        <SelectItem value="sports" className="transition-all duration-200 hover:bg-muted/20 active:bg-muted/30 p-3 min-h-touch">Sports & Fitness</SelectItem>
-                        <SelectItem value="social" className="transition-all duration-200 hover:bg-muted/20 active:bg-muted/30 p-3 min-h-touch">Social</SelectItem>
-                        <SelectItem value="educational" className="transition-all duration-200 hover:bg-muted/20 active:bg-muted/30 p-3 min-h-touch">Educational</SelectItem>
-                        <SelectItem value="entertainment" className="transition-all duration-200 hover:bg-muted/20 active:bg-muted/30 p-3 min-h-touch">Entertainment</SelectItem>
-                        <SelectItem value="volunteer" className="transition-all duration-200 hover:bg-muted/20 active:bg-muted/30 p-3 min-h-touch">Volunteer</SelectItem>
-                        <SelectItem value="other" className="transition-all duration-200 hover:bg-muted/20 active:bg-muted/30 p-3 min-h-touch">Other</SelectItem>
+                      <SelectContent className="bg-background border border-border rounded-lg">
+                        <SelectItem value="sports">🏀 Sports & Fitness</SelectItem>
+                        <SelectItem value="social">🎉 Social</SelectItem>
+                        <SelectItem value="educational">📚 Educational</SelectItem>
+                        <SelectItem value="entertainment">🎬 Entertainment</SelectItem>
+                        <SelectItem value="volunteer">🤝 Volunteer</SelectItem>
+                        <SelectItem value="other">✨ Other</SelectItem>
                       </SelectContent>
                     </Select>
                   </motion.div>
-                </div>
 
-                {/* Description - Full width with proper spacing */}
-                <motion.div variants={itemVariants} className="space-y-2">
-                  <label className="text-sm font-medium text-foreground mb-2 block">Description</label>
-                  <Textarea
-                    name="description"
-                    value={description}
-                    onChange={onChange}
-                    placeholder="Describe your activity in detail..."
-                    required
-                    rows={4}
-                    className="w-full px-4 py-3 bg-input/50 backdrop-blur-sm border border-border/30 rounded-lg text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent hover:border-border/50 resize-none"
-                  />
-                </motion.div>
-
-                {/* Location and Participants - Responsive grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  
                   {/* Location field */}
-                  <motion.div variants={itemVariants} className="space-y-2">
-                    <label className="text-sm font-medium text-foreground mb-2 block flex items-center gap-2">
+                  <motion.div variants={itemVariants} className="space-y-2.5">
+                    <label className="text-sm font-semibold text-foreground flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-primary" />
                       Location
                     </label>
@@ -234,37 +214,27 @@ const CreateActivity = () => {
                       name="location"
                       value={location}
                       onChange={onChange}
-                      placeholder="Where will this happen?"
+                      placeholder="e.g., Central Park, Manhattan"
                       required
-                      className="w-full px-4 py-3 bg-input/50 backdrop-blur-sm border border-border/30 rounded-lg text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent hover:border-border/50 min-h-12"
-                    />
-                  </motion.div>
-
-                  {/* Max participants field */}
-                  <motion.div variants={itemVariants} className="space-y-2">
-                    <label className="text-sm font-medium text-foreground mb-2 block flex items-center gap-2">
-                      <Users className="w-4 h-4 text-primary" />
-                      Max Participants
-                    </label>
-                    <Input
-                      type="number"
-                      name="maxParticipants"
-                      value={maxParticipants}
-                      onChange={onChange}
-                      placeholder="How many people?"
-                      required
-                      min="1"
-                      className="w-full px-4 py-3 bg-input/50 backdrop-blur-sm border border-border/30 rounded-lg text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent hover:border-border/50 min-h-12"
+                      className="h-11 bg-background border border-border/50 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
                     />
                   </motion.div>
                 </div>
+              </div>
 
-                {/* Date and Time - Mobile-first responsive */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  
-                  {/* Date picker - Touch-friendly */}
-                  <motion.div variants={itemVariants} className="space-y-2">
-                    <label className="text-sm font-medium text-foreground mb-2 block flex items-center gap-2">
+              {/* Schedule Section */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-border"></div>
+                  <h2 className="text-lg font-semibold text-foreground">Schedule & Capacity</h2>
+                  <div className="h-px flex-1 bg-gradient-to-r from-border via-border to-transparent"></div>
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                  {/* Date picker */}
+                  <motion.div variants={itemVariants} className="space-y-2.5">
+                    <label className="text-sm font-semibold text-foreground flex items-center gap-2">
                       <CalendarIcon className="w-4 h-4 text-primary" />
                       Date
                     </label>
@@ -273,15 +243,15 @@ const CreateActivity = () => {
                         <Button
                           variant="outline"
                           className={cn(
-                            "relative inline-flex items-center justify-center font-medium transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-manipulation select-none bg-secondary/50 backdrop-blur-md text-secondary-foreground border border-border/50 rounded-lg px-6 py-3 hover:bg-secondary/70 hover:border-border transform hover:scale-[1.02] active:scale-[0.98] w-full justify-start text-left min-h-safe",
+                            "w-full h-11 bg-background border border-border/50 rounded-lg hover:border-border focus:ring-2 focus:ring-primary/50 justify-start text-left font-normal",
                             !date && "text-muted-foreground"
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
-                          {date ? format(date, "PPP") : <span>Pick a date</span>}
+                          {date ? format(date, "MMM dd, yyyy") : "Pick a date"}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-card/70 backdrop-blur-lg border border-border/30 rounded-lg shadow-lg" align="start">
+                      <PopoverContent className="w-auto p-0 bg-background border border-border rounded-xl" align="start">
                         <Calendar
                           mode="single"
                           selected={date}
@@ -294,8 +264,8 @@ const CreateActivity = () => {
                   </motion.div>
 
                   {/* Time field */}
-                  <motion.div variants={itemVariants} className="space-y-2">
-                    <label className="text-sm font-medium text-foreground mb-2 block flex items-center gap-2">
+                  <motion.div variants={itemVariants} className="space-y-2.5">
+                    <label className="text-sm font-semibold text-foreground flex items-center gap-2">
                       <Clock className="w-4 h-4 text-primary" />
                       Time
                     </label>
@@ -304,38 +274,87 @@ const CreateActivity = () => {
                       value={time}
                       onChange={handleTimeChange}
                       required
-                      className="w-full px-4 py-3 bg-input/50 backdrop-blur-sm border border-border/30 rounded-lg text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent hover:border-border/50 min-h-12"
+                      className="h-11 bg-background border border-border/50 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                    />
+                  </motion.div>
+
+                  {/* Max participants field */}
+                  <motion.div variants={itemVariants} className="space-y-2.5">
+                    <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary" />
+                      Max Participants
+                    </label>
+                    <Input
+                      type="number"
+                      name="maxParticipants"
+                      value={maxParticipants}
+                      onChange={onChange}
+                      placeholder="e.g., 10"
+                      required
+                      min="1"
+                      className="h-11 bg-background border border-border/50 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </motion.div>
                 </div>
+              </div>
 
-                {/* Submit button - Thumb-friendly with proper elevation */}
-                <motion.div variants={itemVariants} className="pt-4">
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="btn-gradient-primary text-white rounded-lg px-6 py-3 shadow-lg transform hover:scale-[1.02] active:scale-[0.98] w-full min-h-safe text-base font-semibold relative inline-flex items-center justify-center font-medium transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-manipulation select-none"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        Creating Activity...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="mr-2 h-5 w-5" />
-                        Create Activity
-                      </>
-                    )}
-                  </Button>
-                </motion.div>
+              {/* Description Section */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-border"></div>
+                  <h2 className="text-lg font-semibold text-foreground">Description</h2>
+                  <div className="h-px flex-1 bg-gradient-to-r from-border via-border to-transparent"></div>
+                </div>
                 
-              </form>
-            </div>
-          </motion.div>
+                <motion.div variants={itemVariants} className="space-y-2.5">
+                  <label className="text-sm font-semibold text-foreground">Tell us about your activity</label>
+                  <Textarea
+                    name="description"
+                    value={description}
+                    onChange={onChange}
+                    placeholder="Share details about your activity. What will you do? Who should join? What should they bring?"
+                    required
+                    rows={5}
+                    className="bg-background border border-border/50 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all resize-none"
+                  />
+                  <p className="text-xs text-muted-foreground">Be as descriptive as possible to help others understand your activity.</p>
+                </motion.div>
+              </div>
+
+              {/* Submit button */}
+              <motion.div variants={itemVariants} className="pt-2 flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate('/activities')}
+                  className="min-h-11 px-6"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="min-h-11 px-8 btn-gradient-primary"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <PlusCircle className="h-5 w-5 mr-2" />
+                      Create Activity
+                    </>
+                  )}
+                </Button>
+              </motion.div>
+            </form>
+          </div>
         </motion.div>
-      </div>
-    </div>
+        </div>
+      </motion.div>
+    </BeautifulBackground>
   );
 };
 

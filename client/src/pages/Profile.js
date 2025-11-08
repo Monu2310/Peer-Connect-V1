@@ -337,8 +337,8 @@ const Profile = () => {
 
   if (authLoading || !currentUser) {
     return (
-      <div className="flex justify-center items-center min-h-screen pt-20">
-        <div className="text-primary text-lg">
+      <div className="flex justify-center items-center min-h-screen py-8 px-4">
+        <div className="text-primary text-base sm:text-lg">
           Loading user data...
         </div>
       </div>
@@ -347,8 +347,8 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen pt-20">
-        <div className="text-primary text-lg">
+      <div className="flex justify-center items-center min-h-screen py-8 px-4">
+        <div className="text-primary text-base sm:text-lg">
           Loading profile...
         </div>
       </div>
@@ -357,21 +357,21 @@ const Profile = () => {
 
   return (
     <motion.div 
-      className="min-h-screen bg-background text-foreground"
+      className="min-h-screen w-full bg-background"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <motion.div variants={itemVariants} className="mb-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-            <h1 className="text-3xl font-bold gradient-text">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8 sm:px-6 lg:px-8">
+        <motion.div variants={itemVariants} className="mb-6 sm:mb-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <h1 className="text-2xl sm:text-3xl font-bold font-bold">
               {isOwnProfile ? 'My Profile' : `${formData.username}'s Profile`}
             </h1>
             {isOwnProfile ? (
-              <div className="mt-4 md:mt-0 flex space-x-2">
+              <div className="flex space-x-2 w-full md:w-auto">
                 {!isEditing ? (
-                  <Button onClick={() => setIsEditing(true)} className="btn-primary">
+                  <Button onClick={() => setIsEditing(true)} className="btn-primary flex-1 md:flex-initial">
                     <Edit className="mr-2 h-4 w-4" /> Edit Profile
                   </Button>
                 ) : (
@@ -456,7 +456,7 @@ const Profile = () => {
 
         <motion.div variants={itemVariants} className="card shadow-lg mb-6">
           <div className="px-4 py-5 sm:px-6">
-            <h2 className="text-lg font-medium gradient-text">
+            <h2 className="text-lg font-medium font-bold">
               {isOwnProfile ? 'Edit Your Profile' : 'Profile Details'}
             </h2>
           </div>
@@ -656,7 +656,7 @@ const Profile = () => {
 
         <motion.div variants={itemVariants} className="card shadow-lg mb-6">
           <div className="px-4 py-5 sm:px-6">
-            <h2 className="text-lg font-medium gradient-text">
+            <h2 className="text-lg font-medium font-bold">
               {isOwnProfile ? 'My Activities' : `${formData.username}'s Activities`}
             </h2>
           </div>
@@ -756,7 +756,7 @@ const Profile = () => {
 
         <motion.div variants={itemVariants} className="card shadow-lg mb-6">
           <div className="px-4 py-5 sm:px-6">
-            <h2 className="text-lg font-medium gradient-text">
+            <h2 className="text-lg font-medium font-bold">
               Friends
             </h2>
           </div>
