@@ -52,20 +52,10 @@ if (process.env.CLIENT_URL) {
 }
 
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, Postman, or curl)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.warn('  CORS blocked origin:', origin);
-      callback(null, true); // Allow anyway for development - change to false in production
-    }
-  },
+  origin: true, // Allow all origins for now
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token', 'cache-control'],
-  credentials: false, // Keep false to avoid cookie issues
+  credentials: false,
   preflightContinue: false,
   optionsSuccessStatus: 204
 };
