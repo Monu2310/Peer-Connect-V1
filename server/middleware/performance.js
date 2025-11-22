@@ -147,13 +147,13 @@ const optimizeApiResponses = (app) => {
   // Trust proxy for correct IP addresses behind reverse proxy
   app.set('trust proxy', 1);
   
-  // Optimize JSON parsing
-  app.use((req, res, next) => {
-    if (req.is('application/json')) {
-      req.body = JSON.parse(JSON.stringify(req.body));
-    }
-    next();
-  });
+  // Optimize JSON parsing - REMOVED as it causes issues with undefined bodies
+  // app.use((req, res, next) => {
+  //   if (req.is('application/json')) {
+  //     req.body = JSON.parse(JSON.stringify(req.body));
+  //   }
+  //   next();
+  // });
 };
 
 module.exports = {
