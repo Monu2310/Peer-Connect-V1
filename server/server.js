@@ -24,9 +24,6 @@ const server = http.createServer(app);
 // Trust proxy and optimize API responses (ETag, JSON settings)
 optimizeApiResponses(app);
 
-// Apply unified performance middleware (compression, helmet, rate limiting, slow down, cache headers, logging)
-performanceMiddleware(app);
-
 // Log environment variables for debugging (masking sensitive info)
 console.log('Environment Variables:');
 console.log('NODE_ENV:', process.env.NODE_ENV);
@@ -67,6 +64,9 @@ const io = socketIo(server, {
 
 // Apply CORS middleware to all routes
 app.use(cors(corsOptions));
+
+// Apply unified performance middleware (compression, helmet, rate limiting, slow down, cache headers, logging)
+performanceMiddleware(app);
 
 // Express middleware
 app.use(express.json());
