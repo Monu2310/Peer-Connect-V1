@@ -33,6 +33,13 @@ const generateRandomProfileImage = (seed) => {
 };
 
 const UserSchema = new mongoose.Schema({
+  // Link to Firebase auth user
+  firebaseUid: {
+    type: String,
+    index: true,
+    unique: true,
+    sparse: true
+  },
   username: {
     type: String,
     required: true,
@@ -110,6 +117,7 @@ const UserSchema = new mongoose.Schema({
 // Add indexes for faster queries (username and email are already indexed by unique: true)
 UserSchema.index({ createdAt: -1 });
 UserSchema.index({ interests: 1 });
+UserSchema.index({ firebaseUid: 1 });
 
 // Hash password before saving
 UserSchema.pre('save', async function(next) {
