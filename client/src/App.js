@@ -12,6 +12,8 @@ const Home = lazy(() => import(/* webpackChunkName: "home" */ './pages/Home'));
 const Login = lazy(() => import(/* webpackChunkName: "auth" */ './pages/Login'));
 const Register = lazy(() => import(/* webpackChunkName: "auth" */ './pages/Register'));
 const ForgotPassword = lazy(() => import(/* webpackChunkName: "auth" */ './pages/ForgotPassword'));
+const VerifyEmail = lazy(() => import(/* webpackChunkName: "auth" */ './pages/VerifyEmail'));
+const ResetPassword = lazy(() => import(/* webpackChunkName: "auth" */ './pages/ResetPassword'));
 const Dashboard = lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/Dashboard'));
 const Profile = lazy(() => import(/* webpackChunkName: "profile" */ './pages/Profile'));
 const Activities = lazy(() => import(/* webpackChunkName: "activities" */ './pages/Activities'));
@@ -48,6 +50,8 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
 
               {/* Protected routes */}
               <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />

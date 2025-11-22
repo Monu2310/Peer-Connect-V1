@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../core/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserPlus, Mail, Lock, User, Loader2, ArrowRight, X, Eye, EyeOff } from "lucide-react";
+import { UserPlus, Mail, Eye, EyeOff, CheckCircle } from "lucide-react";
 import BeautifulBackground from "../components/effects/BeautifulBackground";
 
 const Register = () => {
@@ -23,9 +23,10 @@ const Register = () => {
 
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState("");
-  const [apiResponse, setApiResponse] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
+  const [registrationComplete, setRegistrationComplete] = useState(false);
+  const [verificationNotice, setVerificationNotice] = useState("");
 
   const { register, error, setError, currentUser } = useAuth();
   const navigate = useNavigate();
@@ -115,7 +116,8 @@ const Register = () => {
     e.preventDefault();
 
     setLoading(true);
-    setApiResponse(null);
+    setRegistrationComplete(false);
+    setVerificationNotice("");
 
     try {
       const userData = {
@@ -136,9 +138,9 @@ const Register = () => {
       setError("");
 
       const response = await register(userData);
-      setApiResponse({ success: true, data: response });
-
-      navigate("/dashboard");
+      setRegistrationComplete(true);
+      setVerificationNotice(response?.message || "We have sent a verification link to your email address.");
+      setStep(3);
     } catch (err) {
       console.error("Registration error:", err);
 
@@ -155,8 +157,10 @@ const Register = () => {
         if (errorMsg.includes("Server error during registration")) {
           errorMsg += ". This could be due to server issues. Please try again.";
         }
-        setApiResponse({ success: false, error: errorMsg });
+        setFormError(errorMsg);
       }
+      setRegistrationComplete(false);
+    } finally {
       setLoading(false);
     }
   };
@@ -334,53 +338,82 @@ const Register = () => {
                 )}
 
                 {step === 3 && (
-                  <form onSubmit={onSubmit} className="space-y-4">
-                    <PreferenceInputGroup
-                      label="Music Genres"
-                      placeholder="Add genre"
-                      items={musicGenres}
-                      onAdd={(e) => handleAddPreference(e, "musicGenres")}
-                      onRemove={(item) => handleRemovePreference(item, "musicGenres")}
-                    />
-                    <PreferenceInputGroup
-                      label="Movies/TV"
-                      placeholder="Add genre"
-                      items={movieGenres}
-                      onAdd={(e) => handleAddPreference(e, "movieGenres")}
-                      onRemove={(item) => handleRemovePreference(item, "movieGenres")}
-                    />
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full py-3 bg-gradient-to-r from-primary to-primary/90 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all"
-                    >
-                      {loading ? "Creating..." : "Create Account"}
-                    </button>
-                  </form>
+                  registrationComplete ? (
+                    <div className="space-y-6 text-center">
+                      <div className="flex justify-center">
+                        <div className="h-14 w-14 rounded-full bg-green-100 flex items-center justify-center">
+                          <CheckCircle className="w-8 h-8 text-green-600" />
+                        </div>
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-semibold text-foreground mb-2">Verify your email</h2>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {verificationNotice || "We have emailed a verification link. Please confirm your email before signing in."}
+                        </p>
+                      </div>
+                      <div className="space-y-3">
+                        <p className="text-xs text-muted-foreground">
+                          Didn&apos;t get the mail? Check your spam folder, then try logging in again to trigger another link.
+                        </p>
+                        <Link
+                          to="/login"
+                          className="inline-flex items-center justify-center w-full py-3 rounded-lg bg-gradient-to-r from-primary to-primary/90 text-white font-semibold shadow-lg hover:shadow-xl transition-all"
+                        >
+                          Go to Login
+                        </Link>
+                      </div>
+                    </div>
+                  ) : (
+                    <form onSubmit={onSubmit} className="space-y-4">
+                      <PreferenceInputGroup
+                        label="Music Genres"
+                        placeholder="Add genre"
+                        items={musicGenres}
+                        onAdd={(e) => handleAddPreference(e, "musicGenres")}
+                        onRemove={(item) => handleRemovePreference(item, "musicGenres")}
+                      />
+                      <PreferenceInputGroup
+                        label="Movies/TV"
+                        placeholder="Add genre"
+                        items={movieGenres}
+                        onAdd={(e) => handleAddPreference(e, "movieGenres")}
+                        onRemove={(item) => handleRemovePreference(item, "movieGenres")}
+                      />
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-3 bg-gradient-to-r from-primary to-primary/90 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-75"
+                      >
+                        {loading ? "Creating..." : "Create Account"}
+                      </button>
+                    </form>
+                  )
                 )}
               </motion.div>
             </AnimatePresence>
 
-            <div className="flex gap-3 mt-8">
-              {step > 1 && (
-                <button
-                  type="button"
-                  onClick={prevStep}
-                  className="flex-1 py-3 rounded-lg border-2 border-primary/30 font-semibold hover:bg-primary/5 transition-all"
-                >
-                  Back
-                </button>
-              )}
-              {step < 3 && (
-                <button
-                  type="button"
-                  onClick={nextStep}
-                  className={`${step === 1 ? "w-full" : "flex-1"} py-3 bg-gradient-to-r from-primary to-primary/90 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all`}
-                >
-                  Continue
-                </button>
-              )}
-            </div>
+            {!registrationComplete && (
+              <div className="flex gap-3 mt-8">
+                {step > 1 && (
+                  <button
+                    type="button"
+                    onClick={prevStep}
+                    className="flex-1 py-3 rounded-lg border-2 border-primary/30 font-semibold hover:bg-primary/5 transition-all"
+                  >
+                    Back
+                  </button>
+                )}
+                {step < 3 && (
+                  <button
+                    type="button"
+                    onClick={nextStep}
+                    className={`${step === 1 ? "w-full" : "flex-1"} py-3 bg-gradient-to-r from-primary to-primary/90 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all`}
+                  >
+                    Continue
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <p className="text-center text-sm text-muted-foreground mt-6">

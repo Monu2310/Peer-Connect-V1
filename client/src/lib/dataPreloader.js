@@ -8,6 +8,8 @@ class DataPreloader {
     this.requestQueue = [];
     this.isProcessing = false;
     this.maxConcurrentRequests = 4;
+    this.lastPreloadTimestamps = new Map();
+    this.backgroundSyncHandles = new Map();
     this.preloadDelays = {
       immediate: 0,      // Critical data
       fast: 100,         // Important data
@@ -18,6 +20,21 @@ class DataPreloader {
 
   // Preload critical data immediately after auth
   async preloadCriticalData(userId) {
+    if (!userId) {
+      console.warn('preloadCriticalData called without a userId. Skipping.');
+      return;
+    }
+
+    const now = Date.now();
+    const lastRun = this.lastPreloadTimestamps.get(userId) || 0;
+
+    if (now - lastRun < 15000) {
+      console.info('Preload already triggered recently for user:', userId);
+      return;
+    }
+
+    this.lastPreloadTimestamps.set(userId, now);
+
     console.log('🚀 Starting critical data preload for user:', userId);
     
     const criticalRequests = [
@@ -179,15 +196,32 @@ class DataPreloader {
 
   // Background data sync for real-time updates
   startBackgroundSync(userId) {
+    if (!userId) {
+      console.warn('startBackgroundSync called without a userId. Skipping.');
+      return;
+    }
+
+    // Ensure only one active background sync per user session
+    this.stopAllBackgroundSync();
+
+    if (this.backgroundSyncHandles.has(userId)) {
+      return;
+    }
+
     // Sync every 30 seconds for critical data
-    setInterval(() => {
+    const criticalInterval = setInterval(() => {
       this.syncCriticalData(userId);
     }, 30000);
 
     // Sync every 2 minutes for regular data
-    setInterval(() => {
+    const regularInterval = setInterval(() => {
       this.syncRegularData(userId);
     }, 120000);
+
+    this.backgroundSyncHandles.set(userId, {
+      criticalInterval,
+      regularInterval
+    });
   }
 
   async syncCriticalData(userId) {
@@ -283,6 +317,23 @@ class DataPreloader {
       isProcessing: this.isProcessing,
       keys: Array.from(this.preloadCache.keys())
     };
+  }
+
+  stopAllBackgroundSync() {
+    for (const { criticalInterval, regularInterval } of this.backgroundSyncHandles.values()) {
+      clearInterval(criticalInterval);
+      clearInterval(regularInterval);
+    }
+    this.backgroundSyncHandles.clear();
+  }
+
+  reset() {
+    this.stopAllBackgroundSync();
+    this.preloadCache.clear();
+    this.preloadPromises.clear();
+    this.requestQueue = [];
+    this.isProcessing = false;
+    this.lastPreloadTimestamps.clear();
   }
 }
 

@@ -9,6 +9,7 @@ import {
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  sendEmailVerification,
 } from 'firebase/auth';
 
 // Your web app's Firebase configuration
@@ -37,4 +38,5 @@ export {
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  sendEmailVerification,
 };

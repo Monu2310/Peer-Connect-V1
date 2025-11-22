@@ -8,6 +8,7 @@ import {
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  sendEmailVerification,
 } from './firebase';
 import dataPreloader from '../lib/dataPreloader';
 import intelligentCache from '../lib/intelligentCache';
@@ -20,9 +21,20 @@ const TOKEN_KEY = 'token';
 const USER_DATA_KEY = 'user_data';
 const AUTH_TIMESTAMP_KEY = 'auth_timestamp';
 
+// Ensure user objects always expose a stable id field for downstream consumers
+const normalizeUser = (user) => {
+  if (!user) {
+    return null;
+  }
+
+  const normalizedId = user.id || user._id || user.userId || user.uid || null;
+
+  return normalizedId ? { ...user, id: normalizedId } : { ...user };
+};
+
 // Initial state for the reducer - load from localStorage if available
 const initialState = {
-  user: JSON.parse(localStorage.getItem(USER_DATA_KEY)) || null,
+  user: normalizeUser(JSON.parse(localStorage.getItem(USER_DATA_KEY))),
   token: localStorage.getItem(TOKEN_KEY),
   isAuthenticated: !!localStorage.getItem(TOKEN_KEY),
   loading: true
@@ -31,51 +43,63 @@ const initialState = {
 // Reducer function to handle auth state
 const authReducer = (state, action) => {
   switch (action.type) {
-    case 'USER_LOADED':
-      // Save user data to localStorage for persistence
-      localStorage.setItem(USER_DATA_KEY, JSON.stringify(action.payload));
-      localStorage.setItem(AUTH_TIMESTAMP_KEY, Date.now().toString());
-      
-      // Warm cache with user data
-      intelligentCache.warmCache('user', action.payload);
-      
-      // Start aggressive preloading for critical data
-      dataPreloader.preloadCriticalData(action.payload.id);
-      
-      // Start background sync
-      dataPreloader.startBackgroundSync(action.payload.id);
-      
+    case 'USER_LOADED': {
+      const normalizedUser = normalizeUser(action.payload);
+
+      if (normalizedUser) {
+        localStorage.setItem(USER_DATA_KEY, JSON.stringify(normalizedUser));
+        localStorage.setItem(AUTH_TIMESTAMP_KEY, Date.now().toString());
+
+        intelligentCache.warmCache('user', normalizedUser);
+
+        const shouldStartPreloading = normalizedUser.id && normalizedUser.id !== state.user?.id;
+
+        if (shouldStartPreloading) {
+          dataPreloader.preloadCriticalData(normalizedUser.id);
+          dataPreloader.startBackgroundSync(normalizedUser.id);
+        } else {
+          console.info('Skipping preload: user already initialized or missing id');
+        }
+      }
+
       return {
         ...state,
         isAuthenticated: true,
         loading: false,
-        user: action.payload
+        user: normalizedUser
       };
+    }
     case 'LOGIN_SUCCESS':
-    case 'REGISTER_SUCCESS':
-      setAuthToken(action.payload.token);
-      
-      // Save user data to localStorage for persistence
-      if (action.payload.user) {
-        localStorage.setItem(USER_DATA_KEY, JSON.stringify(action.payload.user));
-        
-        // Immediate cache warming and preloading
-        intelligentCache.warmCache('user', action.payload.user);
-        
-        // Start critical data preloading immediately
-        setTimeout(() => {
-          dataPreloader.preloadCriticalData(action.payload.user.id);
-          dataPreloader.startBackgroundSync(action.payload.user.id);
-        }, 100);
+    case 'REGISTER_SUCCESS': {
+      const token = action.payload?.token || null;
+      const normalizedUser = normalizeUser(action.payload?.user);
+
+      setAuthToken(token);
+
+      if (normalizedUser) {
+        localStorage.setItem(USER_DATA_KEY, JSON.stringify(normalizedUser));
+        intelligentCache.warmCache('user', normalizedUser);
+
+        const shouldStartPreloading = normalizedUser.id && normalizedUser.id !== state.user?.id;
+
+        if (shouldStartPreloading) {
+          setTimeout(() => {
+            dataPreloader.preloadCriticalData(normalizedUser.id);
+            dataPreloader.startBackgroundSync(normalizedUser.id);
+          }, 100);
+        }
       }
+
       localStorage.setItem(AUTH_TIMESTAMP_KEY, Date.now().toString());
-      
+
       return {
         ...state,
-        ...action.payload,
-        isAuthenticated: true,
+        token,
+        user: normalizedUser,
+        isAuthenticated: !!token,
         loading: false
       };
+    }
     case 'AUTH_ERROR':
     case 'LOGIN_FAIL':
     case 'REGISTER_FAIL':
@@ -89,6 +113,9 @@ const authReducer = (state, action) => {
       
       // Clear intelligent cache
       intelligentCache.clear();
+
+      // Reset preloaders/background sync when auth is cleared
+      dataPreloader.reset();
       
       return {
         ...state,
@@ -223,41 +250,71 @@ export const AuthProvider = ({ children }) => {
   }, [authInitialized, state.loading]);
 
   // Register user with Firebase email/password, then sync with backend
+  const getVerificationRedirectUrl = () => {
+    if (process.env.REACT_APP_FIREBASE_CONTINUE_URL) {
+      return process.env.REACT_APP_FIREBASE_CONTINUE_URL;
+    }
+
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/login`;
+    }
+
+    return undefined;
+  };
+
   const register = async (userData) => {
     try {
       console.log('Sending registration data:', {...userData, password: '[REDACTED]'});
       // Create Firebase user
-		const { user: fbUser } = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
-		const idToken = await fbUser.getIdToken();
+      const { user: fbUser } = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
 
-		// Use a minimal registration object for backend, including Firebase idToken
-		const minimalRegistration = {
-			username: userData.username,
-			email: userData.email,
-			idToken,
-			// additional profile fields can be forwarded as-is
-			...userData,
-		};
+      // Ensure we have the latest verification status before continuing
+      await fbUser.reload();
 
-		const res = await axios.post(`${API_URL}/api/auth/firebase-register`, minimalRegistration, {
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			timeout: 30000
-		});
+      const actionCodeSettings = {
+        url: getVerificationRedirectUrl(),
+        handleCodeInApp: false
+      };
 
-		if (res.data && res.data.token) {
-			localStorage.setItem(TOKEN_KEY, res.data.token);
+      try {
+        await sendEmailVerification(fbUser, actionCodeSettings);
+      } catch (verificationError) {
+        console.error('Failed to send verification email:', verificationError);
+        throw new Error('Could not send verification email. Please try again later.');
+      }
 
-			dispatch({
-				type: 'REGISTER_SUCCESS',
-				payload: res.data
-			});
+      const idToken = await fbUser.getIdToken();
 
-			return res.data;
-		} else {
-			throw new Error('Invalid response from server');
-		}
+      // Use a minimal registration object for backend, including Firebase idToken
+      const minimalRegistration = {
+        username: userData.username,
+        email: userData.email,
+        idToken,
+        // additional profile fields can be forwarded as-is
+        ...userData,
+      };
+
+      await axios.post(`${API_URL}/api/auth/firebase-register`, minimalRegistration, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000
+      });
+
+      // Sign out the unverified user to prevent accessing the app before email confirmation
+      await signOut(auth);
+
+      // Clear any lingering auth artifacts for good measure
+      setAuthToken(null);
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_DATA_KEY);
+      localStorage.removeItem(AUTH_TIMESTAMP_KEY);
+
+      return {
+        success: true,
+        verificationEmailSent: true,
+        message: 'Verification email sent. Please check your inbox to activate your account.'
+      };
     } catch (err) {
       console.error('Registration error details:', err);
       
@@ -271,11 +328,11 @@ export const AuthProvider = ({ children }) => {
       }
       
       setError(errorMessage);
-      
+		
       dispatch({
         type: 'REGISTER_FAIL'
       });
-      
+		
       throw new Error(errorMessage);
     }
   };
@@ -326,6 +383,27 @@ export const AuthProvider = ({ children }) => {
       // First sign in with Firebase
       const fbResult = await signInWithEmailAndPassword(auth, email, password);
       const fbUser = fbResult.user;
+
+      // Refresh user data to get the latest verification flag
+      await fbUser.reload();
+
+      if (!fbUser.emailVerified) {
+        const actionCodeSettings = {
+          url: getVerificationRedirectUrl(),
+          handleCodeInApp: false
+        };
+
+        try {
+          await sendEmailVerification(fbUser, actionCodeSettings);
+          console.log('Verification email re-sent to user during login attempt');
+        } catch (verificationError) {
+          console.warn('Failed to re-send verification email:', verificationError);
+        }
+
+        await signOut(auth);
+        throw new Error('Please verify your email address. We just sent you a new verification link.');
+      }
+
       const idToken = await fbUser.getIdToken();
 
       // Then tell our backend to verify the Firebase token and mint app JWT
