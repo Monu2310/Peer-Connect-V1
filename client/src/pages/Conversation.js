@@ -27,11 +27,13 @@ const Conversation = () => {
   const typingTimeoutRef = useRef(null);
 
   // Room ID for socket.io (combination of both user IDs, sorted and joined)
-  const roomId = [currentUser._id, userId].sort().join('-');
+  // Use id or _id depending on what's available in the user object
+  const currentUserId = currentUser?.id || currentUser?._id;
+  const roomId = [currentUserId, userId].sort().join('-');
 
   useEffect(() => {
     // Initialize socket connection
-    if (!currentUser || !currentUser._id) return;
+    if (!currentUser || !currentUserId) return;
 
     socketRef.current = io(API_URL, {
       transports: ['websocket', 'polling'],
@@ -46,7 +48,7 @@ const Conversation = () => {
     // Listen for incoming messages (only add if it's from the other user)
     socketRef.current.on('receive-message', (message) => {
       // Only add message if it's from the other person, not us
-      if (message.sender !== currentUser._id) {
+      if (message.sender !== currentUserId) {
         setMessages(prevMessages => [...prevMessages, message]);
         // Mark as read immediately when receiving while in conversation
         markAsRead(userId);
@@ -55,7 +57,7 @@ const Conversation = () => {
     
     // Listen for typing indicator
     socketRef.current.on('typing', (data) => {
-      if (data.userId !== currentUser._id) {
+      if (data.userId !== currentUserId) {
         setIsTyping(true);
         // Clear any existing timeout and schedule hide
         if (typingTimeoutRef.current) {

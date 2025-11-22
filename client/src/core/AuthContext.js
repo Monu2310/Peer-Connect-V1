@@ -284,10 +284,9 @@ export const AuthProvider = ({ children }) => {
   const resetPassword = async (email) => {
     try {
       await sendPasswordResetEmail(auth, email);
-      return true;
+      return { success: true };
     } catch (err) {
       console.error('Password reset error:', err);
-      setError(err.message || 'Failed to send password reset email');
       throw err;
     }
   };
@@ -413,21 +412,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout user from both Firebase and local app state
-  const logout = async () => {
-    // Clear any data that should not persist after logout
-    sessionStorage.clear(); // Clear all session storage data (joined activities, etc.)
-
-    // Clear profile cache data to ensure fresh data for next login
-    localStorage.removeItem('profile_data');
-    localStorage.removeItem('profile_data_timestamp');
-    localStorage.removeItem('user_preferences');
-
-    try {
-      await signOut(auth);
-    } catch (err) {
-      console.error('Firebase signOut error (non-fatal):', err);
-    }
-
+  const logout = () => {
+    // Sign out from Firebase
+    signOut(auth).catch(err => console.error('Firebase signout error:', err));
+    
     dispatch({ type: 'LOGOUT' });
   };
 
@@ -512,6 +500,7 @@ export const AuthProvider = ({ children }) => {
     register,
     login,
     logout,
+    resetPassword,
     loadUser,
     // Add updateUserProfile function to keep auth state in sync with profile updates
     updateUserProfile: (updatedUserData) => {

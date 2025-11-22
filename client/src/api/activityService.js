@@ -11,7 +11,7 @@ const processImageUrl = (imagePath) => {
 };
 
 // Get all activities with optional filtering
-export const getActivities = async (category, search, includePast = true) => {
+export const getActivities = async (category, search, includePast = false) => {
   try {
     const queryParams = new URLSearchParams();
     if (category && category !== 'All') {
@@ -20,7 +20,7 @@ export const getActivities = async (category, search, includePast = true) => {
     if (search) {
       queryParams.append('search', search);
     }
-    // Include past activities by default
+    // Include past activities (default to false to show only future activities)
     queryParams.append('includePast', includePast);
     
     console.log('Fetching activities from:', `${API_URL}/api/activities?${queryParams}`);

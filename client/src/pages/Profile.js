@@ -208,6 +208,7 @@ const Profile = () => {
     setLoading(true);
     setError('');
     setSuccess('');
+    
     if (!formData.username.trim()) {
       setError('Username is required');
       setLoading(false);
@@ -216,16 +217,35 @@ const Profile = () => {
 
     try {
       console.log('Profile: Sending formData for update:', formData);
-      const updatedUserData = await updateUserProfile(formData);
+      
+      // Ensure arrays are properly formatted
+      const dataToSend = {
+        ...formData,
+        interests: Array.isArray(formData.interests) ? formData.interests : [],
+        hobbies: Array.isArray(formData.hobbies) ? formData.hobbies : [],
+        favoriteSubjects: Array.isArray(formData.favoriteSubjects) ? formData.favoriteSubjects : [],
+        sports: Array.isArray(formData.sports) ? formData.sports : [],
+        musicGenres: Array.isArray(formData.musicGenres) ? formData.musicGenres : [],
+        movieGenres: Array.isArray(formData.movieGenres) ? formData.movieGenres : []
+      };
+
+      const updatedUserData = await updateUserProfile(dataToSend);
       console.log('Profile: Received updatedUserData:', updatedUserData);
+      
+      // Update auth context
       updateAuthUserProfile(updatedUserData);
+      
       setSuccess('Profile updated successfully');
       setIsEditing(false);
+      
+      // Refresh profile data to ensure sync
+      fetchProfileData();
     } catch (err) {
       console.error('Error updating profile:', err);
-      setError(err.response?.data?.message || 'Failed to update profile');
+      setError(err.response?.data?.message || 'Failed to update profile. Please try again.');
     } finally {
       setLoading(false);
+      // Clear messages after delay
       setTimeout(() => setSuccess(''), 3000);
       setTimeout(() => setError(''), 5000);
     }
