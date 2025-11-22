@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { applyActionCode, getAuth } from 'firebase/auth';
+import { applyActionCode } from 'firebase/auth';
+import { auth } from '../core/firebase';
 import BeautifulBackground from '../components/effects/BeautifulBackground';
 import { CheckCircle, AlertCircle, Loader2, MailCheck } from 'lucide-react';
 
@@ -10,20 +11,24 @@ const VerifyEmail = () => {
   const [message, setMessage] = useState('Verifying your email, please wait...');
 
   useEffect(() => {
-    const auth = getAuth();
     const params = new URLSearchParams(location.search);
     const oobCode = params.get('oobCode');
     const mode = params.get('mode');
 
+    console.log('VerifyEmail: Checking params', { mode, hasOobCode: !!oobCode });
+
     if (!oobCode || mode !== 'verifyEmail') {
       setStatus('error');
       setMessage('Invalid or missing verification code.');
+      console.error('VerifyEmail: Missing or invalid params');
       return;
     }
 
     const verify = async () => {
       try {
+        console.log('VerifyEmail: Calling applyActionCode...');
         await applyActionCode(auth, oobCode);
+        console.log('VerifyEmail: Success! Email verified.');
         setStatus('success');
         setMessage('Your email has been verified. You can now log in.');
       } catch (err) {
@@ -34,7 +39,7 @@ const VerifyEmail = () => {
         } else if (err.code === 'auth/expired-action-code') {
           setMessage('This verification link has expired. Please request a new one by trying to log in again.');
         } else {
-          setMessage('We could not verify your email. Please try again or request a new link.');
+          setMessage(`We could not verify your email: ${err.message || 'Unknown error'}`);
         }
       }
     };

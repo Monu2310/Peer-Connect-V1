@@ -10,6 +10,9 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail,
   sendEmailVerification,
+  applyActionCode,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
 } from 'firebase/auth';
 
 // Your web app's Firebase configuration
@@ -39,4 +42,7 @@ export {
   onAuthStateChanged,
   sendPasswordResetEmail,
   sendEmailVerification,
+  applyActionCode,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
 };

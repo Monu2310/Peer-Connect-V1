@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { getAuth, verifyPasswordResetCode, confirmPasswordReset } from 'firebase/auth';
+import { verifyPasswordResetCode, confirmPasswordReset } from 'firebase/auth';
+import { auth } from '../core/firebase';
 import BeautifulBackground from '../components/effects/BeautifulBackground';
 import { Lock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -16,20 +17,24 @@ const ResetPassword = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const auth = getAuth();
     const params = new URLSearchParams(location.search);
     const code = params.get('oobCode');
     const mode = params.get('mode');
 
+    console.log('ResetPassword: Checking params', { mode, hasOobCode: !!code });
+
     if (!code || mode !== 'resetPassword') {
       setStatus('error');
       setMessage('Invalid or missing reset code.');
+      console.error('ResetPassword: Missing or invalid params');
       return;
     }
 
     const checkCode = async () => {
       try {
+        console.log('ResetPassword: Verifying reset code...');
         await verifyPasswordResetCode(auth, code);
+        console.log('ResetPassword: Code verified successfully');
         setOobCode(code);
         setStatus('ready');
         setMessage('Enter a new password for your account.');
@@ -41,7 +46,7 @@ const ResetPassword = () => {
         } else if (err.code === 'auth/invalid-action-code') {
           setMessage('This reset link is invalid or has already been used.');
         } else {
-          setMessage('We could not verify this reset link. Please request a new one.');
+          setMessage(`We could not verify this reset link: ${err.message || 'Unknown error'}`);
         }
       }
     };
@@ -76,8 +81,9 @@ const ResetPassword = () => {
     setIsSubmitting(true);
 
     try {
-      const auth = getAuth();
+      console.log('ResetPassword: Confirming password reset...');
       await confirmPasswordReset(auth, oobCode, password);
+      console.log('ResetPassword: Password reset successful');
       setStatus('success');
       setMessage('Your password has been reset successfully. You can now log in with your new password.');
 
