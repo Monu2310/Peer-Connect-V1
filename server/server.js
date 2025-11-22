@@ -203,10 +203,11 @@ const initializeApp = async () => {
     
     // Better error handler
     app.use((err, req, res, next) => {
-      console.error(err.stack);
+      console.error('🔥 GLOBAL ERROR HANDLER CAUGHT:', err);
       res.status(500).json({ 
         message: 'Server Error', 
-        error: process.env.NODE_ENV === 'production' ? {} : err.message
+        error: err.message, // Always show error for debugging
+        stack: err.stack    // Always show stack for debugging
       });
     });
     
