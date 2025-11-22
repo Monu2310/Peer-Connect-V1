@@ -65,6 +65,16 @@ const io = socketIo(server, {
 // Apply CORS middleware to all routes
 app.use(cors(corsOptions));
 
+// Health check route - defined before other middleware to ensure it works even if others fail
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV,
+    cors: 'enabled'
+  });
+});
+
 // Apply unified performance middleware (compression, helmet, rate limiting, slow down, cache headers, logging)
 performanceMiddleware(app);
 

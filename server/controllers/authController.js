@@ -273,18 +273,24 @@ exports.firebaseRegister = async (req, res) => {
 
 // Firebase-based login: client already signed in with Firebase, we just verify and mint JWT
 exports.firebaseLogin = async (req, res) => {
+  console.log('🔥 Firebase login request received');
   try {
     const { idToken } = req.body;
+    console.log('Token received length:', idToken ? idToken.length : 'null');
 
     if (!idToken) {
+      console.log('❌ No idToken provided');
       return res.status(400).json({ message: 'idToken is required' });
     }
 
     if (!admin || !admin.auth) {
+      console.error('❌ Firebase Admin not configured');
       return res.status(500).json({ message: 'Firebase Admin is not configured on the server' });
     }
 
+    console.log('Verifying ID token with Firebase...');
     const decoded = await admin.auth().verifyIdToken(idToken);
+    console.log('✅ Token verified for email:', decoded.email);
     const firebaseUid = decoded.uid;
     const email = decoded.email;
 
