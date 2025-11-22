@@ -1,6 +1,14 @@
 import React, { createContext, useContext, useEffect, useReducer, useState } from 'react';
 import axios from 'axios';
 import { API_URL, setAuthToken } from '../api/config';
+import {
+  auth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+} from './firebase';
 import dataPreloader from '../lib/dataPreloader';
 import intelligentCache from '../lib/intelligentCache';
 
@@ -214,40 +222,42 @@ export const AuthProvider = ({ children }) => {
     };
   }, [authInitialized, state.loading]);
 
-  // Register user
+  // Register user with Firebase email/password, then sync with backend
   const register = async (userData) => {
     try {
       console.log('Sending registration data:', {...userData, password: '[REDACTED]'});
-      
-      // Use a minimal registration object with only essential fields
-      const minimalRegistration = {
-        username: userData.username,
-        email: userData.email,
-        password: userData.password
-      };
-      
-      // Make the request with a simplified payload
-      const res = await axios.post(`${API_URL}/api/auth/register`, minimalRegistration, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 30000 // Extended timeout
-      });
-      
-      // Handle the successful registration
-      if (res.data && res.data.token) {
-        localStorage.setItem(TOKEN_KEY, res.data.token);
-        
-        dispatch({
-          type: 'REGISTER_SUCCESS',
-          payload: res.data
-        });
-        
-        // Skip loadUser and just use the data from response
-        return res.data;
-      } else {
-        throw new Error('Invalid response from server');
-      }
+      // Create Firebase user
+		const { user: fbUser } = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
+		const idToken = await fbUser.getIdToken();
+
+		// Use a minimal registration object for backend, including Firebase idToken
+		const minimalRegistration = {
+			username: userData.username,
+			email: userData.email,
+			idToken,
+			// additional profile fields can be forwarded as-is
+			...userData,
+		};
+
+		const res = await axios.post(`${API_URL}/api/auth/firebase-register`, minimalRegistration, {
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			timeout: 30000
+		});
+
+		if (res.data && res.data.token) {
+			localStorage.setItem(TOKEN_KEY, res.data.token);
+
+			dispatch({
+				type: 'REGISTER_SUCCESS',
+				payload: res.data
+			});
+
+			return res.data;
+		} else {
+			throw new Error('Invalid response from server');
+		}
     } catch (err) {
       console.error('Registration error details:', err);
       
@@ -270,10 +280,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Login user
+  // Password reset via Firebase email link
+  const resetPassword = async (email) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+      return true;
+    } catch (err) {
+      console.error('Password reset error:', err);
+      setError(err.message || 'Failed to send password reset email');
+      throw err;
+    }
+  };
+
+  // Login user using Firebase email/password, then sync with backend
   const login = async ({ email, password }) => {
     try {
-      console.log('Attempting login at URL:', `${API_URL}/api/auth/login`);
+      console.log('Attempting Firebase login and backend sync');
       
       // First, clear ALL local storage related to previous user
       // This ensures we don't mix data between different users
@@ -298,60 +320,44 @@ export const AuthProvider = ({ children }) => {
       } catch (pingErr) {
         console.log('Wake-up ping error (expected for cold starts):', pingErr.message);
       }
-      
+
       // Set loading state to true at the beginning of login attempt
       dispatch({ type: 'SET_LOADING', payload: true });
-      
-      // Define a function for login attempt with retries
-      const attemptLogin = async (retryCount = 0) => {
-        try {
-          // Simplify the login request
-          const res = await axios.post(
-            `${API_URL}/api/auth/login`, 
-            { email, password },
-            {
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              withCredentials: false,
-              timeout: 30000 // 30 second timeout for login request
-            }
-          );
-          
-          console.log('Login response:', res.status);
-          
-          // Make sure we got a valid response with a token
-          if (!res.data || !res.data.token) {
-            throw new Error('Invalid response from server - no token received');
-          }
-          
-          return res;
-        } catch (err) {
-          // If we have retries left and it's a network error (likely cold start), retry
-          if (retryCount < 2 && (!err.response || err.message.includes('timeout') || err.message.includes('Network Error'))) {
-            console.log(`Retry attempt ${retryCount + 1} for login...`);
-            await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds before retry
-            return attemptLogin(retryCount + 1);
-          }
-          throw err;
+
+      // First sign in with Firebase
+      const fbResult = await signInWithEmailAndPassword(auth, email, password);
+      const fbUser = fbResult.user;
+      const idToken = await fbUser.getIdToken();
+
+      // Then tell our backend to verify the Firebase token and mint app JWT
+      const res = await axios.post(
+        `${API_URL}/api/auth/firebase-login`,
+        { idToken },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          withCredentials: false,
+          timeout: 30000
         }
-      };
-      
-      // Attempt login with retry logic
-      const res = await attemptLogin();
-      
+      );
+
+      if (!res.data || !res.data.token) {
+        throw new Error('Invalid response from server - no token received');
+      }
+
       // Store the token in localStorage and set in axios
       setAuthToken(res.data.token);
-      
+
       // Set fresh auth timestamp
       localStorage.setItem(AUTH_TIMESTAMP_KEY, Date.now().toString());
-      
+
       // Dispatch success action
       dispatch({
         type: 'LOGIN_SUCCESS',
         payload: res.data
       });
-      
+
       // Load user data after login - force fresh data
       try {
         const userData = await axios.get(`${API_URL}/api/auth/me`, {
@@ -362,7 +368,7 @@ export const AuthProvider = ({ children }) => {
             'Cache-Control': 'no-cache'
           }
         });
-        
+
         // Update auth state with fresh user data
         dispatch({
           type: 'USER_LOADED',
@@ -372,15 +378,15 @@ export const AuthProvider = ({ children }) => {
         console.error('Error loading user after login:', userErr);
         // Continue anyway since we have the token
       }
-      
+
       return res.data;
     } catch (err) {
       console.error('Login error:', err);
       console.error('Response status:', err.response?.status);
       console.error('Response data:', err.response?.data);
       
-      // Clear any partial auth state
-      setAuthToken(null);
+  // Clear any partial auth state
+  setAuthToken(null);
       
       // Get a better error message
       let errorMessage = 'Login failed. Please check your email and password.';
@@ -406,16 +412,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Logout user
-  const logout = () => {
+  // Logout user from both Firebase and local app state
+  const logout = async () => {
     // Clear any data that should not persist after logout
     sessionStorage.clear(); // Clear all session storage data (joined activities, etc.)
-    
+
     // Clear profile cache data to ensure fresh data for next login
     localStorage.removeItem('profile_data');
     localStorage.removeItem('profile_data_timestamp');
     localStorage.removeItem('user_preferences');
-    
+
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error('Firebase signOut error (non-fatal):', err);
+    }
+
     dispatch({ type: 'LOGOUT' });
   };
 

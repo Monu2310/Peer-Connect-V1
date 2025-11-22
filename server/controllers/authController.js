@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const admin = require('../config/firebase');
 
 // Cookie options
 const cookieOptions = {
@@ -195,4 +196,145 @@ exports.logout = (req, res) => {
   // Clear the token cookie
   res.clearCookie('token');
   res.json({ message: 'Logged out successfully' });
+};
+
+// Firebase-based registration: trusts Firebase for password, we only store profile/meta
+exports.firebaseRegister = async (req, res) => {
+  try {
+    const { idToken, username } = req.body;
+
+    if (!idToken || !username) {
+      return res.status(400).json({ message: 'idToken and username are required' });
+    }
+
+    if (!admin || !admin.auth) {
+      return res.status(500).json({ message: 'Firebase Admin is not configured on the server' });
+    }
+
+    // Verify Firebase ID token
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const firebaseUid = decoded.uid;
+    const email = decoded.email;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Firebase token does not contain an email' });
+    }
+
+    // Find or create local user
+    let user = await User.findOne({ email }).exec();
+
+    if (!user) {
+      // Ensure username uniqueness; if taken, append short suffix
+      let finalUsername = username;
+      const existingByUsername = await User.findOne({ username: finalUsername }).exec();
+      if (existingByUsername) {
+        finalUsername = `${username}_${firebaseUid.slice(0, 6)}`;
+      }
+
+      user = new User({
+        username: finalUsername,
+        email,
+        // Store Firebase UID in a dedicated field for traceability if schema supports it
+        firebaseUid,
+        // Generate a random password since Firebase handles auth; user won't use this directly
+        password: Math.random().toString(36).slice(-12),
+        profilePicture: 'https://avatars.dicebear.com/api/identicon/' + finalUsername + '.svg'
+      });
+
+      await user.save();
+    }
+
+    // Generate our own JWT for the app
+    const token = jwt.sign(
+      { id: user.id },
+      process.env.JWT_SECRET || 'default_jwt_secret',
+      { expiresIn: '7d' }
+    );
+
+    res.status(200).json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        profilePicture: user.profilePicture,
+        hobbies: user.hobbies || [],
+        favoriteSubjects: user.favoriteSubjects || [],
+        sports: user.sports || [],
+        musicGenres: user.musicGenres || [],
+        movieGenres: user.movieGenres || []
+      }
+    });
+  } catch (err) {
+    console.error('Firebase register error:', err);
+    return res.status(500).json({ message: 'Server error during Firebase registration', details: err.message });
+  }
+};
+
+// Firebase-based login: client already signed in with Firebase, we just verify and mint JWT
+exports.firebaseLogin = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ message: 'idToken is required' });
+    }
+
+    if (!admin || !admin.auth) {
+      return res.status(500).json({ message: 'Firebase Admin is not configured on the server' });
+    }
+
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const firebaseUid = decoded.uid;
+    const email = decoded.email;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Firebase token does not contain an email' });
+    }
+
+    let user = await User.findOne({ email }).exec();
+    if (!user) {
+      // Auto-provision user if missing, using part of email as username
+      const baseUsername = email.split('@')[0];
+      let finalUsername = baseUsername;
+      const existingByUsername = await User.findOne({ username: finalUsername }).exec();
+      if (existingByUsername) {
+        finalUsername = `${baseUsername}_${firebaseUid.slice(0, 6)}`;
+      }
+
+      user = new User({
+        username: finalUsername,
+        email,
+        firebaseUid,
+        password: Math.random().toString(36).slice(-12),
+        profilePicture: 'https://avatars.dicebear.com/api/identicon/' + finalUsername + '.svg'
+      });
+
+      await user.save();
+    }
+
+    const token = jwt.sign(
+      { id: user.id },
+      process.env.JWT_SECRET || 'default_jwt_secret',
+      { expiresIn: '7d' }
+    );
+
+    res.status(200).json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        profilePicture: user.profilePicture,
+        hobbies: user.hobbies || [],
+        favoriteSubjects: user.favoriteSubjects || [],
+        sports: user.sports || [],
+        musicGenres: user.musicGenres || [],
+        movieGenres: user.movieGenres || []
+      }
+    });
+  } catch (err) {
+    console.error('Firebase login error:', err);
+    return res.status(500).json({ message: 'Server error during Firebase login', details: err.message });
+  }
 };

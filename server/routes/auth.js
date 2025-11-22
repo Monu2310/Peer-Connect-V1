@@ -23,4 +23,14 @@ router.get('/me', auth, authController.getCurrentUser);
 // @access  Private
 router.post('/logout', auth, authController.logout);
 
+// @route   POST /api/auth/firebase-register
+// @desc    Register or link user using Firebase ID token
+// @access  Public
+router.post('/firebase-register', authController.firebaseRegister);
+
+// @route   POST /api/auth/firebase-login
+// @desc    Login using Firebase ID token
+// @access  Public
+router.post('/firebase-login', authController.firebaseLogin);
+
 module.exports = router;

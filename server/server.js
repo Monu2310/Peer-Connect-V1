@@ -5,16 +5,14 @@ const http = require('http');
 const socketIo = require('socket.io');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
-const compression = require('compression');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const slowDown = require('express-slow-down');
+const { performanceMiddleware, optimizeApiResponses } = require('./middleware/performance');
 const GroupMessage = require('./models/GroupMessage');
 
 // Import performance configurations
 const { dbConfig, queryOptimizer, connectionMonitor } = require('./config/database');
 const { cache, warmCache } = require('./middleware/cache');
 const { cacheResponse, preloadCriticalData } = require('./middleware/cache');
+const jwt = require('jsonwebtoken');
 
 // Load environment variables
 dotenv.config();
@@ -23,49 +21,11 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// Trust proxy - REQUIRED for Render.com to get real client IPs
-// This allows express-rate-limit to work correctly behind Render's proxy
-app.set('trust proxy', 1);
+// Trust proxy and optimize API responses (ETag, JSON settings)
+optimizeApiResponses(app);
 
-// Security middleware
-app.use(helmet({
-  contentSecurityPolicy: false, // Disable for development
-  crossOriginEmbedderPolicy: false
-}));
-
-// Compression middleware for better performance
-app.use(compression({
-  level: 6,
-  threshold: 1024,
-  filter: (req, res) => {
-    if (req.headers['x-no-compression']) {
-      return false;
-    }
-    return compression.filter(req, res);
-  }
-}));
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // limit each IP to 1000 requests per windowMs
-  message: {
-    error: 'Too many requests from this IP, please try again later.'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Speed limiting for expensive operations
-const speedLimiter = slowDown({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  delayAfter: 100, // allow 100 requests per 15 minutes, then...
-  delayMs: () => 500, // add 500ms delay per request above 100
-  validate: { delayMs: false } // disable warning
-});
-
-app.use('/api/', limiter);
-app.use('/api/', speedLimiter);
+// Apply unified performance middleware (compression, helmet, rate limiting, slow down, cache headers, logging)
+performanceMiddleware(app);
 
 // Log environment variables for debugging (masking sensitive info)
 console.log('Environment Variables:');
@@ -113,28 +73,6 @@ const corsOptions = {
 // Initialize Socket.IO with CORS options
 const io = socketIo(server, {
   cors: corsOptions
-});
-
-// Add Socket.IO authentication middleware (making token auth optional)
-io.use((socket, next) => {
-  const token = socket.handshake.query.token;
-  
-  // Allow connections without tokens for general app usage
-  // Only require token for specific authenticated socket operations
-  if (!token) {
-    console.log('Socket connection without token - allowing for basic functionality');
-    return next(); // Continue without token
-  }
-  
-  try {
-    // Simple verification for authenticated socket connections
-    console.log('Socket authenticated with token');
-    return next();
-  } catch (err) {
-    console.error('Socket authentication error:', err);
-    // Still allow connection but mark it as unauthenticated
-    return next();
-  }
 });
 
 // Apply CORS middleware to all routes
@@ -223,6 +161,7 @@ const initializeApp = async () => {
     
     // Add performance monitoring endpoint
     app.get('/api/performance', async (req, res) => {
+		// In production, this should be protected; for now we keep it lightweight
       const dbStats = connectionMonitor.getConnectionStats();
       const healthCheck = await connectionMonitor.healthCheck();
       
@@ -285,22 +224,57 @@ const initializeApp = async () => {
 // Initialize the application
 initializeApp();
 
+// Helper to validate that a user can join a given private room
+const canJoinPrivateRoom = (userId, roomId) => {
+  if (!userId || !roomId) return false;
+  const parts = roomId.split('-').filter(Boolean).sort();
+  return parts.includes(String(userId));
+};
+
 // Socket.io for real-time communication
 io.on('connection', (socket) => {
   console.log('New client connected');
+
+  // Decode JWT if provided so we can tag the socket with a user id
+  const token = socket.handshake.query?.token;
+  if (token && process.env.JWT_SECRET) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      // Attach minimal user info to socket for authorization checks
+      socket.user = { id: decoded.id || decoded._id };
+    } catch (err) {
+      console.warn('Socket JWT verification failed:', err.message);
+    }
+  }
   
-  // Join a room for private messaging
+  // Join a room for private messaging (only if user is part of room)
   socket.on('join-room', (roomId) => {
+    // If we have a user on the socket, enforce membership in the room
+    if (socket.user && !canJoinPrivateRoom(socket.user.id, roomId)) {
+      console.warn(`Unauthorized room join attempt by user ${socket.user.id} for room ${roomId}`);
+      return;
+    }
+
     socket.join(roomId);
   });
   
   // Handle new messages
   socket.on('send-message', (messageData) => {
+    // If user is known, ensure they’re allowed to send to this room
+    if (socket.user && !canJoinPrivateRoom(socket.user.id, messageData.roomId)) {
+      console.warn(`Unauthorized message send attempt by user ${socket.user.id} for room ${messageData.roomId}`);
+      return;
+    }
+
     io.to(messageData.roomId).emit('receive-message', messageData);
   });
   
   // Handle typing indicator
   socket.on('typing', (data) => {
+    if (socket.user && !canJoinPrivateRoom(socket.user.id, data.roomId)) {
+      return;
+    }
+
     socket.to(data.roomId).emit('typing', data);
   });
   

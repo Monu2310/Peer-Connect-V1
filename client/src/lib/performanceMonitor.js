@@ -223,6 +223,12 @@ class PerformanceMonitor {
     this.metrics = {};
     localStorage.removeItem('performance_metrics');
   }
+
+	// Integrate CRA reportWebVitals callback
+	recordWebVital(metric) {
+		if (!metric || !metric.name) return;
+		this.handleMetric(metric.name, metric);
+	}
 }
 
 // Create singleton instance

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 
 // Styles
@@ -35,19 +35,7 @@ const PageLoader = () => (
     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
   </div>
 );
-
 function App() {
-  const [appReady, setAppReady] = useState(false);
-
-  // Minimal initialization
-  useEffect(() => {
-    setAppReady(true);
-  }, []);
-
-  if (!appReady) {
-    return <PageLoader />;
-  }
-
   return (
     <ThemeProvider>
       <AuthProvider>

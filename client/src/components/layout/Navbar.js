@@ -98,6 +98,7 @@ const Navbar = () => {
           <Link 
             to="/" 
             className="flex items-center space-x-2 group"
+            aria-label="Go to home"
           >
             <div className="w-9 h-9 md:w-10 md:h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md">
               <span className="text-white font-bold text-lg md:text-xl">P</span>
@@ -188,6 +189,7 @@ const Navbar = () => {
                 variant="ghost"
                 size="sm"
                 className="h-10 w-10 p-0"
+                aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
               >
                 {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </Button>

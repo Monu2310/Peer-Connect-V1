@@ -1,16 +1,15 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../core/AuthContext';
-import { getMessages, sendMessage } from '../api/messageService';
+import { getMessages, sendMessage, markAsRead } from '../api/messageService';
 import { getUserProfile } from '../api/userService';
 import io from 'socket.io-client';
 import { API_URL } from '../api/config';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
-import { Send, Loader2, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Send, Loader2, MessageSquare, ArrowLeft, Check, CheckCheck } from 'lucide-react';
 
 const Conversation = () => {
   const { userId } = useParams();
@@ -25,13 +24,21 @@ const Conversation = () => {
   
   const messagesEndRef = useRef(null);
   const socketRef = useRef();
+  const typingTimeoutRef = useRef(null);
 
   // Room ID for socket.io (combination of both user IDs, sorted and joined)
   const roomId = [currentUser._id, userId].sort().join('-');
 
   useEffect(() => {
     // Initialize socket connection
-    socketRef.current = io(API_URL);
+    if (!currentUser || !currentUser._id) return;
+
+    socketRef.current = io(API_URL, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
     
     // Join room for this specific conversation
     socketRef.current.emit('join-room', roomId);
@@ -41,6 +48,8 @@ const Conversation = () => {
       // Only add message if it's from the other person, not us
       if (message.sender !== currentUser._id) {
         setMessages(prevMessages => [...prevMessages, message]);
+        // Mark as read immediately when receiving while in conversation
+        markAsRead(userId);
       }
     });
     
@@ -48,26 +57,38 @@ const Conversation = () => {
     socketRef.current.on('typing', (data) => {
       if (data.userId !== currentUser._id) {
         setIsTyping(true);
-        // Clear typing indicator after 3 seconds
-        setTimeout(() => setIsTyping(false), 3000);
+        // Clear any existing timeout and schedule hide
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+        }
+        typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 2000);
       }
     });
 
     // Load conversation data
     const loadConversation = async () => {
       try {
+        setLoading(true);
+        
         // Get recipient user details
-        const recipientData = await getUserProfile(userId);
-        setRecipient(recipientData);
+        try {
+          const recipientData = await getUserProfile(userId);
+          if (recipientData) {
+            setRecipient(recipientData);
+          }
+        } catch (profileErr) {
+          console.error('Error fetching profile:', profileErr);
+          // Fallback recipient if profile fetch fails
+          setRecipient({ username: 'User', _id: userId });
+        }
         
         // Get message history
         const messagesData = await getMessages(userId);
-        console.log('💬 Loaded messages:', messagesData.length);
-        console.log('👤 Current user ID:', currentUser._id || currentUser.id);
-        if (messagesData.length > 0) {
-          console.log('📋 Sample message sender:', messagesData[0].sender);
-        }
         setMessages(messagesData);
+        
+        // Mark messages as read when opening conversation
+        await markAsRead(userId);
+        
         setLoading(false);
       } catch (err) {
         console.error('Error loading conversation:', err);
@@ -76,25 +97,51 @@ const Conversation = () => {
       }
     };
     
-    loadConversation();
+  loadConversation();
     
     // Clean up socket connection when component unmounts
     return () => {
-      socketRef.current.disconnect();
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      if (socketRef.current) {
+        socketRef.current.off('receive-message');
+        socketRef.current.off('typing');
+        socketRef.current.disconnect();
+      }
     };
-  }, [currentUser._id, userId, roomId]);
+  }, [currentUser, userId, roomId]);
   
-  // Scroll to bottom when messages change
+  // Scroll to bottom when messages change, but only if user is near the bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesEndRef.current?.parentElement;
+    if (!container) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const isNearBottom = scrollHeight - (scrollTop + clientHeight) < 80;
+
+    if (isNearBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
   
-  const handleTyping = () => {
+  const handleTyping = useCallback(() => {
+    if (!socketRef.current || !currentUser || !currentUser._id) return;
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Emit a typing event and debounce subsequent ones
     socketRef.current.emit('typing', {
       roomId,
       userId: currentUser._id
     });
-  };
+
+    typingTimeoutRef.current = setTimeout(() => {
+      // No-op timeout used for debouncing; receiver clears their own indicator
+    }, 500);
+  }, [roomId, currentUser]);
   
   // Helper function to format date separators
   const formatDateSeparator = (date) => {
@@ -150,7 +197,9 @@ const Conversation = () => {
       const optimisticMessage = { 
         ...messageData, 
         _id: tempId,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        read: false,
+        pending: true
       };
       
       setMessages(prev => [...prev, optimisticMessage]);
@@ -163,7 +212,7 @@ const Conversation = () => {
       
       // Replace temp message with real message from server
       setMessages(prev => prev.map(msg => 
-        msg._id === tempId ? sentMessage : msg
+        msg._id === tempId ? { ...sentMessage, pending: false } : msg
       ));
       
       // Emit message through socket (server will broadcast to recipient only)
@@ -199,151 +248,168 @@ const Conversation = () => {
   );
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-[#FFF8D4] dark:bg-background">
-      {/* Header - FIXED at Top with Cream/Blue colors */}
-      <div className="bg-gradient-to-r from-secondary via-secondary to-foreground dark:from-foreground dark:to-secondary border-b-2 border-primary/20 px-4 py-3.5 flex items-center shadow-lg z-10">
-        {/* Back Button */}
+    <div className="fixed left-0 right-0 bottom-0 top-16 md:top-20 flex flex-col bg-background">
+      {/* Header - WhatsApp style but with project theme */}
+      <div className="flex-none px-4 py-3 bg-card/90 backdrop-blur-md border-b border-border flex items-center gap-3 shadow-sm z-20">
         <Button
           onClick={() => navigate('/messages')}
           variant="ghost"
           size="icon"
-          className="h-9 w-9 rounded-full hover:bg-white/20 text-white mr-2 flex-shrink-0"
+          className="h-10 w-10 rounded-full hover:bg-muted text-muted-foreground -ml-2"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         
-        {/* Avatar */}
-        <Avatar className="h-11 w-11 ring-2 ring-white/40 shadow-md">
-          <AvatarImage src={recipient?.profilePicture || '/avatar.svg'} />
-          <AvatarFallback className="bg-white/25 text-white font-bold text-base">
-            {recipient?.username.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+        <div className="relative">
+          {loading && !recipient ? (
+            <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+          ) : (
+            <Avatar className="h-10 w-10 ring-2 ring-background shadow-sm">
+              <AvatarImage src={recipient?.profilePicture || '/avatar.svg'} />
+              <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                {recipient?.username ? recipient.username.charAt(0).toUpperCase() : 'U'}
+              </AvatarFallback>
+            </Avatar>
+          )}
+        </div>
         
-        {/* User Info */}
-        <div className="ml-3 flex-1 min-w-0">
-          <h1 className="text-lg font-bold text-white truncate drop-shadow-sm">{recipient?.username}</h1>
-          {isTyping && (
-            <p className="text-xs text-white/90 animate-pulse mt-0.5 font-medium">typing...</p>
+        <div className="flex-1 min-w-0 flex flex-col justify-center">
+          {loading && !recipient ? (
+            <div className="h-4 w-32 bg-muted animate-pulse rounded mb-1" />
+          ) : (
+            <h1 className="text-base font-semibold text-foreground truncate leading-none mb-1">
+              {recipient?.username || 'User'}
+            </h1>
+          )}
+          
+          {isTyping ? (
+            <p className="text-xs text-primary font-medium animate-pulse">typing...</p>
+          ) : (
+            <p className="text-xs text-muted-foreground truncate">
+              {loading ? 'Loading...' : 'Online'}
+            </p>
           )}
         </div>
       </div>
       
-      {/* Messages Container - SCROLLABLE ONLY - Beautiful Cream Background */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 bg-[#FFF8D4]/50 dark:bg-[#313647]"
-           style={{ 
-             minHeight: 0,
-             maxHeight: '100%',
-             overscrollBehavior: 'contain'
-           }}
+      {/* Messages Container */}
+      <div 
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 bg-background"
+        style={{ 
+          backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(163, 176, 135, 0.1) 0%, transparent 50%)', // Subtle sage glow
+          backgroundAttachment: 'fixed'
+        }}
       >
-        <AnimatePresence initial={false}>
-          {messages.length === 0 ? (
-            <motion.div 
-              key="no-messages"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="flex flex-col items-center justify-center h-full text-center py-12"
-            >
-              <div className="w-16 h-16 rounded-full bg-secondary/10 flex items-center justify-center mb-4">
-                <MessageSquare className="h-8 w-8 text-secondary" />
-              </div>
-              <p className="text-base font-semibold text-foreground mb-1">No messages yet</p>
-              <p className="text-sm text-muted-foreground">Send a message to start the conversation</p>
-            </motion.div>
-          ) : (
-            messages.map((message, index) => {
-              // Robust sender comparison - handle both object and string IDs
-              const senderId = typeof message.sender === 'object' ? message.sender._id : message.sender;
-              const isOwn = senderId === currentUser._id || senderId === currentUser.id;
-              const messageDate = new Date(message.createdAt);
-              const isValidDate = !isNaN(messageDate.getTime());
-              const previousMessage = index > 0 ? messages[index - 1] : null;
-              const showDateSeparator = shouldShowDateSeparator(message, previousMessage);
-              
-              return (
-                <React.Fragment key={message._id}>
-                  {/* WhatsApp-style Date Separator with Cream/Blue */}
-                  {showDateSeparator && isValidDate && (
-                    <div className="flex justify-center my-4">
-                      <div className="bg-white dark:bg-foreground text-secondary dark:text-white text-xs font-semibold px-4 py-1.5 rounded-full shadow-md border border-secondary/20">
-                        {formatDateSeparator(message.createdAt)}
+        <div className="flex flex-col justify-end min-h-full space-y-1 pb-2">
+          <AnimatePresence initial={false}>
+            {messages.length === 0 && !loading ? (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-col items-center justify-center flex-1 py-12 opacity-50"
+              >
+                <div className="w-24 h-24 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+                  <MessageSquare className="h-10 w-10 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground">No messages yet</p>
+              </motion.div>
+            ) : (
+              messages.map((message, index) => {
+                const senderId = typeof message.sender === 'object' ? message.sender._id : message.sender;
+                const isOwn = senderId === currentUser._id || senderId === currentUser.id;
+                const messageDate = new Date(message.createdAt);
+                const isValidDate = !isNaN(messageDate.getTime());
+                const previousMessage = index > 0 ? messages[index - 1] : null;
+                const showDateSeparator = shouldShowDateSeparator(message, previousMessage);
+                
+                // Check if previous message was from same sender to group them
+                const isSequence = previousMessage && 
+                  (typeof previousMessage.sender === 'object' ? previousMessage.sender._id : previousMessage.sender) === senderId &&
+                  !showDateSeparator;
+
+                return (
+                  <React.Fragment key={message._id}>
+                    {showDateSeparator && isValidDate && (
+                      <div className="flex justify-center my-6 sticky top-2 z-10">
+                        <span className="bg-muted/80 backdrop-blur-sm text-muted-foreground text-[11px] font-medium px-3 py-1 rounded-full shadow-sm border border-border/50">
+                          {formatDateSeparator(message.createdAt)}
+                        </span>
                       </div>
-                    </div>
-                  )}
-                  
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.2 }}
-                    className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-1.5`}
-                  >
-                    {/* Show recipient avatar on left for their messages */}
-                    {!isOwn && (
-                      <Avatar className="h-8 w-8 mr-2 flex-shrink-0 self-end ring-2 ring-border">
-                        <AvatarImage src={recipient?.profilePicture || '/avatar.svg'} />
-                        <AvatarFallback className="bg-secondary/30 text-secondary dark:text-white text-xs font-bold">
-                          {recipient?.username?.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
                     )}
                     
-                    <div 
-                      className={`relative px-3.5 py-2.5 rounded-2xl max-w-[70%] sm:max-w-md break-words shadow-md ${
-                        isOwn 
-                          ? 'bg-secondary text-white rounded-br-none' 
-                          : 'bg-white dark:bg-card text-foreground border-2 border-secondary/20 dark:border-primary/20 rounded-bl-none'
-                      }`}
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`flex ${isOwn ? 'justify-end' : 'justify-start'} group`}
                     >
-                      <p className="text-sm leading-relaxed">{message.content}</p>
-                      {isValidDate && (
-                        <div className={`text-[10px] mt-1 font-medium ${
-                          isOwn 
-                            ? 'text-white/80 text-right' 
-                            : 'text-muted-foreground text-right'
-                        }`}>
-                          {messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      <div 
+                        className={`
+                          relative px-3 py-1.5 max-w-[75%] sm:max-w-[65%] break-words shadow-sm text-[15px] leading-relaxed
+                          ${isOwn 
+                            ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm' 
+                            : 'bg-card text-card-foreground border border-border/50 rounded-2xl rounded-tl-sm'
+                          }
+                          ${isSequence ? (isOwn ? 'mt-0.5 rounded-tr-2xl' : 'mt-0.5 rounded-tl-2xl') : 'mt-2'}
+                        `}
+                      >
+                        <div className="flex flex-wrap items-end gap-x-2">
+                          <span>{message.content}</span>
+                          <div className={`text-[10px] flex items-center gap-0.5 h-4 select-none ${
+                            isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground/70'
+                          } ml-auto`}>
+                            <span>
+                              {isValidDate && messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {isOwn && (
+                              message.pending ? (
+                                <Check className="w-3.5 h-3.5 opacity-70" strokeWidth={2} />
+                              ) : (
+                                message.read ? (
+                                  <CheckCheck className="w-3.5 h-3.5 text-blue-200" strokeWidth={2.5} />
+                                ) : (
+                                  <CheckCheck className="w-3.5 h-3.5 opacity-70" strokeWidth={2} />
+                                )
+                              )
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                    
-                    {/* Show user avatar on right for own messages */}
-                    {isOwn && (
-                      <Avatar className="h-8 w-8 ml-2 flex-shrink-0 self-end ring-2 ring-secondary/40">
-                        <AvatarImage src={currentUser?.profilePicture || '/avatar.svg'} />
-                        <AvatarFallback className="bg-secondary text-white text-xs font-bold">
-                          {currentUser?.username?.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-                  </motion.div>
-                </React.Fragment>
-              );
-            })
-          )}
-        </AnimatePresence>
-        <div ref={messagesEndRef} />
+                      </div>
+                    </motion.div>
+                  </React.Fragment>
+                );
+              })
+            )}
+          </AnimatePresence>
+          <div ref={messagesEndRef} />
+        </div>
       </div>
       
-      {/* Message Input - FIXED at Bottom with Cream/Blue */}
-      <div className="border-t-2 border-primary/20 bg-white dark:bg-card shadow-2xl z-10">
-        <form onSubmit={handleSubmit} className="flex items-center gap-3 px-4 py-3.5">
-          <Input
-            type="text"
-            placeholder="Type a message..."
-            className="flex-1 h-12 text-sm bg-[#FFF8D4]/80 dark:bg-background text-foreground border-2 border-secondary/30 focus:border-secondary focus:ring-2 focus:ring-secondary/40 rounded-full px-5 placeholder:text-foreground/50 transition-all duration-200 shadow-sm"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={handleTyping}
-          />
+      {/* Input Area */}
+      <div className="flex-none p-3 bg-card/90 backdrop-blur-md border-t border-border z-20">
+        <form onSubmit={handleSubmit} className="flex items-end gap-2 max-w-4xl mx-auto">
+          <div className="flex-1 bg-muted/50 rounded-3xl border border-transparent focus-within:border-primary/30 focus-within:bg-background transition-all duration-200 flex items-center">
+            <Input
+              type="text"
+              placeholder="Type a message..."
+              className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-4 py-3 min-h-[48px] max-h-32"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={(e) => {
+                handleTyping();
+              }}
+            />
+          </div>
           <Button 
             type="submit"
-            className="h-12 w-12 rounded-full bg-secondary hover:bg-foreground hover:scale-105 text-white shadow-lg hover:shadow-xl transition-all duration-200 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            size="icon"
+            className={`h-12 w-12 rounded-full shadow-md transition-all duration-200 ${
+              newMessage.trim() 
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105' 
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
             disabled={!newMessage.trim()}
           >
-            <Send className="h-5 w-5" />
+            <Send className="h-5 w-5 ml-0.5" />
           </Button>
         </form>
       </div>
