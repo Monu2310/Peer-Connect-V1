@@ -559,15 +559,29 @@ export const AuthProvider = ({ children }) => {
             throw new Error(errorMessage);
           }
           
+          idToken = data.idToken;
+          
+          // Fetch user info to get emailVerified status
+          const userInfoResponse = await fetch(
+            `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ idToken: idToken })
+            }
+          );
+          
+          const userInfoData = await userInfoResponse.json();
+          const userInfo = userInfoData.users?.[0];
+          
           // Create a minimal user object
           fbUser = {
             uid: data.localId,
             email: data.email,
-            emailVerified: data.emailVerified || false
+            emailVerified: userInfo?.emailVerified || false
           };
-          idToken = data.idToken;
           
-          console.log('✅ Firebase login successful via REST API');
+          console.log('✅ Firebase login successful via REST API, emailVerified:', fbUser.emailVerified);
           break; // Success, exit retry loop
         } catch (fbError) {
           retryCount++;
