@@ -12,14 +12,25 @@ import {
   DialogTitle,
   DialogDescription
 } from '../ui/dialog';
-import { Menu, X, User, LogOut, Home, Compass, Users, MessageSquare } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Menu, X, User, LogOut, Home, Compass, Users, MessageSquare, Sparkles } from 'lucide-react';
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const { isAuthenticated, currentUser, logout } = useAuth();
   const location = useLocation();
+
+  // Mouse tracking for glow effect
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   // High-performance scroll handler
   useEffect(() => {
@@ -85,13 +96,37 @@ const Navbar = () => {
 
   return (
     <motion.nav 
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${navBarClasses}`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${navBarClasses} overflow-hidden`}
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.4, type: "spring", stiffness: 100 }}
     >
+      {/* Animated glow effect that follows mouse */}
+      <motion.div
+        className="absolute inset-0 opacity-30 pointer-events-none"
+        style={{
+          background: `radial-gradient(circle 600px at ${mousePosition.x}px ${mousePosition.y - window.scrollY}px, hsl(var(--primary) / 0.15), transparent)`
+        }}
+      />
+      
+      {/* Shimmer effect */}
+      <div className="absolute inset-0 opacity-20 pointer-events-none overflow-hidden">
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/20 to-transparent"
+          animate={{
+            x: ['-100%', '200%']
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+          style={{ width: '50%', height: '2px', top: 0 }}
+        />
+      </div>
+
       {/* Main navbar container */}
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           
           {/* Logo section - Extraordinary Design */}
@@ -153,10 +188,13 @@ const Navbar = () => {
                   to="/profile"
                   className="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-primary/5 transition-all duration-200 group"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-sm">
-                    <User className="w-4 h-4 text-white" />
-                  </div>
-                  <span className="text-sm font-bold text-foreground">{userDisplayName}</span>
+                  <Avatar className="h-9 w-9 ring-2 ring-primary transition-transform group-hover:scale-105">
+                    <AvatarImage src={currentUser?.profilePicture || '/avatar.svg'} alt={userDisplayName} />
+                    <AvatarFallback className="bg-primary/20 text-primary">
+                      {userDisplayName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-bold text-foreground group-hover:text-[#A3B087] transition-colors">{userDisplayName}</span>
                 </Link>
                 
                 <Button
@@ -232,9 +270,12 @@ const Navbar = () => {
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-3 p-3 rounded-lg border border-primary/30 hover:bg-primary/5 transition-all duration-200 mb-3"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-sm">
-                    <User className="w-5 h-5 text-white" />
-                  </div>
+                  <Avatar className="h-10 w-10 ring-2 ring-primary">
+                    <AvatarImage src={currentUser?.profilePicture || '/avatar.svg'} alt={userDisplayName} />
+                    <AvatarFallback className="bg-primary/20 text-primary">
+                      {userDisplayName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
                   <p className="font-semibold text-sm">{userDisplayName}</p>
                 </Link>
 

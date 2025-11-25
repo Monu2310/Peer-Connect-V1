@@ -9,53 +9,54 @@
     /* ELITE Color Palette - 60-30-10 Rule Applied Perfectly */
     /* 60% Background: #FFF8D4 Cream | 30% UI/Structure: #313647 Navy | 10% Accent: #A3B087 Sage | Support: #435663 Slate */
     
-    /* LIGHT MODE - Cream Background (60%) */
-    --background: 40 70% 95%; /* #FFF8D4 Cream - Primary background (60%) */
-    --foreground: 216 26% 24%; /* #313647 Navy - Text (30%) */
+    /* LIGHT MODE - Clean White Background with Palette Accents */
+    --background: 0 0% 100%; /* #FFFFFF - Clean White */
+    --foreground: 216 26% 24%; /* #313647 - Navy Text */
     
-    /* Cards use cream tones for consistency */
-    --card: 40 65% 97%; /* Light cream cards */
-    --card-foreground: 216 26% 24%; /* Navy text */
+    /* Cards - White with subtle borders */
+    --card: 0 0% 100%; 
+    --card-foreground: 216 26% 24%;
     
-    --popover: 40 70% 95%;
+    --popover: 0 0% 100%;
     --popover-foreground: 216 26% 24%;
     
-    /* PRIMARY: Sage Green (10% - Accent color) */
-    --primary: 82 19% 56%; /* #A3B087 Sage - Main accent */
-    --primary-foreground: 0 0% 100%; /* White text on sage */
+    /* PRIMARY: Sage Green (Accent) */
+    --primary: 82 19% 56%; /* #A3B087 Sage */
+    --primary-foreground: 0 0% 100%;
     
-    /* SECONDARY: Slate Blue (Supporting structure) */
-    --secondary: 210 20% 40%; /* #435663 Slate - Secondary elements */
-    --secondary-foreground: 0 0% 100%; /* White text */
+    /* SECONDARY: Slate Blue */
+    --secondary: 210 20% 40%; /* #435663 Slate */
+    --secondary-foreground: 0 0% 100%;
     
-    /* Muted tones in cream family */
-    --muted: 40 50% 90%; /* Subtle cream */
-    --muted-foreground: 216 15% 35%; /* Muted navy */
+    /* Muted tones - Cream tinted */
+    --muted: 48 100% 96%; /* Very light cream tint */
+    --muted-foreground: 216 20% 40%;
     
-    /* Accent maintains sage green */
-    --accent: 82 19% 56%; /* Sage */
-    --accent-foreground: 0 0% 100%;
+    /* Accent - Cream for highlights */
+    --accent: 48 100% 91%; /* #FFF8D4 Cream */
+    --accent-foreground: 216 26% 24%;
     
-    /* Destructive for errors */
+    /* Destructive */
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     
-    /* Borders and inputs in cream tones */
-    --border: 40 35% 85%; /* Cream borders */
-    --input: 40 60% 93%; /* Cream input backgrounds */
-    --ring: 82 19% 56%; /* Sage focus ring */
+    /* Borders - Sage/Slate mix */
+    --border: 210 20% 90%; 
+    --input: 210 20% 96%;
+    --ring: 82 19% 56%;
     --radius: 0.75rem;
     
-    /* Premium shadows with navy undertones */
-    --shadow-soft: 0 2px 8px rgba(49, 54, 71, 0.08), 0 1px 3px rgba(49, 54, 71, 0.04);
-    --shadow-medium: 0 4px 16px rgba(49, 54, 71, 0.12), 0 2px 8px rgba(49, 54, 71, 0.06);
-    --shadow-strong: 0 12px 32px rgba(49, 54, 71, 0.15), 0 4px 12px rgba(49, 54, 71, 0.08);
-    --shadow-glow: 0 0 24px rgba(163, 176, 135, 0.25), 0 0 48px rgba(163, 176, 135, 0.12);
+    /* Premium shadows - Navy tinted */
+    --shadow-soft: 0 4px 12px rgba(49, 54, 71, 0.05), 0 1px 2px rgba(49, 54, 71, 0.05);
+    --shadow-medium: 0 8px 24px rgba(49, 54, 71, 0.08), 0 4px 8px rgba(49, 54, 71, 0.04);
+    --shadow-strong: 0 16px 48px rgba(49, 54, 71, 0.12), 0 8px 16px rgba(49, 54, 71, 0.08);
+    --shadow-glow: 0 0 30px rgba(163, 176, 135, 0.3), 0 0 60px rgba(163, 176, 135, 0.15);
     
-    /* Stunning orb effects - Light mode */
-    --orb-primary: rgba(163, 176, 135, 0.18); /* Sage orbs */
-    --orb-secondary: rgba(67, 86, 99, 0.12); /* Slate orbs */
-    --orb-accent: rgba(49, 54, 71, 0.08); /* Navy orbs */
+    /* VIBRANT ORB EFFECTS - Light Mode */
+    /* Using the palette colors for the mesh gradient */
+    --orb-primary: rgba(163, 176, 135, 0.15); /* Sage */
+    --orb-secondary: rgba(67, 86, 99, 0.10); /* Slate */
+    --orb-accent: rgba(255, 248, 212, 0.6); /* Cream - stronger here to show the color */
   }
 
   .dark {
@@ -114,6 +115,18 @@
     transition: background-color 0.3s ease, color 0.3s ease;
     overflow-x: hidden;
     width: 100%;
+    background-image: 
+      radial-gradient(circle at 15% 50%, var(--orb-primary) 0%, transparent 45%),
+      radial-gradient(circle at 85% 30%, var(--orb-secondary) 0%, transparent 45%),
+      radial-gradient(circle at 50% 80%, var(--orb-accent) 0%, transparent 40%);
+    background-attachment: fixed;
+    background-size: 120% 120%;
+    animation: backgroundShift 20s ease-in-out infinite alternate;
+  }
+
+  @keyframes backgroundShift {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 20% 20%; }
   }
 
   ::selection {

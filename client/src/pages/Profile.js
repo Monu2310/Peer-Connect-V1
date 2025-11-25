@@ -5,7 +5,6 @@ import {
   updateUserProfile, 
   getUserProfile, 
   uploadProfilePicture,
-  generateRandomAvatar 
 } from '../api/userService';
 import { getFriends, sendFriendRequestById } from '../api/friendService';
 import { getMyCreatedActivities, getMyJoinedActivities } from '../api/activityService';
@@ -15,7 +14,37 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Calendar, Users, PlusCircle, UserPlus, MessageSquare, Edit, Trash2, CheckCircle, XCircle, MapPin, FileText, Heart, User, Loader2 } from 'lucide-react';
+import { 
+  Calendar, 
+  Users, 
+  PlusCircle, 
+  UserPlus, 
+  MessageSquare, 
+  Edit, 
+  Trash2, 
+  CheckCircle, 
+  XCircle, 
+  MapPin, 
+  FileText, 
+  Heart, 
+  User, 
+  Loader2, 
+  Clock,
+  Mail,
+  Activity,
+  Award,
+  Briefcase,
+  Film,
+  Tv,
+  Book,
+  Music,
+  Gamepad2,
+  Sparkles
+} from 'lucide-react';
+import AvatarSelector from '../components/AvatarSelector';
+import NetflixStyleSelector from '../components/NetflixStyleSelector';
+import BeautifulBackground from '../components/effects/BeautifulBackground';
+import GlowOrb from '../components/effects/GlowOrb';
 
 const Profile = () => {
   const { userId } = useParams();
@@ -32,11 +61,53 @@ const Profile = () => {
     hobbies: [],
     favoriteSubjects: [],
     sports: [],
-    musicGenres: [],
-    movieGenres: []
+    favoriteMovies: [],
+    favoriteShows: [],
+    favoriteBooks: [],
+    favoriteMusic: [],
+    favoriteGames: []
   });
 
-  // New useEffect to update formData when currentUser changes
+  const [joinedActivities, setJoinedActivities] = useState([]);
+  const [createdActivities, setCreatedActivities] = useState([]);
+  const [friendsList, setFriendsList] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false); 
+  const [statsLoading, setStatsLoading] = useState(false); 
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [activeTab, setActiveTab] = useState('joined');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [friendRequestStatus, setFriendRequestStatus] = useState('none');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [showAvatarSelector, setShowAvatarSelector] = useState(false);
+  const [showPreferencesSelector, setShowPreferencesSelector] = useState(false);
+  const [preferencesCategory, setPreferencesCategory] = useState('movies');
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.06
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 24, opacity: 0 },
+    show: { 
+      y: 0, 
+      opacity: 1,
+      transition: {
+        duration: 0.4,
+        ease: "easeOut"
+      }
+    }
+  };
+
   useEffect(() => {
     if (currentUser) {
       setFormData({
@@ -49,44 +120,15 @@ const Profile = () => {
         hobbies: currentUser.hobbies || [],
         favoriteSubjects: currentUser.favoriteSubjects || [],
         sports: currentUser.sports || [],
-        musicGenres: currentUser.musicGenres || [],
-        movieGenres: currentUser.movieGenres || []
+        favoriteMovies: currentUser.favoriteMovies || [],
+        favoriteShows: currentUser.favoriteShows || [],
+        favoriteBooks: currentUser.favoriteBooks || [],
+        favoriteMusic: currentUser.favoriteMusic || [],
+        favoriteGames: currentUser.favoriteGames || []
       });
     }
   }, [currentUser]);
 
-  const [joinedActivities, setJoinedActivities] = useState([]);
-  const [createdActivities, setCreatedActivities] = useState([]);
-  const [friendsList, setFriendsList] = useState([]);
-  const [isEditing, setIsEditing] = useState(false); // Start in display mode
-  const [loading, setLoading] = useState(false); 
-  const [statsLoading, setStatsLoading] = useState(false); 
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [activeTab, setActiveTab] = useState('joined');
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [previewImage, setPreviewImage] = useState('');
-  const [friendRequestStatus, setFriendRequestStatus] = useState('none'); // none, sending, sent, error
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
-  const [deleting, setDeleting] = useState(false);
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1 }
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.05
-      }
-    }
-  };
-
-  // Fetch profile data
   const fetchProfileData = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -103,11 +145,13 @@ const Profile = () => {
         hobbies: profileData.hobbies || [],
         favoriteSubjects: profileData.favoriteSubjects || [],
         sports: profileData.sports || [],
-        musicGenres: profileData.musicGenres || [],
-        movieGenres: profileData.movieGenres || []
+        favoriteMovies: profileData.favoriteMovies || [],
+        favoriteShows: profileData.favoriteShows || [],
+        favoriteBooks: profileData.favoriteBooks || [],
+        favoriteMusic: profileData.favoriteMusic || [],
+        favoriteGames: profileData.favoriteGames || []
       }));
 
-      // Check friend request status if viewing another user's profile
       if (!isOwnProfile && currentUser) {
         const friends = await getFriends();
         const isFriend = friends.some(f => 
@@ -117,7 +161,6 @@ const Profile = () => {
         if (isFriend) {
           setFriendRequestStatus('friends');
         } else {
-          // Check if a request has already been sent
           const sentRequests = friends.filter(f => f.requester._id === currentUser.id && f.status === 'pending');
           const hasSentRequest = sentRequests.some(f => f.recipient._id === userId);
           if (hasSentRequest) {
@@ -129,14 +172,12 @@ const Profile = () => {
       }
 
     } catch (err) {
-      console.error('Error fetching profile:', err);
       setError('Failed to load profile.');
     } finally {
       setLoading(false);
     }
   }, [userId, currentUser, isOwnProfile]);
 
-  // Fetch activities and friends
   const fetchActivitiesAndFriends = useCallback(async () => {
     setStatsLoading(true);
     try {
@@ -151,7 +192,6 @@ const Profile = () => {
       setFriendsList(Array.isArray(friends) ? friends : friends.accepted || friends.data || []);
 
     } catch (err) {
-      console.error('Error fetching activities/friends:', err);
       setError('Failed to load activities or friends.');
     } finally {
       setStatsLoading(false);
@@ -165,38 +205,9 @@ const Profile = () => {
     }
   }, [fetchProfileData, fetchActivitiesAndFriends, authLoading, currentUser]);
 
-  // Cache profile data on form data change (only for own profile)
-  useEffect(() => {
-    if (isOwnProfile && formData.username) {
-      try {
-        localStorage.setItem('profile_data', JSON.stringify(formData));
-        localStorage.setItem('profile_data_timestamp', Date.now().toString());
-      } catch (err) {
-        console.error('Error saving profile to cache:', err);
-      }
-    }
-  }, [formData, isOwnProfile]);
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleAddInterest = (interest) => {
-    if (interest.trim() && !formData.interests.includes(interest.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        interests: [...prev.interests, interest.trim()]
-      }));
-    }
-  };
-
-  const handleInterestKeyPress = (e) => {
-    if (e.key === 'Enter' && e.target.value.trim()) {
-      e.preventDefault();
-      handleAddInterest(e.target.value.trim());
-      e.target.value = '';
-    }
   };
 
   const handleRemoveInterest = (interest) => {
@@ -219,95 +230,53 @@ const Profile = () => {
     }
 
     try {
-      console.log('Profile: Sending formData for update:', formData);
-      
-      // Ensure arrays are properly formatted
       const dataToSend = {
         ...formData,
         interests: Array.isArray(formData.interests) ? formData.interests : [],
         hobbies: Array.isArray(formData.hobbies) ? formData.hobbies : [],
         favoriteSubjects: Array.isArray(formData.favoriteSubjects) ? formData.favoriteSubjects : [],
         sports: Array.isArray(formData.sports) ? formData.sports : [],
-        musicGenres: Array.isArray(formData.musicGenres) ? formData.musicGenres : [],
-        movieGenres: Array.isArray(formData.movieGenres) ? formData.movieGenres : []
+        favoriteMovies: Array.isArray(formData.favoriteMovies) ? formData.favoriteMovies : [],
+        favoriteShows: Array.isArray(formData.favoriteShows) ? formData.favoriteShows : [],
+        favoriteBooks: Array.isArray(formData.favoriteBooks) ? formData.favoriteBooks : [],
+        favoriteMusic: Array.isArray(formData.favoriteMusic) ? formData.favoriteMusic : [],
+        favoriteGames: Array.isArray(formData.favoriteGames) ? formData.favoriteGames : []
       };
 
       const updatedUserData = await updateUserProfile(dataToSend);
-      console.log('Profile: Received updatedUserData:', updatedUserData);
-      
-      // Update auth context
       updateAuthUserProfile(updatedUserData);
       
       setSuccess('Profile updated successfully');
       setIsEditing(false);
-      
-      // Refresh profile data to ensure sync
       fetchProfileData();
     } catch (err) {
-      console.error('Error updating profile:', err);
       setError(err.response?.data?.message || 'Failed to update profile. Please try again.');
     } finally {
       setLoading(false);
-      // Clear messages after delay
       setTimeout(() => setSuccess(''), 3000);
       setTimeout(() => setError(''), 5000);
     }
   };
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Image must be less than 5MB');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreviewImage(reader.result);
-    };
-    reader.readAsDataURL(file);
-
-    try {
-      setUploadingImage(true);
-      const formData = new FormData();
-      formData.append('profilePicture', file);
-      const response = await uploadProfilePicture(formData);
-      setFormData(prev => ({
-        ...prev,
-        profilePicture: response.profilePicture || response.imageUrl
-      }));
-      updateAuthUserProfile({...currentUser, profilePicture: response.profilePicture || response.imageUrl});
-      setSuccess('Profile picture uploaded successfully');
-    } catch (err) {
-      console.error('Error uploading image:', err);
-      setError('Failed to upload image');
-    } finally {
-      setUploadingImage(false);
-      setTimeout(() => setSuccess(''), 3000);
-      setTimeout(() => setError(''), 5000);
-    }
-  };
-
-  const handleGenerateRandomAvatar = async () => {
+  const handleAvatarSelect = async (avatarUrl) => {
     try {
       setUploadingImage(true);
       setSuccess('');
       setError('');
-      const response = await generateRandomAvatar();
       
-      if (response && response.profilePicture) {
-        setFormData(prev => ({
-          ...prev,
-          profilePicture: response.profilePicture
-        }));
-        updateAuthUserProfile({...currentUser, profilePicture: response.profilePicture});
-        setSuccess('Profile picture updated successfully');
-      }
+      const updatedFormData = {
+        ...formData,
+        profilePicture: avatarUrl
+      };
+      
+      const updatedUserData = await updateUserProfile(updatedFormData);
+      
+      setFormData(updatedFormData);
+      updateAuthUserProfile(updatedUserData);
+      setSuccess('Avatar updated successfully!');
+      setShowAvatarSelector(false);
     } catch (err) {
-      console.error('Error generating random avatar:', err);
-      setError('Failed to generate random avatar');
+      setError('Failed to update avatar');
     } finally {
       setUploadingImage(false);
       setTimeout(() => setSuccess(''), 3000);
@@ -315,19 +284,57 @@ const Profile = () => {
     }
   };
 
-  const handleUnfriend = async (friendId) => {
+  const handlePreferencesSave = async (category, selected) => {
     try {
-      // This part needs to be implemented on the backend to remove a friend
-      // For now, we'll just filter it out from the local state
-      setFriendsList(prev => prev.filter(friend => friend._id !== friendId));
-      setSuccess('Friend removed successfully');
+      setLoading(true);
+      
+      const categoryKey = category === 'movies' ? 'favoriteMovies' :
+                          category === 'shows' ? 'favoriteShows' :
+                          category === 'books' ? 'favoriteBooks' :
+                          category === 'music' ? 'favoriteMusic' :
+                          'favoriteGames';
+      
+      const updatedFormData = {
+        ...formData,
+        [categoryKey]: selected
+      };
+      
+      const updatedUserData = await updateUserProfile(updatedFormData);
+      
+      setFormData(updatedFormData);
+      updateAuthUserProfile(updatedUserData);
+      setSuccess(`${category.charAt(0).toUpperCase() + category.slice(1)} preferences saved!`);
     } catch (err) {
-      console.error('Error unfriending user:', err);
-      setError('Failed to remove friend.');
+      setError('Failed to save preferences');
     } finally {
+      setLoading(false);
       setTimeout(() => setSuccess(''), 3000);
       setTimeout(() => setError(''), 5000);
     }
+  };
+
+  const openPreferencesSelector = (category) => {
+    setPreferencesCategory(category);
+    setShowPreferencesSelector(true);
+  };
+
+  const handleAvatarUpload = async (file) => {
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('Image must be less than 5MB');
+    }
+
+    const formDataObj = new FormData();
+    formDataObj.append('profilePicture', file);
+    const response = await uploadProfilePicture(formDataObj);
+    
+    const newProfilePicture = response.profilePicture || response.imageUrl;
+    setFormData(prev => ({
+      ...prev,
+      profilePicture: newProfilePicture
+    }));
+    updateAuthUserProfile({...currentUser, profilePicture: newProfilePicture});
+    setSuccess('Profile picture uploaded successfully');
+    setTimeout(() => setSuccess(''), 3000);
   };
 
   const handleSendFriendRequest = async () => {
@@ -339,7 +346,6 @@ const Profile = () => {
       setFriendRequestStatus('sent');
       setSuccess('Friend request sent successfully');
     } catch (err) {
-      console.error('Error sending friend request:', err);
       setError('Failed to send friend request.');
       setFriendRequestStatus('none');
     } finally {
@@ -369,14 +375,10 @@ const Profile = () => {
         throw new Error('Failed to delete account');
       }
 
-      // Clear all local data
       localStorage.clear();
       sessionStorage.clear();
-      
-      // Redirect to home
       window.location.href = '/';
     } catch (err) {
-      console.error('Error deleting account:', err);
       setError('Failed to delete account. Please try again.');
       setDeleting(false);
     }
@@ -394,642 +396,602 @@ const Profile = () => {
 
   if (authLoading || !currentUser) {
     return (
-      <div className="flex justify-center items-center min-h-screen py-8 px-4">
-        <div className="text-primary text-base sm:text-lg">
-          Loading user data...
+      <BeautifulBackground>
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="text-lg text-muted-foreground">Loading user data...</p>
+          </div>
         </div>
-      </div>
+      </BeautifulBackground>
     );
   }
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen py-8 px-4">
-        <div className="text-primary text-base sm:text-lg">
-          Loading profile...
+      <BeautifulBackground>
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="text-lg text-muted-foreground">Loading profile...</p>
+          </div>
         </div>
-      </div>
+      </BeautifulBackground>
     );
   }
 
   return (
-    <motion.div 
-      className="min-h-screen w-full bg-background"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-12">
-        <motion.div variants={itemVariants} className="mb-8 sm:mb-10">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h1 className="text-3xl sm:text-4xl font-bold">
-              {isOwnProfile ? 'My Profile' : `${formData.username}'s Profile`}
-            </h1>
-            {isOwnProfile ? (
-              <div className="flex space-x-2 w-full md:w-auto">
-                {!isEditing ? (
-                  <Button onClick={() => setIsEditing(true)} className="btn-primary flex-1 md:flex-initial">
-                    <Edit className="mr-2 h-4 w-4" /> Edit Profile
-                  </Button>
-                ) : (
-                  <Button onClick={() => {
-                    setIsEditing(false);
-                    setPreviewImage('');
-                    fetchProfileData(); // Re-fetch to revert changes
-                  }} className="btn-outline">
-                    Cancel
-                  </Button>
-                )}
-                {isEditing && (
-                  <Button onClick={handleSubmit} className="btn-primary" disabled={loading}>
-                    {loading ? 'Saving...' : 'Save Profile'}
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="mt-4 md:mt-0 flex flex-wrap gap-3">
-                <Button asChild className="btn-primary h-11 px-6">
-                  <Link to={`/messages/${userId}`}>
-                    <MessageSquare className="mr-2 h-4 w-4" /> Message
-                  </Link>
-                </Button>
-                <Button
-                  onClick={handleSendFriendRequest}
-                  className={`btn-primary h-11 px-6 ${friendRequestStatus === 'sent' || friendRequestStatus === 'friends' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  disabled={friendRequestStatus === 'sending' || friendRequestStatus === 'sent' || friendRequestStatus === 'friends'}
-                >
-                  {friendRequestStatus === 'sending' ? (
-                    <>
-                      <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
-                      Sending...
-                    </>
-                  ) : friendRequestStatus === 'sent' ? (
-                    <>
-                      <CheckCircle className="mr-2 h-4 w-4" /> Request Sent
-                    </>
-                  ) : friendRequestStatus === 'friends' ? (
-                    <>
-                      <Users className="mr-2 h-4 w-4" /> Friends
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="mr-2 h-4 w-4" /> Add Friend
-                    </>
-                  )}
-                </Button>
-                <Button asChild className="btn-outline h-11 px-6">
-                  <Link to="/activities/create">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Create Activity
-                  </Link>
-                </Button>
-              </div>
-            )}
-          </div>
-        </motion.div>
-
-        <AnimatePresence>
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mb-4 bg-destructive/10 border-l-4 border-destructive text-destructive-foreground p-4 rounded-md"
-            >
-              <div className="flex items-center">
-                <XCircle className="h-5 w-5 mr-2" />
-                <p className="text-sm font-medium">{error}</p>
-              </div>
-            </motion.div>
-          )}
-          {success && (
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mb-4 bg-success/10 border-l-4 border-success text-success p-4 rounded-md"
-            >
-              <div className="flex items-center">
-                <CheckCircle className="h-5 w-5 mr-2" />
-                <p className="text-sm font-medium">{success}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Profile Card - Readable in both light/dark modes */}
-        <motion.div 
-          variants={itemVariants} 
-          className="bg-white dark:bg-[#313647] rounded-2xl shadow-lg overflow-hidden mb-8 border border-[#435663]/20"
-        >
-          {/* Header Banner - 60% Navy */}
-          <div className="relative h-40 sm:h-48 bg-gradient-to-br from-[#313647] to-[#435663] overflow-hidden">
-            {/* Subtle 10% Sage accent */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-[#A3B087]/10 to-transparent"></div>
-          </div>
-
-          {/* Avatar & User Info Section */}
-          <div className="relative px-6 sm:px-8 lg:px-10 -mt-20 pb-8">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:space-x-6">
-              {/* Avatar with Sage accent ring */}
-              <Avatar className="h-32 w-32 sm:h-36 sm:w-36 ring-4 ring-[#A3B087] shadow-xl bg-white">
-                <AvatarImage src={formData.profilePicture || '/avatar.svg'} alt={formData.username} />
-                <AvatarFallback className="text-4xl sm:text-5xl bg-gradient-to-br from-[#313647] to-[#435663] text-white">
-                  {formData.username.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="mt-6 sm:mt-0 flex-1 min-w-0">
-                {/* Username - high contrast */}
-                <h2 className="text-3xl sm:text-4xl font-bold text-[#313647] dark:text-white truncate mb-2">
-                  {formData.username}
-                </h2>
-                {/* Email - readable secondary */}
-                <p className="text-base sm:text-lg text-[#435663] dark:text-gray-300">
-                  {formData.email}
+    <BeautifulBackground>
+      <motion.div 
+        className="relative z-10 w-full"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
+        <div className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+          
+          {/* Header */}
+          <motion.div variants={itemVariants} className="pt-6 md:pt-8 pb-6 md:pb-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="space-y-2">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold gradient-text">
+                  {isOwnProfile ? 'My Profile' : `${formData.username}'s Profile`}
+                </h1>
+                <p className="text-base md:text-lg text-muted-foreground">
+                  {isOwnProfile ? 'Manage your profile and activities' : 'View profile and connect'}
                 </p>
               </div>
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="border-t border-[#435663]/10 dark:border-[#435663]/30"></div>
-
-          {/* Section Title */}
-          <div className="px-6 py-5 sm:px-8 lg:px-10 bg-gray-50 dark:bg-[#313647]/50">
-            <h3 className="text-2xl sm:text-3xl font-bold text-[#313647] dark:text-white flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
-                <Edit className="h-5 w-5 text-[#A3B087]" />
-              </div>
-              {isOwnProfile ? (isEditing ? 'Edit Your Profile' : 'Profile Details') : 'Profile Details'}
-            </h3>
-          </div>
-          <AnimatePresence mode="wait">
-            {isEditing ? (
-              <motion.form 
-                key="editForm"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-                onSubmit={handleSubmit}
-              >
-                <div className="px-4 py-5 sm:px-6">
-                  <div className="grid grid-cols-1 gap-y-6 sm:grid-cols-2 sm:gap-x-4">
-                    <div className="space-y-2">
-                      <label htmlFor="username" className="block text-sm font-medium text-foreground">
-                        Username
-                      </label>
-                      <Input
-                        type="text"
-                        name="username"
-                        id="username"
-                        value={formData.username}
-                        onChange={handleChange}
-                        placeholder="Enter your username"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="email" className="block text-sm font-medium text-foreground">
-                        Email
-                      </label>
-                      <Input
-                        type="email"
-                        name="email"
-                        id="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        placeholder="Enter your email"
-                        required
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2 space-y-2">
-                      <label htmlFor="bio" className="block text-sm font-medium text-foreground">
-                        Bio
-                      </label>
-                      <Textarea
-                        name="bio"
-                        id="bio"
-                        value={formData.bio}
-                        onChange={handleChange}
-                        placeholder="Tell us about yourself"
-                        rows="3"
-                      ></Textarea>
-                    </div>
-
-                    <div className="sm:col-span-2 space-y-2">
-                      <label htmlFor="location" className="block text-sm font-medium text-foreground">
-                        Location
-                      </label>
-                      <Input
-                        type="text"
-                        name="location"
-                        id="location"
-                        value={formData.location}
-                        onChange={handleChange}
-                        placeholder="e.g., New York, NY"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2 space-y-2">
-                      <label htmlFor="interests" className="block text-sm font-medium text-foreground">
-                        Interests (comma-separated)
-                      </label>
-                      <Input
-                        type="text"
-                        name="interests"
-                        id="interests"
-                        value={formData.interests.join(', ')}
-                        onChange={(e) => setFormData({ ...formData, interests: e.target.value.split(',').map(i => i.trim()) })}
-                        onKeyPress={handleInterestKeyPress}
-                        placeholder="e.g., coding, hiking, reading"
-                      />
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {formData.interests.map((interest, index) => (
-                          <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary">
-                            {interest}
-                            <button type="button" onClick={() => handleRemoveInterest(interest)} className="ml-2 -mr-0.5 h-4 w-4 text-primary hover:text-primary-dark">
-                              <XCircle className="h-4 w-4" />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="sm:col-span-2 space-y-2">
-                      <label className="block text-sm font-medium text-foreground">
-                        Profile Picture
-                      </label>
-                      <div className="mt-1 flex items-center space-x-4">
-                        <Avatar className="h-20 w-20">
-                          <AvatarImage src={previewImage || formData.profilePicture || '/avatar.svg'} alt="Profile" />
-                          <AvatarFallback>{formData.username.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col space-y-2">
-                          <Input
-                            id="profilePicture"
-                            name="profilePicture"
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileChange}
-                            className="block w-full text-sm text-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                          />
-                          <Button
-                            type="button"
-                            onClick={handleGenerateRandomAvatar}
-                            className="btn-outline w-fit"
-                            disabled={uploadingImage}
-                          >
-                            {uploadingImage ? (
-                              <>
-                                <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
-                                Generating...
-                              </>
-                            ) : (
-                              <>
-                                <PlusCircle className="mr-2 h-4 w-4" /> Generate Random Avatar
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+              
+              {isOwnProfile ? (
+                <div className="flex gap-2">
+                  {!isEditing ? (
+                    <Button onClick={() => setIsEditing(true)} className="btn-primary">
+                      <Edit className="mr-2 h-4 w-4" /> Edit Profile
+                    </Button>
+                  ) : (
+                    <>
+                      <Button onClick={() => {
+                        setIsEditing(false);
+                        fetchProfileData();
+                      }} variant="outline">
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSubmit} disabled={loading}>
+                        {loading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null}
+                        Save
+                      </Button>
+                    </>
+                  )}
                 </div>
-              </motion.form>
-            ) : (
-              <motion.div 
-                key="displayView"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-                className="px-4 py-5 sm:px-6 lg:px-8 space-y-6"
-              >
-                {/* Info Cards Grid - Readable design */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {/* Location Card */}
-                  <div className="bg-gray-50 dark:bg-[#313647] rounded-xl p-5 border border-[#435663]/20 dark:border-[#435663]/40 hover:border-[#A3B087] transition-all duration-300 shadow-sm hover:shadow-md group">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-lg bg-[#A3B087]/20 flex items-center justify-center">
-                        <MapPin className="h-5 w-5 text-[#A3B087]" />
-                      </div>
-                      <p className="text-xs font-semibold text-[#435663] dark:text-gray-400 uppercase tracking-wide">Location</p>
-                    </div>
-                    <p className="text-lg font-bold text-[#313647] dark:text-white">
-                      {formData.location || 'Not specified'}
-                    </p>
-                  </div>
-
-                  {/* Member Since Card */}
-                  <div className="bg-gray-50 dark:bg-[#313647] rounded-xl p-5 border border-[#435663]/20 dark:border-[#435663]/40 hover:border-[#A3B087] transition-all duration-300 shadow-sm hover:shadow-md group">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-lg bg-[#A3B087]/20 flex items-center justify-center">
-                        <Calendar className="h-5 w-5 text-[#A3B087]" />
-                      </div>
-                      <p className="text-xs font-semibold text-[#435663] dark:text-gray-400 uppercase tracking-wide">Member Since</p>
-                    </div>
-                    <p className="text-lg font-bold text-[#313647] dark:text-white">
-                      {formatDate(formData.createdAt)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Bio Section */}
-                <div className="bg-gray-50 dark:bg-[#313647] rounded-xl p-6 border border-[#435663]/20 dark:border-[#435663]/40 shadow-sm">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-lg bg-[#A3B087]/20 flex items-center justify-center">
-                      <FileText className="h-5 w-5 text-[#A3B087]" />
-                    </div>
-                    <p className="text-xs font-semibold text-[#435663] dark:text-gray-400 uppercase tracking-wide">Bio</p>
-                  </div>
-                  <p className="text-base text-[#313647] dark:text-gray-200 leading-relaxed">
-                    {formData.bio || 'No bio available'}
-                  </p>
-                </div>
-
-                {/* Interests Section */}
-                <div className="bg-gray-50 dark:bg-[#313647] rounded-xl p-6 border border-[#435663]/20 dark:border-[#435663]/40 shadow-sm">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-lg bg-[#A3B087]/20 flex items-center justify-center">
-                      <Heart className="h-5 w-5 text-[#A3B087]" />
-                    </div>
-                    <p className="text-xs font-semibold text-[#435663] dark:text-gray-400 uppercase tracking-wide">Interests</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.interests.length > 0 ? (
-                      formData.interests.map((interest, index) => (
-                        <span 
-                          key={index} 
-                          className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-[#A3B087]/10 text-[#313647] dark:text-white border border-[#A3B087]/30 hover:bg-[#A3B087]/20 hover:border-[#A3B087] transition-all duration-200"
-                        >
-                          {interest}
-                        </span>
-                      ))
-                    ) : (
-                      <p className="text-sm text-[#435663] dark:text-gray-400">No interests added</p>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Activities Section */}
-        <motion.div 
-          variants={itemVariants} 
-          className="bg-white dark:bg-[#313647] rounded-2xl shadow-lg overflow-hidden mb-8 border border-[#435663]/20"
-        >
-          <div className="px-6 py-5 sm:px-8 lg:px-10 bg-gray-50 dark:bg-[#313647]/50 border-b border-[#435663]/10 dark:border-[#435663]/30">
-            <h2 className="text-2xl sm:text-3xl font-bold text-[#313647] dark:text-white flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
-                <Users className="h-5 w-5 text-[#A3B087]" />
-              </div>
-              {isOwnProfile ? 'My Activities' : `${formData.username}'s Activities`}
-            </h2>
-          </div>
-          <div className="border-t border-border">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="joined">Joined Activities</TabsTrigger>
-                <TabsTrigger value="created">Created Activities</TabsTrigger>
-              </TabsList>
-              <TabsContent value="joined" className="p-4">
-                {statsLoading ? (
-                  <div className="p-4 text-center text-muted-foreground">
-                    Loading activities...
-                  </div>
-                ) : joinedActivities.length > 0 ? (
-                  <div className="divide-y divide-border">
-                    {joinedActivities.map((activity) => (
-                      <Link
-                        to={`/activities/${activity._id}`}
-                        key={activity._id}
-                        className="block hover:bg-muted/50 transition p-4 rounded-md"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <div className="ml-4">
-                              <p className="text-base font-semibold text-foreground truncate">{activity.title}</p>
-                              <p className="text-sm text-muted-foreground line-clamp-2">{activity.description || 'No description'}</p>
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                                  {activity.category || 'Uncategorized'}
-                                </span>
-                                <span className="inline-flex items-center text-xs text-muted-foreground">
-                                  <Calendar className="h-3 w-3 mr-1" /> {activity.date ? formatDate(activity.date) : 'No date'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-4 text-center text-muted-foreground">
-                    <Calendar className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-                    <p className="mb-2">You haven't joined any activities yet.</p>
-                    <Link to="/activities" className="text-primary hover:underline">
-                      Browse activities
-                    </Link>
-                  </div>
-                )}
-              </TabsContent>
-              <TabsContent value="created" className="p-4">
-                {statsLoading ? (
-                  <div className="p-4 text-center text-muted-foreground">
-                    Loading activities...
-                  </div>
-                ) : createdActivities.length > 0 ? (
-                  <div className="divide-y divide-border">
-                    {createdActivities.map((activity) => (
-                      <Link
-                        to={`/activities/${activity._id}`}
-                        key={activity._id}
-                        className="block hover:bg-muted/50 transition p-4 rounded-md"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <div className="ml-4">
-                              <p className="text-base font-semibold text-foreground truncate">{activity.title}</p>
-                              <p className="text-sm text-muted-foreground line-clamp-2">{activity.description || 'No description'}</p>
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
-                                  {activity.category || 'Uncategorized'}
-                                </span>
-                                <span className="inline-flex items-center text-xs text-muted-foreground">
-                                  <Calendar className="h-3 w-3 mr-1" /> {activity.date ? formatDate(activity.date) : 'No date'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-4 text-center text-muted-foreground">
-                    <PlusCircle className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-                    <p className="mb-2">You haven't created any activities yet.</p>
-                    <Link to="/activities/create" className="text-primary hover:underline">
-                      Create your first activity
-                    </Link>
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </div>
-        </motion.div>
-
-        <motion.div variants={itemVariants} className="card shadow-lg mb-6">
-          <div className="px-4 py-5 sm:px-6">
-            <h2 className="text-lg font-medium font-bold">
-              Friends
-            </h2>
-          </div>
-          <div className="border-t border-border">
-            <div className="px-4 py-5 sm:px-6">
-              <div className="grid grid-cols-1 gap-y-4">
-                {statsLoading ? (
-                  <div className="p-4 text-center text-muted-foreground">
-                    Loading friends...
-                  </div>
-                ) : friendsList.length > 0 ? (
-                  <div className="space-y-3">
-                    {friendsList.slice(0, 5).map((friend, index) => (
-                      <Link to={`/profile/${friend._id || friend.id}`} key={friend._id || friend.id || index} className="flex items-center space-x-3 hover:bg-muted/50 p-2 rounded-md transition">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={friend.profilePicture || '/avatar.svg'} alt={friend.username} />
-                          <AvatarFallback>{friend.username.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-base font-semibold text-foreground">{friend.username}</p>
-                          {friend.similarityScore && (
-                            <p className="text-sm text-muted-foreground">{friend.similarityScore}% match</p>
-                          )}
-                          {friend.sharedInterests?.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {friend.sharedInterests.map((interest, idx) => (
-                                <span key={idx} className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{interest.value || interest}</span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        {isOwnProfile && friendRequestStatus !== 'friends' && (
-                          <Button size="sm" variant="destructive" onClick={(e) => { e.preventDefault(); handleUnfriend(friend._id || friend.id); }} className="ml-auto">
-                            <Trash2 className="mr-2 h-4 w-4" /> Unfriend
-                          </Button>
-                        )}
-                      </Link>
-                    ))}
-                    {friendsList.length > 5 && (
-                      <Link to="/friends" className="text-sm text-primary hover:underline block text-center pt-2">
-                        View all {friendsList.length} friends
-                      </Link>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-4 text-center text-muted-foreground">
-                    <Users className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-                    <p className="mb-2">No friends yet.</p>
-                    <Link to="/friends" className="text-primary hover:underline">
-                      Find friends
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Delete Account Section - Only for Own Profile */}
-        {isOwnProfile && (
-          <motion.div variants={itemVariants} className="card shadow-lg mb-6 border-2 border-destructive/20">
-            <div className="px-4 py-5 sm:px-6 bg-destructive/5">
-              <h2 className="text-lg font-medium font-bold text-destructive flex items-center gap-2">
-                <Trash2 className="h-5 w-5" />
-                Danger Zone
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Permanently delete your account and all associated data.
-              </p>
-            </div>
-            <div className="border-t border-border px-4 py-5 sm:px-6">
-              {!showDeleteConfirm ? (
-                <Button
-                  variant="destructive"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="w-full sm:w-auto"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Account
-                </Button>
               ) : (
-                <div className="space-y-4">
-                  <div className="bg-destructive/10 border-2 border-destructive/30 rounded-lg p-4">
-                    <p className="font-bold text-destructive mb-2">⚠️ Warning: This action cannot be undone!</p>
-                    <p className="text-sm text-foreground mb-2">
-                      Deleting your account will permanently remove:
-                    </p>
-                    <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1 mb-3">
-                      <li>Your profile and all personal information</li>
-                      <li>All your activities and participations</li>
-                      <li>All your messages and conversations</li>
-                      <li>All your friend connections</li>
-                    </ul>
-                    <p className="text-sm font-semibold text-foreground">
-                      To confirm, please type your email address: <span className="text-destructive">{currentUser?.email}</span>
-                    </p>
-                  </div>
-                  <Input
-                    type="email"
-                    placeholder="Enter your email to confirm"
-                    value={deleteConfirmEmail}
-                    onChange={(e) => setDeleteConfirmEmail(e.target.value)}
-                    className="border-destructive/50 focus:border-destructive"
-                    disabled={deleting}
-                  />
-                  <div className="flex gap-3">
-                    <Button
-                      variant="destructive"
-                      onClick={handleDeleteAccount}
-                      disabled={deleting || deleteConfirmEmail !== currentUser?.email}
-                      className="flex-1"
-                    >
-                      {deleting ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Deleting...
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Yes, Delete My Account
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setShowDeleteConfirm(false);
-                        setDeleteConfirmEmail('');
-                      }}
-                      disabled={deleting}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
+                <div className="flex flex-wrap gap-3">
+                  <Button asChild>
+                    <Link to={`/messages/${userId}`}>
+                      <MessageSquare className="mr-2 h-4 w-4" /> Message
+                    </Link>
+                  </Button>
+                  <Button
+                    onClick={handleSendFriendRequest}
+                    disabled={friendRequestStatus === 'sending' || friendRequestStatus === 'sent' || friendRequestStatus === 'friends'}
+                  >
+                    {friendRequestStatus === 'sending' ? (
+                      <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                    ) : friendRequestStatus === 'sent' ? (
+                      <><CheckCircle className="mr-2 h-4 w-4" /> Sent</>
+                    ) : friendRequestStatus === 'friends' ? (
+                      <><Users className="mr-2 h-4 w-4" /> Friends</>
+                    ) : (
+                      <><UserPlus className="mr-2 h-4 w-4" /> Add Friend</>
+                    )}
+                  </Button>
                 </div>
               )}
             </div>
           </motion.div>
-        )}
-      </div>
-    </motion.div>
+
+          {/* Alerts */}
+          <AnimatePresence>
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-4 bg-destructive/10 border border-destructive/30 text-destructive-foreground p-4 rounded-xl"
+              >
+                <div className="flex items-center">
+                  <XCircle className="h-5 w-5 mr-2" />
+                  <p className="text-sm font-medium">{error}</p>
+                </div>
+              </motion.div>
+            )}
+            {success && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-4 bg-green-500/10 border border-green-500/30 text-green-600 p-4 rounded-xl"
+              >
+                <div className="flex items-center">
+                  <CheckCircle className="h-5 w-5 mr-2" />
+                  <p className="text-sm font-medium">{success}</p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Profile Info Card */}
+          <motion.div variants={itemVariants} className="mb-8">
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 md:p-8">
+              <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
+                <div className="relative">
+                  <Avatar className="h-24 w-24 md:h-32 md:w-32 ring-4 ring-primary/20">
+                    <AvatarImage src={formData.profilePicture || '/avatar.svg'} alt={formData.username} />
+                    <AvatarFallback className="text-4xl bg-primary/20">{formData.username.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  {isOwnProfile && isEditing && (
+                    <Button
+                      size="sm"
+                      onClick={() => setShowAvatarSelector(true)}
+                      className="absolute -bottom-2 -right-2"
+                      disabled={uploadingImage}
+                    >
+                      {uploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Edit className="h-4 w-4" />}
+                    </Button>
+                  )}
+                </div>
+                
+                <div className="flex-1 space-y-3">
+                  {isEditing ? (
+                    <>
+                      <Input
+                        name="username"
+                        value={formData.username}
+                        onChange={handleChange}
+                        placeholder="Username"
+                        className="text-2xl font-bold"
+                      />
+                      <Input
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        placeholder="Email"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <h2 className="text-2xl md:text-3xl font-bold">{formData.username}</h2>
+                      <p className="text-muted-foreground flex items-center gap-2">
+                        <Mail className="h-4 w-4" />
+                        {formData.email}
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Stats Grid */}
+          <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                  <Activity className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Activities</p>
+                  <p className="text-2xl font-bold">{joinedActivities.length + createdActivities.length}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                  <Users className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Friends</p>
+                  <p className="text-2xl font-bold">{friendsList.length}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                  <MapPin className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Location</p>
+                  <p className="text-lg font-semibold truncate">{formData.location || 'Not set'}</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Bio and Details */}
+          <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <FileText className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-semibold">Bio</h3>
+              </div>
+              {isEditing ? (
+                <Textarea
+                  name="bio"
+                  value={formData.bio}
+                  onChange={handleChange}
+                  placeholder="Tell us about yourself..."
+                  rows="4"
+                />
+              ) : (
+                <p className="text-muted-foreground">{formData.bio || 'No bio yet.'}</p>
+              )}
+            </div>
+
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Heart className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-semibold">Interests</h3>
+              </div>
+              {isEditing ? (
+                <div>
+                  <Input
+                    placeholder="Add interest (press Enter)"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && e.target.value.trim()) {
+                        e.preventDefault();
+                        setFormData(prev => ({
+                          ...prev,
+                          interests: [...prev.interests, e.target.value.trim()]
+                        }));
+                        e.target.value = '';
+                      }
+                    }}
+                  />
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {formData.interests.map((interest, idx) => (
+                      <span key={idx} className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-medium bg-primary/10 text-primary border border-primary/20">
+                        {interest}
+                        <button onClick={() => handleRemoveInterest(interest)} className="ml-2">
+                          <XCircle className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {formData.interests.length > 0 ? (
+                    formData.interests.map((interest, idx) => (
+                      <span key={idx} className="px-3 py-1 rounded-lg text-sm font-medium bg-primary/10 text-primary border border-primary/20">
+                        {interest}
+                      </span>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground">No interests added.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Entertainment Preferences - Netflix Style */}
+          {isOwnProfile && isEditing && (
+            <motion.div variants={itemVariants} className="mb-8">
+              <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <Sparkles className="h-6 w-6 text-primary" />
+                  <h3 className="text-xl font-semibold">Entertainment Preferences</h3>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                  <button
+                    onClick={() => openPreferencesSelector('movies')}
+                    className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-border/50 hover:border-primary/50 bg-card hover:bg-muted/30 transition-all duration-300 group"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                      <Film className="h-6 w-6 text-primary" />
+                    </div>
+                    <span className="font-semibold text-sm">Movies</span>
+                    <span className="text-xs text-muted-foreground">{formData.favoriteMovies?.length || 0} selected</span>
+                  </button>
+
+                  <button
+                    onClick={() => openPreferencesSelector('shows')}
+                    className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-border/50 hover:border-primary/50 bg-card hover:bg-muted/30 transition-all duration-300 group"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                      <Tv className="h-6 w-6 text-primary" />
+                    </div>
+                    <span className="font-semibold text-sm">TV Shows</span>
+                    <span className="text-xs text-muted-foreground">{formData.favoriteShows?.length || 0} selected</span>
+                  </button>
+
+                  <button
+                    onClick={() => openPreferencesSelector('books')}
+                    className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-border/50 hover:border-primary/50 bg-card hover:bg-muted/30 transition-all duration-300 group"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                      <Book className="h-6 w-6 text-primary" />
+                    </div>
+                    <span className="font-semibold text-sm">Books</span>
+                    <span className="text-xs text-muted-foreground">{formData.favoriteBooks?.length || 0} selected</span>
+                  </button>
+
+                  <button
+                    onClick={() => openPreferencesSelector('music')}
+                    className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-border/50 hover:border-primary/50 bg-card hover:bg-muted/30 transition-all duration-300 group"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                      <Music className="h-6 w-6 text-primary" />
+                    </div>
+                    <span className="font-semibold text-sm">Music</span>
+                    <span className="text-xs text-muted-foreground">{formData.favoriteMusic?.length || 0} selected</span>
+                  </button>
+
+                  <button
+                    onClick={() => openPreferencesSelector('games')}
+                    className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-border/50 hover:border-primary/50 bg-card hover:bg-muted/30 transition-all duration-300 group"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                      <Gamepad2 className="h-6 w-6 text-primary" />
+                    </div>
+                    <span className="font-semibold text-sm">Games</span>
+                    <span className="text-xs text-muted-foreground">{formData.favoriteGames?.length || 0} selected</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Activities Section */}
+          <motion.div variants={itemVariants} className="mb-8">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 bg-muted/50 border border-border/30 p-1 rounded-xl mb-6">
+                <TabsTrigger value="joined" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm font-medium">
+                  <Users className="h-4 w-4 mr-2" />
+                  Joined Activities
+                </TabsTrigger>
+                <TabsTrigger value="created" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm font-medium">
+                  <Award className="h-4 w-4 mr-2" />
+                  Created Activities
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="joined" className="mt-0">
+                {statsLoading ? (
+                  <div className="flex justify-center items-center min-h-[200px]">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : joinedActivities.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {joinedActivities.map((activity) => (
+                      <Link
+                        key={activity._id}
+                        to={`/activities/${activity._id}`}
+                        className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-5 hover:border-primary/50 transition-all duration-300 hover:shadow-lg"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <h4 className="font-semibold text-lg group-hover:text-primary transition-colors">{activity.title}</h4>
+                          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-primary/10 text-primary">
+                            {activity.category}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{activity.description}</p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDate(activity.date)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {activity.location}
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-12 text-center">
+                    <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-lg font-semibold mb-2">No activities joined yet</p>
+                    <p className="text-muted-foreground mb-4">Start exploring activities in your area</p>
+                    <Button asChild>
+                      <Link to="/activities">Browse Activities</Link>
+                    </Button>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="created" className="mt-0">
+                {statsLoading ? (
+                  <div className="flex justify-center items-center min-h-[200px]">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : createdActivities.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {createdActivities.map((activity) => (
+                      <Link
+                        key={activity._id}
+                        to={`/activities/${activity._id}`}
+                        className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-5 hover:border-primary/50 transition-all duration-300 hover:shadow-lg"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <h4 className="font-semibold text-lg group-hover:text-primary transition-colors">{activity.title}</h4>
+                          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-primary/10 text-primary">
+                            {activity.category}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{activity.description}</p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDate(activity.date)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {activity.participants?.length || 0} joined
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-12 text-center">
+                    <PlusCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-lg font-semibold mb-2">No activities created yet</p>
+                    <p className="text-muted-foreground mb-4">Share your interests with the community</p>
+                    <Button asChild>
+                      <Link to="/activities/create">Create Activity</Link>
+                    </Button>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </motion.div>
+
+          {/* Friends Section */}
+          {isOwnProfile && (
+            <motion.div variants={itemVariants} className="mb-8">
+              <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <Users className="h-6 w-6 text-primary" />
+                    <h3 className="text-xl font-semibold">Friends</h3>
+                    <span className="px-2 py-1 rounded-lg text-xs font-medium bg-primary/10 text-primary">
+                      {friendsList.length}
+                    </span>
+                  </div>
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/friends">View All</Link>
+                  </Button>
+                </div>
+                
+                {friendsList.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {friendsList.slice(0, 6).map((friend) => (
+                      <Link
+                        key={friend._id}
+                        to={`/profile/${friend._id}`}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-md"
+                      >
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={friend.profilePicture || '/avatar.svg'} />
+                          <AvatarFallback>{friend.username.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{friend.username}</p>
+                          <p className="text-xs text-muted-foreground truncate">{friend.major || 'No major'}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Users className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-muted-foreground">No friends yet</p>
+                    <Button asChild variant="link" size="sm" className="mt-2">
+                      <Link to="/friends">Find Friends</Link>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Danger Zone */}
+          {isOwnProfile && (
+            <motion.div variants={itemVariants} className="mb-8">
+              <div className="bg-destructive/5 border border-destructive/20 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <Trash2 className="h-5 w-5 text-destructive" />
+                  <h3 className="text-lg font-semibold text-destructive">Danger Zone</h3>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Permanently delete your account and all associated data.
+                </p>
+                {!showDeleteConfirm ? (
+                  <Button
+                    variant="destructive"
+                    onClick={() => setShowDeleteConfirm(true)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Account
+                  </Button>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
+                      <p className="font-bold text-destructive mb-2">⚠️ This action cannot be undone!</p>
+                      <p className="text-sm mb-2">Type your email to confirm: <span className="font-mono">{currentUser?.email}</span></p>
+                    </div>
+                    <Input
+                      type="email"
+                      placeholder="Enter your email"
+                      value={deleteConfirmEmail}
+                      onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+                      disabled={deleting}
+                    />
+                    <div className="flex gap-3">
+                      <Button
+                        variant="destructive"
+                        onClick={handleDeleteAccount}
+                        disabled={deleting || deleteConfirmEmail !== currentUser?.email}
+                        className="flex-1"
+                      >
+                        {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                        Delete Forever
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowDeleteConfirm(false);
+                          setDeleteConfirmEmail('');
+                        }}
+                        disabled={deleting}
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+        </div>
+      </motion.div>
+
+      {/* Glow Orbs for visual effects */}
+      <GlowOrb size="xl" color="primary" position="top-right" opacity={6} />
+      <GlowOrb size="large" color="accent" position="bottom-left" opacity={5} />
+
+      {/* Avatar Selector Modal */}
+      <AvatarSelector
+        isOpen={showAvatarSelector}
+        onClose={() => setShowAvatarSelector(false)}
+        onSelect={handleAvatarSelect}
+        onUpload={handleAvatarUpload}
+        username={formData.username}
+      />
+
+      {/* Netflix-Style Preferences Selector */}
+      <NetflixStyleSelector
+        isOpen={showPreferencesSelector}
+        onClose={() => setShowPreferencesSelector(false)}
+        onSave={handlePreferencesSave}
+        category={preferencesCategory}
+        initialSelected={
+          preferencesCategory === 'movies' ? formData.favoriteMovies :
+          preferencesCategory === 'shows' ? formData.favoriteShows :
+          preferencesCategory === 'books' ? formData.favoriteBooks :
+          preferencesCategory === 'music' ? formData.favoriteMusic :
+          formData.favoriteGames
+        }
+      />
+    </BeautifulBackground>
   );
 };
 

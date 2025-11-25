@@ -310,9 +310,9 @@ const EditActivity = () => {
 
                 <div className="space-y-6">
                   <div className="flex items-center gap-3">
-                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-border"></div>
+                    <div className="h-px flex-1 bg-border"></div>
                     <h2 className="text-lg font-semibold text-foreground">Activity Details</h2>
-                    <div className="h-px flex-1 bg-gradient-to-r from-border via-border to-transparent"></div>
+                    <div className="h-px flex-1 bg-border"></div>
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -432,9 +432,9 @@ const EditActivity = () => {
 
                 <div className="space-y-6">
                   <div className="flex items-center gap-3">
-                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-border"></div>
+                    <div className="h-px flex-1 bg-border"></div>
                     <h2 className="text-lg font-semibold text-foreground">Description</h2>
-                    <div className="h-px flex-1 bg-gradient-to-r from-border via-border to-transparent"></div>
+                    <div className="h-px flex-1 bg-border"></div>
                   </div>
                   <motion.div variants={itemVariants} className="space-y-2.5">
                     <label className="text-sm font-semibold text-foreground">Tell members what&apos;s changed</label>

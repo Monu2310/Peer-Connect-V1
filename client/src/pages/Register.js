@@ -41,7 +41,6 @@ const Register = () => {
         await axios.get(`${API_URL}/api/health`, { timeout: 3000 });
         setServerStatus('ready');
       } catch (err) {
-        console.log('Server may be in sleep mode');
         setServerStatus('unknown');
       }
     };
@@ -144,9 +143,9 @@ const Register = () => {
         // Try to ping the server to wake it up
         await axios.get(`${API_URL}/api/health`, { timeout: 5000 })
           .then(() => setServerStatus('ready'))
-          .catch(() => console.log('Server wake-up ping failed, proceeding anyway'));
+          .catch(() => {});
       } catch (err) {
-        console.log('Server wake-up attempt error:', err.message);
+        // Server wake-up failed, continue anyway
       }
     }
 
@@ -173,7 +172,6 @@ const Register = () => {
       setVerificationNotice(response?.message || "We have sent a verification link to your email address.");
       setStep(3);
     } catch (err) {
-      console.error("Registration error:", err);
 
       if (err.message.includes("already exists with this email")) {
         setFormError("This email is already registered. Please use another email or try logging in.");

@@ -125,13 +125,13 @@ const Messages = () => {
                     className="group relative flex items-center gap-4 p-5 bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
                   >
                     {/* Background hover effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity duration-300 pointer-events-none" />
+                    <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity duration-300 pointer-events-none" />
                     
                     <div className="relative flex items-center gap-4 flex-1 min-w-0">
                       {/* Avatar */}
                       <Avatar className="h-14 w-14 ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all flex-shrink-0">
                         <AvatarImage src={conversation.user.profilePicture || '/avatar.svg'} />
-                        <AvatarFallback className="bg-gradient-to-br from-primary/30 to-accent/30 text-lg font-semibold">
+                        <AvatarFallback className="bg-primary/20 text-lg font-semibold">
                           {conversation.user.username.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>

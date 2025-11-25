@@ -47,7 +47,6 @@ const Login = () => {
         await axios.get(`${API_URL}/api/health`, { timeout: 3000 });
         setServerStatus('ready');
       } catch (err) {
-        console.log('Server may be in sleep mode');
         setServerStatus('unknown');
       }
     };
@@ -86,26 +85,22 @@ const Login = () => {
         // Try to ping the server to wake it up
         await axios.get(`${API_URL}/api/health`, { timeout: 5000 })
           .then(() => setServerStatus('ready'))
-          .catch(() => console.log('Server wake-up ping failed, proceeding anyway'));
+          .catch(() => {});
       } catch (err) {
-        console.log('Server wake-up attempt error:', err.message);
+        // Server wake-up failed, continue anyway
       }
     }
     
     try {
-      console.log('Attempting login with email:', formData.email);
-      
       // Clear any existing authentication data
       localStorage.removeItem('token');
       
       // Try login with a catch for network errors
       const response = await login(formData);
-      console.log('Login successful, token received:', response?.token ? 'Yes' : 'No');
       
       // Redirect to dashboard
       navigate('/dashboard');
     } catch (err) {
-      console.error('Login error:', err);
       
       // Handle different types of errors
       if (!navigator.onLine) {

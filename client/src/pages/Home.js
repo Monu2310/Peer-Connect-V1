@@ -142,7 +142,7 @@ const Home = () => {
       <section className="py-16 md:py-24 lg:py-32 px-4 relative">
         
         {/* Background orb */}
-        <div className="absolute top-1/4 left-[10%] w-64 h-64 md:w-80 md:h-80 bg-gradient-to-r from-secondary/20 to-accent/20 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 left-[10%] w-64 h-64 md:w-80 md:h-80 bg-primary/10 rounded-full blur-3xl" />
         
         <div className="relative z-10 w-full max-w-7xl mx-auto">
           
@@ -248,7 +248,7 @@ const Home = () => {
       <section className="py-16 md:py-24 lg:py-32 px-4 relative">
         
         {/* Background orb */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 md:w-[32rem] md:h-[32rem] bg-gradient-to-r from-primary/15 to-accent/15 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 md:w-[32rem] md:h-[32rem] bg-primary/10 rounded-full blur-3xl" />
         
         <div className="relative z-10 w-full max-w-5xl mx-auto text-center">
           <motion.div
@@ -257,7 +257,7 @@ const Home = () => {
             viewport={{ once: true, margin: "-50px" }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent mb-6 md:mb-8">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 md:mb-8">
               Ready to Transform Your Social Life?
             </h2>
             <p className="text-base md:text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto mb-8 md:mb-12 leading-relaxed">

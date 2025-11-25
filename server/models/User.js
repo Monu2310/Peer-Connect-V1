@@ -1,10 +1,13 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-// Helper function to generate a random profile image URL
+// Helper function to generate a funky random profile image URL
 const generateRandomProfileImage = (username) => {
-  // Use UI Avatars for a clean, professional look with initials
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random&color=fff&size=200`;
+  // Use DiceBear fun-emoji style for funky, colorful avatars
+  const styles = ['fun-emoji', 'bottts', 'avataaars', 'lorelei', 'notionists', 'pixel-art'];
+  const randomStyle = styles[Math.floor(Math.random() * styles.length)];
+  const seed = username + Math.random().toString(36).substring(7);
+  return `https://api.dicebear.com/7.x/${randomStyle}/svg?seed=${seed}`;
 };
 
 const UserSchema = new mongoose.Schema({

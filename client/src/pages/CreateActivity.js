@@ -112,9 +112,7 @@ const CreateActivity = () => {
     };
 
     try {
-      console.log('Creating activity with data:', activityData);
       const createdActivity = await createActivity(activityData);
-      console.log('Activity created successfully:', createdActivity);
       
       // Show success message briefly before redirecting
       setError('');
@@ -128,8 +126,7 @@ const CreateActivity = () => {
         navigate('/activities', { state: { refresh: true } });
       }
     } catch (err) {
-      console.error('Error creating activity:', err);
-      setError(err.message || 'Failed to create activity. Please try again.');
+      setError(err.response?.data?.message || 'Failed to create activity. Please try again.');
       setLoading(false);
     }
   };
@@ -178,9 +175,9 @@ const CreateActivity = () => {
               {/* Activity Details Section */}
               <div className="space-y-6">
                 <div className="flex items-center gap-3">
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-border"></div>
+                  <div className="h-px flex-1 bg-border"></div>
                   <h2 className="text-lg font-semibold text-foreground">Activity Details</h2>
-                  <div className="h-px flex-1 bg-gradient-to-r from-border via-border to-transparent"></div>
+                  <div className="h-px flex-1 bg-border"></div>
                 </div>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -248,9 +245,9 @@ const CreateActivity = () => {
               {/* Schedule Section */}
               <div className="space-y-6">
                 <div className="flex items-center gap-3">
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-border"></div>
+                  <div className="h-px flex-1 bg-border"></div>
                   <h2 className="text-lg font-semibold text-foreground">Schedule & Capacity</h2>
-                  <div className="h-px flex-1 bg-gradient-to-r from-border via-border to-transparent"></div>
+                  <div className="h-px flex-1 bg-border"></div>
                 </div>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -324,9 +321,9 @@ const CreateActivity = () => {
               {/* Description Section */}
               <div className="space-y-6">
                 <div className="flex items-center gap-3">
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-border"></div>
+                  <div className="h-px flex-1 bg-border"></div>
                   <h2 className="text-lg font-semibold text-foreground">Description</h2>
-                  <div className="h-px flex-1 bg-gradient-to-r from-border via-border to-transparent"></div>
+                  <div className="h-px flex-1 bg-border"></div>
                 </div>
                 
                 <motion.div variants={itemVariants} className="space-y-2.5">

@@ -71,8 +71,7 @@ const Activities = () => {
         setCategories(uniqueCategories);
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching activities:', err);
-        setError('Failed to load activities. Please try again.');
+        setError('Failed to fetch activities. Please try again.');
         setLoading(false);
       }
     };

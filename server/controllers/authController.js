@@ -46,13 +46,24 @@ exports.register = async (req, res) => {
         return res.status(400).json({ message: 'Username is already taken' });
       }
 
-      // Create new user with minimal data
+      // Create new user with all data including preferences
       console.log(`Creating new user: ${username}`);
+      
+      // Extract preference fields from request body
+      const { hobbies, favoriteSubjects, sports, musicGenres, movieGenres, major, graduationYear } = req.body;
+      
       const user = new User({
         username,
         email,
         password,
-        profilePicture: 'https://avatars.dicebear.com/api/identicon/' + username + '.svg'
+        profilePicture: `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${username}`,
+        hobbies: Array.isArray(hobbies) ? hobbies : [],
+        favoriteSubjects: Array.isArray(favoriteSubjects) ? favoriteSubjects : [],
+        sports: Array.isArray(sports) ? sports : [],
+        musicGenres: Array.isArray(musicGenres) ? musicGenres : [],
+        movieGenres: Array.isArray(movieGenres) ? movieGenres : [],
+        major: major || '',
+        year: graduationYear ? graduationYear.toString() : ''
       });
       
       // Save the user with timeout
@@ -69,14 +80,21 @@ exports.register = async (req, res) => {
       );
       
       console.log('Registration successful, returning response');
-      // Return response with token and minimal user data
+      // Return response with token and complete user data
       return res.status(201).json({
         token,
         user: {
           id: user.id,
           username: user.username,
           email: user.email,
-          profilePicture: user.profilePicture
+          profilePicture: user.profilePicture,
+          hobbies: user.hobbies || [],
+          favoriteSubjects: user.favoriteSubjects || [],
+          sports: user.sports || [],
+          musicGenres: user.musicGenres || [],
+          movieGenres: user.movieGenres || [],
+          major: user.major || '',
+          year: user.year || ''
         }
       });
     } catch (dbError) {

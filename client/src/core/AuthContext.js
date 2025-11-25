@@ -59,8 +59,6 @@ const authReducer = (state, action) => {
         if (shouldStartPreloading) {
           dataPreloader.preloadCriticalData(normalizedUser.id);
           dataPreloader.startBackgroundSync(normalizedUser.id);
-        } else {
-          console.info('Skipping preload: user already initialized or missing id');
         }
       }
 
@@ -159,7 +157,7 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem(TOKEN_KEY, token);
           dispatch({ type: 'TOKEN_REFRESH', payload: token });
         } catch (err) {
-          console.error('Error refreshing token:', err);
+          // Token refresh failed
         }
       } else {
         // User signed out
@@ -208,14 +206,12 @@ export const AuthProvider = ({ children }) => {
           
           // Use cached data if available and fresh, otherwise fetch from API
           if (useCachedData) {
-            console.log('Using cached user data');
             dispatch({
               type: 'USER_LOADED',
               payload: JSON.parse(userData)
             });
           } else {
             // Get user data from API
-            console.log('Fetching fresh user data');
             const res = await axios.get(`${API_URL}/api/auth/me`, {
               withCredentials: true,
               timeout: 5000 // Add timeout to prevent hanging requests
@@ -227,13 +223,8 @@ export const AuthProvider = ({ children }) => {
             });
           }
         } catch (err) {
-          console.error('Error loading user:', err);
-          console.error('Response data:', err.response?.data);
-          console.error('Status:', err.response?.status);
-          
           // If we have cached data, use it as fallback even if it might be stale
           if (userData) {
-            console.log('Using cached user data as fallback');
             dispatch({
               type: 'USER_LOADED',
               payload: JSON.parse(userData)
@@ -259,7 +250,6 @@ export const AuthProvider = ({ children }) => {
     // This is a safety measure to prevent infinite loading
     const timer = setTimeout(() => {
       if (state.loading) {
-        console.warn("Auth loading took too long, forcing state to not loading");
         dispatch({ type: 'SET_LOADING', payload: false });
       }
     }, 3000); // Reduced to 3 seconds for a better user experience
@@ -267,7 +257,6 @@ export const AuthProvider = ({ children }) => {
     // Add a second, shorter safety timer as backup
     const quickSafetyTimer = setTimeout(() => {
       if (state.loading && !authInitialized) {
-        console.warn("Auth initialization taking too long, forcing loading state off");
         setAuthInitialized(true); // Force initialization
         dispatch({ type: 'SET_LOADING', payload: false });
       }
@@ -296,10 +285,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      console.log('Sending registration data:', {...userData, password: '[REDACTED]'});
-      
       // NUCLEAR CLEAR: Wipe everything before registration to prevent data mixing
-      console.log('🧹 CLEARING ALL CACHE BEFORE REGISTRATION...');
       try {
         localStorage.clear();
         sessionStorage.clear();
@@ -308,7 +294,7 @@ export const AuthProvider = ({ children }) => {
           dbs.forEach(db => indexedDB.deleteDatabase(db.name));
         }
       } catch (clearErr) {
-        console.warn('Error clearing storage:', clearErr);
+        // Storage clear failed
       }
       intelligentCache.clear();
       dataPreloader.preloadCache.clear();
@@ -325,8 +311,6 @@ export const AuthProvider = ({ children }) => {
       
       while (retryCount < maxRetries) {
         try {
-          console.log(`Firebase registration attempt ${retryCount + 1}/${maxRetries} (using REST API)`);
-          
           const response = await fetch(
             `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`,
             {
@@ -359,14 +343,11 @@ export const AuthProvider = ({ children }) => {
             reload: async () => {} // No-op for REST API
           };
           
-          console.log('✅ Firebase user created successfully via REST API');
           break; // Success, exit retry loop
         } catch (fbError) {
           retryCount++;
-          console.error(`Firebase registration attempt ${retryCount} failed:`, fbError.message);
           
           if ((fbError.message.includes('network') || fbError.message.includes('fetch')) && retryCount < maxRetries) {
-            console.log(`🔄 Retrying in 2 seconds... (${retryCount}/${maxRetries})`);
             await new Promise(resolve => setTimeout(resolve, 2000));
           } else {
             // Final attempt failed or non-network error
@@ -381,8 +362,6 @@ export const AuthProvider = ({ children }) => {
       retryCount = 0;
       while (retryCount < maxRetries) {
         try {
-          console.log(`Sending verification email attempt ${retryCount + 1}/${maxRetries} (using REST API)`);
-          
           const verifyResponse = await fetch(
             `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`,
             {
@@ -401,17 +380,13 @@ export const AuthProvider = ({ children }) => {
             throw new Error(verifyData.error?.message || 'Failed to send verification email');
           }
           
-          console.log('✅ Verification email sent successfully via REST API');
           break; // Success
         } catch (verificationError) {
           retryCount++;
-          console.error(`Verification email attempt ${retryCount} failed:`, verificationError.message);
           
           if ((verificationError.message.includes('network') || verificationError.message.includes('fetch')) && retryCount < maxRetries) {
-            console.log(`🔄 Retrying in 2 seconds... (${retryCount}/${maxRetries})`);
             await new Promise(resolve => setTimeout(resolve, 2000));
           } else if (retryCount >= maxRetries) {
-            console.error('All verification email attempts failed');
             throw new Error('Could not send verification email after multiple attempts. Please try logging in and requesting a new verification email.');
           } else {
             throw verificationError;

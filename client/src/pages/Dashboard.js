@@ -50,7 +50,6 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       setIsLoading(true);
       try {
-        console.log('Fetching dashboard data...');
         const [insights, joined, created, friends, friendRequests, friendRecs, activityRecs] = await Promise.all([
           getUserInsights(),
           getMyJoinedActivities(),
@@ -60,9 +59,6 @@ const Dashboard = () => {
           getFriendRecommendations(),
           getActivityRecommendations(),
         ]);
-
-        console.log('Joined activities:', joined);
-        console.log('Created activities:', created);
 
         // Ensure arrays
         const joinedArray = Array.isArray(joined) ? joined : [];

@@ -1,38 +1,30 @@
 const User = require('../models/User');
 const Friend = require('../models/Friend');
 
-// Array of profile image URLs to randomly select from
-const profileImageOptions = [
-  'https://robohash.org/',
-  'https://avatars.dicebear.com/api/avataaars/',
-  'https://avatars.dicebear.com/api/bottts/',
-  'https://avatars.dicebear.com/api/human/',
-  'https://avatars.dicebear.com/api/identicon/',
-  'https://avatars.dicebear.com/api/jdenticon/',
-  'https://avatars.dicebear.com/api/gridy/',
-  'https://api.multiavatar.com/'
+// Modern DiceBear avatar styles - funky and colorful options
+const funkyAvatarStyles = [
+  'fun-emoji',      // Fun emoji faces
+  'bottts',         // Colorful robots
+  'avataaars',      // Cartoon avatars
+  'lorelei',        // Illustrated faces
+  'notionists',     // Notion-style avatars
+  'pixel-art',      // 8-bit pixel avatars
+  'adventurer',     // Adventure characters
+  'big-smile',      // Happy faces
+  'personas',       // Personal avatars
+  'thumbs'          // Thumbs up style
 ];
 
-// Helper function to generate a random profile image URL
+// Helper function to generate a funky random profile image URL using modern DiceBear API
 const generateRandomProfileImage = (seed) => {
   // Add some randomness to the seed to ensure variation
-  const randomSeed = seed + Math.floor(Math.random() * 10000);
+  const randomSeed = seed + Math.random().toString(36).substring(7);
   
-  // Select a random base URL from the options
-  const baseUrl = profileImageOptions[Math.floor(Math.random() * profileImageOptions.length)];
+  // Select a random style from the funky options
+  const randomStyle = funkyAvatarStyles[Math.floor(Math.random() * funkyAvatarStyles.length)];
   
-  // Add seed and any required parameters
-  if (baseUrl.includes('dicebear')) {
-    return `${baseUrl}${randomSeed}.svg?mood=happy&background=%23ffffff`;
-  } else if (baseUrl.includes('robohash')) {
-    return `${baseUrl}${randomSeed}?set=set4&bgset=bg1&size=200x200`;
-  } else if (baseUrl.includes('multiavatar')) {
-    // For multiavatar, ensure we're returning a PNG
-    return `${baseUrl}${randomSeed}.png`;
-  }
-  
-  // Default fallback
-  return `${baseUrl}${randomSeed}`;
+  // Use the new DiceBear v7.x API format
+  return `https://api.dicebear.com/7.x/${randomStyle}/svg?seed=${randomSeed}`;
 };
 
 // Get user by ID

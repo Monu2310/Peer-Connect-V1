@@ -44,20 +44,14 @@ const Friends = () => {
     setLoading(true);
     setError('');
     try {
-      console.log('🔄 Fetching friends data...');
       const [friendsData, requestsData] = await Promise.all([
         getFriends(),
         getFriendRequests(),
       ]);
-      console.log('📊 Fetched:', {
-        friends: friendsData?.length || 0,
-        requests: requestsData?.length || 0
-      });
       setFriends(friendsData || []);
       setFriendRequests(requestsData || []);
       setLoading(false);
     } catch (err) {
-      console.error('❌ Error fetching friends data:', err);
       setError(err.message || 'Failed to load friends data.');
       setLoading(false);
     }
@@ -207,14 +201,14 @@ const Friends = () => {
 
           {/* Tabs */}
           <Tabs defaultValue="friends" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-gradient-to-r from-primary/10 to-accent/10 border border-border/30 p-1 rounded-xl mb-8 backdrop-blur-sm">
-              <TabsTrigger value="friends" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary/30 data-[state=active]:to-accent/30 data-[state=active]:shadow-md font-medium">
+            <TabsList className="grid w-full grid-cols-3 bg-muted/50 border border-border/30 p-1 rounded-xl mb-8">
+              <TabsTrigger value="friends" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm font-medium">
                 Friends ({friends.length})
               </TabsTrigger>
-              <TabsTrigger value="requests" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary/30 data-[state=active]:to-accent/30 data-[state=active]:shadow-md font-medium">
+              <TabsTrigger value="requests" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm font-medium">
                 Requests ({friendRequests.length})
               </TabsTrigger>
-              <TabsTrigger value="add" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary/30 data-[state=active]:to-accent/30 data-[state=active]:shadow-md font-medium">
+              <TabsTrigger value="add" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm font-medium">
                 Add Friend
               </TabsTrigger>
             </TabsList>
@@ -239,15 +233,13 @@ const Friends = () => {
                   <motion.div key="friends-list" variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pb-12">
                     {friends.filter(friend => friend && friend._id).map(friend => (
                       <motion.div key={friend._id} variants={itemVariants} whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
-                        <div className="group relative bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-md border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300 hover:shadow-lg h-full">
-                          {/* Gradient background on hover */}
-                          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity duration-300 pointer-events-none" />
+                        <div className="group relative bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300 hover:shadow-lg h-full">
                           
                           <div className="relative z-10">
                             <div className="flex items-center gap-4 mb-5">
                               <Avatar className="h-14 w-14 ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all">
                                 <AvatarImage src={friend?.profilePicture || '/avatar.svg'} />
-                                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 font-semibold">{friend?.username?.charAt(0) || 'U'}</AvatarFallback>
+                                <AvatarFallback className="bg-primary/20 font-semibold">{friend?.username?.charAt(0) || 'U'}</AvatarFallback>
                               </Avatar>
                               <div className="min-w-0 flex-1">
                                 <p className="font-semibold text-base truncate group-hover:text-primary transition-colors">{friend?.username || 'Unknown'}</p>
@@ -291,14 +283,13 @@ const Friends = () => {
                   <motion.div key="requests-list" variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pb-12">
                     {friendRequests.filter(request => request && request._id && request.requester).map(request => (
                       <motion.div key={request._id} variants={itemVariants} whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
-                        <div className="group relative bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-md border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300 hover:shadow-lg h-full">
-                          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity duration-300 pointer-events-none" />
+                        <div className="group relative bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300 hover:shadow-lg h-full">
                           
                           <div className="relative z-10">
                             <div className="flex items-center gap-4 mb-6">
                               <Avatar className="h-14 w-14 ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all">
                                 <AvatarImage src={request?.requester?.profilePicture || '/avatar.svg'} />
-                                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 font-semibold">{request?.requester?.username?.charAt(0) || 'U'}</AvatarFallback>
+                                <AvatarFallback className="bg-primary/20 font-semibold">{request?.requester?.username?.charAt(0) || 'U'}</AvatarFallback>
                               </Avatar>
                               <div className="min-w-0 flex-1">
                                 <p className="font-semibold text-base truncate group-hover:text-primary transition-colors">{request?.requester?.username || 'Unknown'}</p>
@@ -325,7 +316,7 @@ const Friends = () => {
               {/* Add Friend Tab */}
               <TabsContent value="add" className="mt-0">
                 <motion.div key="add-friend-form" variants={itemVariants} className="flex items-center justify-center min-h-[350px]">
-                  <div className="w-full max-w-md bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-md border border-border/50 rounded-2xl p-8">
+                  <div className="w-full max-w-md bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-8">
                     <h3 className="text-xl font-semibold mb-2 gradient-text">Send Friend Request</h3>
                     <p className="text-sm text-muted-foreground mb-8">Enter their email to send a friend request</p>
                     <form onSubmit={handleSendRequest} className="space-y-5">
