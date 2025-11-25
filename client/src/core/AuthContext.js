@@ -320,18 +320,52 @@ export const AuthProvider = ({ children }) => {
       let retryCount = 0;
       const maxRetries = 3;
       
+      // Use Firebase REST API instead of SDK to bypass network issues
+      const FIREBASE_API_KEY = process.env.REACT_APP_FIREBASE_API_KEY || 'AIzaSyAWV8utdk-d9ssH7MvoeJgcZeUyyWl506s';
+      
       while (retryCount < maxRetries) {
         try {
-          console.log(`Firebase registration attempt ${retryCount + 1}/${maxRetries}`);
-          const result = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
-          fbUser = result.user;
-          console.log('✅ Firebase user created successfully');
+          console.log(`Firebase registration attempt ${retryCount + 1}/${maxRetries} (using REST API)`);
+          
+          const response = await fetch(
+            `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: userData.email,
+                password: userData.password,
+                returnSecureToken: true
+              })
+            }
+          );
+
+          const data = await response.json();
+          
+          if (!response.ok) {
+            const errorMessage = data.error?.message || 'Registration failed';
+            if (errorMessage.includes('EMAIL_EXISTS')) {
+              throw new Error('This email is already registered. Please log in instead.');
+            }
+            throw new Error(errorMessage);
+          }
+          
+          // Create a minimal user object compatible with Firebase SDK
+          fbUser = {
+            uid: data.localId,
+            email: data.email,
+            emailVerified: false,
+            getIdToken: async () => data.idToken,
+            reload: async () => {} // No-op for REST API
+          };
+          
+          console.log('✅ Firebase user created successfully via REST API');
           break; // Success, exit retry loop
         } catch (fbError) {
           retryCount++;
-          console.error(`Firebase registration attempt ${retryCount} failed:`, fbError.code);
+          console.error(`Firebase registration attempt ${retryCount} failed:`, fbError.message);
           
-          if (fbError.code === 'auth/network-request-failed' && retryCount < maxRetries) {
+          if ((fbError.message.includes('network') || fbError.message.includes('fetch')) && retryCount < maxRetries) {
             console.log(`🔄 Retrying in 2 seconds... (${retryCount}/${maxRetries})`);
             await new Promise(resolve => setTimeout(resolve, 2000));
           } else {
@@ -341,27 +375,39 @@ export const AuthProvider = ({ children }) => {
         }
       }
 
-      // Ensure we have the latest verification status before continuing
-      await fbUser.reload();
+      const idToken = await fbUser.getIdToken();
 
-      const actionCodeSettings = {
-        url: getVerificationRedirectUrl(),
-        handleCodeInApp: true
-      };
-
-      // Send verification email with retry logic
+      // Send verification email using REST API with retry logic
       retryCount = 0;
       while (retryCount < maxRetries) {
         try {
-          console.log(`Sending verification email attempt ${retryCount + 1}/${maxRetries}`);
-          await sendEmailVerification(fbUser, actionCodeSettings);
-          console.log('✅ Verification email sent successfully');
+          console.log(`Sending verification email attempt ${retryCount + 1}/${maxRetries} (using REST API)`);
+          
+          const verifyResponse = await fetch(
+            `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                requestType: 'VERIFY_EMAIL',
+                idToken: idToken
+              })
+            }
+          );
+
+          const verifyData = await verifyResponse.json();
+          
+          if (!verifyResponse.ok) {
+            throw new Error(verifyData.error?.message || 'Failed to send verification email');
+          }
+          
+          console.log('✅ Verification email sent successfully via REST API');
           break; // Success
         } catch (verificationError) {
           retryCount++;
-          console.error(`Verification email attempt ${retryCount} failed:`, verificationError.code);
+          console.error(`Verification email attempt ${retryCount} failed:`, verificationError.message);
           
-          if (verificationError.code === 'auth/network-request-failed' && retryCount < maxRetries) {
+          if ((verificationError.message.includes('network') || verificationError.message.includes('fetch')) && retryCount < maxRetries) {
             console.log(`🔄 Retrying in 2 seconds... (${retryCount}/${maxRetries})`);
             await new Promise(resolve => setTimeout(resolve, 2000));
           } else if (retryCount >= maxRetries) {
@@ -372,8 +418,6 @@ export const AuthProvider = ({ children }) => {
           }
         }
       }
-
-      const idToken = await fbUser.getIdToken();
 
       // Use a minimal registration object for backend, including Firebase idToken
       const minimalRegistration = {
@@ -481,22 +525,55 @@ export const AuthProvider = ({ children }) => {
       // Set loading state to true at the beginning of login attempt
       dispatch({ type: 'SET_LOADING', payload: true });
 
-      // First sign in with Firebase with retry logic for network issues
-      let fbResult;
+      // First sign in with Firebase using REST API to bypass network issues
+      let fbUser;
+      let idToken;
       let retryCount = 0;
       const maxRetries = 3;
+      const FIREBASE_API_KEY = process.env.REACT_APP_FIREBASE_API_KEY || 'AIzaSyAWV8utdk-d9ssH7MvoeJgcZeUyyWl506s';
       
       while (retryCount < maxRetries) {
         try {
-          console.log(`Firebase login attempt ${retryCount + 1}/${maxRetries}`);
-          fbResult = await signInWithEmailAndPassword(auth, email, password);
-          console.log('✅ Firebase login successful');
+          console.log(`Firebase login attempt ${retryCount + 1}/${maxRetries} (using REST API)`);
+          
+          const response = await fetch(
+            `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: email,
+                password: password,
+                returnSecureToken: true
+              })
+            }
+          );
+
+          const data = await response.json();
+          
+          if (!response.ok) {
+            const errorMessage = data.error?.message || 'Login failed';
+            if (errorMessage.includes('INVALID_PASSWORD') || errorMessage.includes('EMAIL_NOT_FOUND') || errorMessage.includes('INVALID_LOGIN_CREDENTIALS')) {
+              throw new Error('Invalid email or password. Please try again.');
+            }
+            throw new Error(errorMessage);
+          }
+          
+          // Create a minimal user object
+          fbUser = {
+            uid: data.localId,
+            email: data.email,
+            emailVerified: data.emailVerified || false
+          };
+          idToken = data.idToken;
+          
+          console.log('✅ Firebase login successful via REST API');
           break; // Success, exit retry loop
         } catch (fbError) {
           retryCount++;
-          console.error(`Firebase login attempt ${retryCount} failed:`, fbError.code);
+          console.error(`Firebase login attempt ${retryCount} failed:`, fbError.message);
           
-          if (fbError.code === 'auth/network-request-failed' && retryCount < maxRetries) {
+          if ((fbError.message.includes('network') || fbError.message.includes('fetch')) && retryCount < maxRetries) {
             console.log(`🔄 Retrying in 2 seconds... (${retryCount}/${maxRetries})`);
             await new Promise(resolve => setTimeout(resolve, 2000));
           } else {
@@ -505,30 +582,31 @@ export const AuthProvider = ({ children }) => {
           }
         }
       }
-      
-      const fbUser = fbResult.user;
-
-      // Refresh user data to get the latest verification flag
-      await fbUser.reload();
 
       if (!fbUser.emailVerified) {
-        const actionCodeSettings = {
-          url: getVerificationRedirectUrl(),
-          handleCodeInApp: false
-        };
-
+        // Send verification email using REST API
         try {
-          await sendEmailVerification(fbUser, actionCodeSettings);
-          console.log('Verification email re-sent to user during login attempt');
+          const verifyResponse = await fetch(
+            `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                requestType: 'VERIFY_EMAIL',
+                idToken: idToken
+              })
+            }
+          );
+          
+          if (verifyResponse.ok) {
+            console.log('Verification email re-sent to user during login attempt');
+          }
         } catch (verificationError) {
           console.warn('Failed to re-send verification email:', verificationError);
         }
 
-        await signOut(auth);
         throw new Error('Please verify your email address. We just sent you a new verification link.');
       }
-
-      const idToken = await fbUser.getIdToken();
 
       // Then tell our backend to verify the Firebase token and sync user data
       // We use the idToken as our app token now
