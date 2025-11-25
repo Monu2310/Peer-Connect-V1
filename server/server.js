@@ -159,6 +159,10 @@ const initializeApp = async () => {
     // First establish the database connection
     await connectWithRetry();
     
+    // Initialize activity status updater (auto-complete expired activities)
+    const { initActivityStatusUpdater } = require('./middleware/activityStatusUpdater');
+    initActivityStatusUpdater();
+    
     // Add performance monitoring endpoint
     app.get('/api/performance', async (req, res) => {
 		// In production, this should be protected; for now we keep it lightweight

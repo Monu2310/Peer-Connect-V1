@@ -185,9 +185,17 @@ exports.joinActivity = async (req, res) => {
     }
     
     // Check if activity is full
-    if (activity.maxParticipants && activity.participants.length >= activity.maxParticipants) {
+    const currentCount = activity.participants.length;
+    const maxCount = activity.maxParticipants;
+    console.log(`Activity capacity check: ${currentCount}/${maxCount || 'unlimited'} participants`);
+    
+    if (maxCount && currentCount >= maxCount) {
       console.log('Activity Controller: joinActivity - Activity is full.');
-      return res.status(400).json({ message: 'This activity is full' });
+      return res.status(400).json({ 
+        message: 'This activity is full',
+        current: currentCount,
+        max: maxCount
+      });
     }
     
     // Add user to participants
@@ -380,18 +388,20 @@ exports.getMyCreatedActivities = async (req, res) => {
   }
 };
 
-// Get activities joined by the current user
+// Get activities joined by the current user (active only - upcoming/ongoing)
 exports.getMyJoinedActivities = async (req, res) => {
   try {
     console.log('Activity Controller: getMyJoinedActivities - req.user.id:', req.user.id);
     const activities = await Activity.find({ 
       participants: req.user.id,
+      status: { $in: ['upcoming', 'ongoing'] }, // Only active activities
+      date: { $gte: new Date() } // Only future/ongoing activities
     })
       .sort({ date: -1 })
       .populate('creator', 'username profilePicture')
       .populate('participants', 'username profilePicture');
     
-    console.log('Activity Controller: getMyJoinedActivities - Found activities:', activities.length);
+    console.log('Activity Controller: getMyJoinedActivities - Found active joined activities:', activities.length);
     res.json(activities);
   } catch (err) {
     console.error(err.message);

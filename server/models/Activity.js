@@ -55,6 +55,11 @@ const ActivitySchema = new mongoose.Schema({
     type: Number,
     default: null
   },
+  status: {
+    type: String,
+    enum: ['upcoming', 'ongoing', 'completed', 'cancelled'],
+    default: 'upcoming'
+  },
   image: {
     type: String,
     default: function() {
