@@ -399,14 +399,13 @@ exports.getMyJoinedActivities = async (req, res) => {
   }
 };
 
-// Remove a participant from activity (creator only)
+// Remove a participant (Creator only)
 exports.removeParticipant = async (req, res) => {
   try {
     console.log('Activity Controller: removeParticipant - req.user.id:', req.user.id);
-    console.log('Activity Controller: removeParticipant - activityId:', req.params.activityId);
-    console.log('Activity Controller: removeParticipant - userId:', req.params.userId);
+    const { activityId, userId } = req.params;
     
-    const activity = await Activity.findById(req.params.activityId);
+    const activity = await Activity.findById(activityId);
     
     if (!activity) {
       return res.status(404).json({ message: 'Activity not found' });
@@ -414,39 +413,33 @@ exports.removeParticipant = async (req, res) => {
     
     // Check if user is the creator
     if (activity.creator.toString() !== req.user.id) {
-      console.log('Activity Controller: removeParticipant - Not authorized.');
       return res.status(401).json({ message: 'Only the creator can remove participants' });
     }
     
-    // Cannot remove the creator
-    if (req.params.userId === req.user.id) {
-      return res.status(400).json({ message: 'Creator cannot be removed' });
+    // Cannot remove creator
+    if (userId === activity.creator.toString()) {
+      return res.status(400).json({ message: 'Cannot remove the creator from the activity' });
     }
-    
+
     // Check if user is in participants
-    if (!activity.participants.includes(req.params.userId)) {
+    if (!activity.participants.includes(userId)) {
       return res.status(400).json({ message: 'User is not a participant' });
     }
     
-    // Remove user from participants
+    // Remove user
     activity.participants = activity.participants.filter(
-      participant => participant.toString() !== req.params.userId
+      p => p.toString() !== userId
     );
     
     await activity.save();
     
-    // Return updated activity with populated fields
-    const updatedActivity = await Activity.findById(req.params.activityId)
+    const updatedActivity = await Activity.findById(activityId)
       .populate('creator', 'username profilePicture')
       .populate('participants', 'username profilePicture');
-    
-    console.log('Activity Controller: removeParticipant - Participant removed. New participants:', updatedActivity.participants.map(p => p._id));
+      
     res.json(updatedActivity);
   } catch (err) {
     console.error(err.message);
-    if (err.kind === 'ObjectId') {
-      return res.status(404).json({ message: 'Activity not found' });
-    }
     res.status(500).send('Server error');
   }
 };

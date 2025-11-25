@@ -253,15 +253,11 @@ exports.firebaseRegister = async (req, res) => {
       await user.save();
     }
 
-    // Generate our own JWT for the app
-    const token = jwt.sign(
-      { id: user.id },
-      process.env.JWT_SECRET || 'default_jwt_secret',
-      { expiresIn: '7d' }
-    );
-
+    // We no longer issue a local JWT. The client should use the Firebase ID Token.
+    // We return the user data so the client can store it.
+    
     res.status(200).json({
-      token,
+      // token: token, // No local token
       user: {
         id: user.id,
         username: user.username,
@@ -332,20 +328,15 @@ exports.firebaseLogin = async (req, res) => {
         email,
         firebaseUid,
         password: Math.random().toString(36).slice(-12),
-        profilePicture: 'https://avatars.dicebear.com/api/identicon/' + finalUsername + '.svg'
+        profilePicture: `https://ui-avatars.com/api/?name=${encodeURIComponent(finalUsername)}&background=random&color=fff&size=200`
       });
 
       await user.save();
     }
 
-    const token = jwt.sign(
-      { id: user.id },
-      process.env.JWT_SECRET || 'default_jwt_secret',
-      { expiresIn: '7d' }
-    );
-
+    // We no longer issue a local JWT. The client should use the Firebase ID Token.
     res.status(200).json({
-      token,
+      // token: token, // No local token
       user: {
         id: user.id,
         username: user.username,

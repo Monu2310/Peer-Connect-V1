@@ -40,109 +40,125 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-background text-foreground">
-      <BeautifulBackground />
-      
-      <div className="w-full max-w-md z-10 px-4">
+    <BeautifulBackground>
+      <div className="flex items-center justify-center min-h-screen px-4 py-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="bg-card/80 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl overflow-hidden"
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full max-w-md"
         >
-          <div className="p-8">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600 mb-2">
-                Reset Password
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                Enter your email to receive a password reset link
-              </p>
-            </div>
+          {/* Premium Glass Card */}
+          <div className="relative backdrop-blur-2xl bg-card/90 dark:bg-card/95 rounded-3xl shadow-2xl border border-border/60 overflow-hidden">
+            {/* Premium accent */}
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-primary"></div>
 
-            {status === 'success' ? (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-green-500/10 border border-green-500/20 rounded-lg p-6 text-center"
-              >
+            {/* Main Content */}
+            <div className="p-8 sm:p-10">
+              <div className="text-center mb-8">
                 <div className="flex justify-center mb-4">
-                  <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <CheckCircle className="h-6 w-6 text-green-600" />
+                  <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-xl">
+                    <Mail className="w-8 h-8 text-primary-foreground" strokeWidth={2.5} />
                   </div>
                 </div>
-                <h3 className="text-lg font-semibold text-green-700 mb-2">Check your email</h3>
-                <p className="text-green-600/80 text-sm mb-6">
-                  We've sent a password reset link to <strong>{email}</strong>.
+                <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3 tracking-tight">
+                  Reset Password
+                </h2>
+                <p className="text-base text-muted-foreground font-medium">
+                  Enter your email to receive a password reset link
                 </p>
-                <Link 
-                  to="/login"
-                  className="inline-flex items-center justify-center w-full px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
-                >
-                  Return to Login
-                </Link>
-              </motion.div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {status === 'error' && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-start gap-3"
-                  >
-                    <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                    <p className="text-sm text-red-600">{message}</p>
-                  </motion.div>
-                )}
+              </div>
 
-                <div className="space-y-2">
-                  <label htmlFor="email" className="block text-sm font-medium text-foreground ml-1">
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                    <input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 bg-background/50 border border-input rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
-                      placeholder="you@example.com"
-                      required
-                    />
+              {status === 'success' ? (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5 }}
+                  className="space-y-6 text-center py-2"
+                >
+                  <div className="flex justify-center">
+                    <div className="h-20 w-20 rounded-2xl bg-primary flex items-center justify-center shadow-xl">
+                      <CheckCircle className="h-10 w-10 text-primary-foreground" strokeWidth={2.5} />
+                    </div>
                   </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={status === 'loading'}
-                  className="w-full py-2.5 bg-primary text-white rounded-lg font-semibold shadow-lg hover:bg-primary/90 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {status === 'loading' ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Sending Link...
-                    </>
-                  ) : (
-                    'Send Reset Link'
-                  )}
-                </button>
-
-                <div className="text-center">
+                  <div>
+                    <h3 className="text-2xl font-bold text-foreground mb-3">Check Your Email!</h3>
+                    <p className="text-base text-muted-foreground font-medium leading-relaxed">
+                      We've sent a password reset link to<br />
+                      <strong className="text-foreground">{email}</strong>
+                    </p>
+                  </div>
                   <Link 
-                    to="/login" 
-                    className="inline-flex items-center text-sm text-muted-foreground hover:text-primary transition-colors"
+                    to="/login"
+                    className="inline-flex items-center justify-center w-full px-5 py-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 gap-2 group"
                   >
-                    <ArrowLeft className="w-4 h-4 mr-1" />
-                    Back to Login
+                    <ArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" strokeWidth={2.5} />
+                    <span>Return to Login</span>
                   </Link>
-                </div>
-              </form>
-            )}
+                </motion.div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {status === 'error' && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.96 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.4 }}
+                      className="bg-destructive/10 backdrop-blur-sm border-2 border-destructive/30 text-destructive p-4 rounded-xl text-sm font-semibold flex items-start gap-3 shadow-lg"
+                    >
+                      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" strokeWidth={2.5} />
+                      <span>{message}</span>
+                    </motion.div>
+                  )}
+
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-bold text-foreground mb-2 ml-1">
+                      Email Address
+                    </label>
+                    <div className="relative group">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none z-10" strokeWidth={2.5} />
+                      <input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full pl-12 pr-4 py-3.5 text-base rounded-xl border-2 border-border bg-input/60 backdrop-blur-sm text-foreground placeholder-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm"
+                        placeholder="you@example.com"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={status === 'loading'}
+                    className="w-full py-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+                  >
+                    {status === 'loading' ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" strokeWidth={2.5} />
+                        <span>Sending Link...</span>
+                      </>
+                    ) : (
+                      <span>Send Reset Link</span>
+                    )}
+                  </button>
+
+                  <div className="text-center pt-2">
+                    <Link 
+                      to="/login" 
+                      className="inline-flex items-center text-base text-muted-foreground hover:text-primary transition-colors font-semibold gap-2 group"
+                    >
+                      <ArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" strokeWidth={2.5} />
+                      <span>Back to Login</span>
+                    </Link>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         </motion.div>
       </div>
-    </div>
+    </BeautifulBackground>
   );
 };
 

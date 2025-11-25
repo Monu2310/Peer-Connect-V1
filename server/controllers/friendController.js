@@ -101,6 +101,66 @@ exports.sendFriendRequestById = async (req, res) => {
   }
 };
 
+// Send a friend request by email
+exports.sendFriendRequestByEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const requesterId = req.user.id;
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    // Check if recipient exists
+    const recipient = await User.findOne({ email: email.toLowerCase() });
+    if (!recipient) {
+      return res.status(404).json({ message: 'User with this email not found' });
+    }
+    
+    const recipientId = recipient._id.toString();
+
+    // Prevent sending friend request to self
+    if (requesterId === recipientId) {
+      return res.status(400).json({ message: 'Cannot send friend request to yourself' });
+    }
+    
+    // Check if a friendship already exists
+    const existingFriendship = await Friend.findOne({
+      $or: [
+        { requester: requesterId, recipient: recipientId },
+        { requester: recipientId, recipient: requesterId }
+      ]
+    });
+    
+    if (existingFriendship) {
+      if (existingFriendship.status === 'accepted') {
+        return res.status(400).json({ message: 'You are already friends with this user' });
+      } else if (existingFriendship.status === 'pending') {
+        return res.status(400).json({ message: 'A friend request is already pending' });
+      }
+    }
+    
+    // Create new friend request
+    const friendRequest = new Friend({
+      requester: requesterId,
+      recipient: recipientId,
+      status: 'pending'
+    });
+    
+    await friendRequest.save();
+    
+    // Populate user info
+    const populatedFriendRequest = await Friend.findById(friendRequest._id)
+      .populate('requester', 'username profilePicture')
+      .populate('recipient', 'username profilePicture');
+    
+    res.status(201).json(populatedFriendRequest);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+};
+
 // Get all friend requests for current user
 exports.getFriendRequests = async (req, res) => {
   try {

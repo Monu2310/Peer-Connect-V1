@@ -4,6 +4,10 @@ import { Routes, Route, useLocation } from 'react-router-dom';
 // Styles
 import './App.css';
 
+// Contexts - Import these BEFORE components to avoid initialization errors
+import { AuthProvider } from './core/AuthContext';
+import { ThemeProvider } from './core/ThemeContext';
+
 // Components
 import Navbar from './components/layout/Navbar';
 
@@ -14,6 +18,7 @@ const Register = lazy(() => import(/* webpackChunkName: "auth" */ './pages/Regis
 const ForgotPassword = lazy(() => import(/* webpackChunkName: "auth" */ './pages/ForgotPassword'));
 const VerifyEmail = lazy(() => import(/* webpackChunkName: "auth" */ './pages/VerifyEmail'));
 const ResetPassword = lazy(() => import(/* webpackChunkName: "auth" */ './pages/ResetPassword'));
+const AuthAction = lazy(() => import(/* webpackChunkName: "auth" */ './pages/AuthAction'));
 const Dashboard = lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/Dashboard'));
 const Profile = lazy(() => import(/* webpackChunkName: "profile" */ './pages/Profile'));
 const Activities = lazy(() => import(/* webpackChunkName: "activities" */ './pages/Activities'));
@@ -24,10 +29,6 @@ const Messages = lazy(() => import(/* webpackChunkName: "messages" */ './pages/M
 const Conversation = lazy(() => import(/* webpackChunkName: "messages" */ './pages/Conversation'));
 const Friends = lazy(() => import(/* webpackChunkName: "friends" */ './pages/Friends'));
 const NotFound = lazy(() => import(/* webpackChunkName: "notfound" */ './pages/NotFound'));
-
-// Contexts
-import { AuthProvider } from './core/AuthContext';
-import { ThemeProvider } from './core/ThemeContext';
 
 // Routes
 import PrivateRoute from './components/routes/PrivateRoute';
@@ -52,6 +53,7 @@ function App() {
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/verify-email" element={<VerifyEmail />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/auth/action" element={<AuthAction />} />
 
               {/* Protected routes */}
               <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />

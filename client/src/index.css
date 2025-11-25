@@ -6,73 +6,104 @@
 
 @layer base {
   :root {
-    /* STUNNING Color Palette - Navy, Slate, Sage, Cream (60-30-10 Rule) */
-    /* 60% Background: #FFF8D4 Cream, 30% Text/UI: #313647 Navy, 10% Accent: #A3B087 Sage, Support: #435663 Slate */
+    /* ELITE Color Palette - 60-30-10 Rule Applied Perfectly */
+    /* 60% Background: #FFF8D4 Cream | 30% UI/Structure: #313647 Navy | 10% Accent: #A3B087 Sage | Support: #435663 Slate */
     
-    --background: 40 54% 96%; /* #FFF8D4 Cream - 60% dominant color */
-    --foreground: 206 25% 21%; /* #313647 Deep Navy - Main text */
-    --card: 40 54% 97%; /* Slightly lighter cream for cards */
-    --card-foreground: 206 25% 21%;
-    --popover: 40 54% 96%;
-    --popover-foreground: 206 25% 21%;
-    --primary: 93 16% 53%; /* #A3B087 Sage Green - 10% accent, accent color */
-    --primary-foreground: 40 54% 96%; /* Cream text on sage */
-    --secondary: 207 18% 38%; /* #435663 Slate Blue - 30% support */
-    --secondary-foreground: 40 54% 96%; /* Cream text */
-    --muted: 40 30% 92%; /* Subtle light cream */
-    --muted-foreground: 207 10% 45%; /* Slightly softer navy */
-    --accent: 93 16% 53%; /* Sage Green accent */
-    --accent-foreground: 40 54% 96%; /* Cream */
-    --destructive: 0 84.2% 60.2%; /* Red for errors */
-    --destructive-foreground: 40 54% 96%;
-    --border: 40 40% 88%; /* Cream-based borders */
-    --input: 40 54% 94%; /* Input backgrounds */
-    --ring: 93 16% 53%; /* Sage focus ring */
-    --radius: 0.5rem;
+    /* LIGHT MODE - Cream Background (60%) */
+    --background: 40 70% 95%; /* #FFF8D4 Cream - Primary background (60%) */
+    --foreground: 216 26% 24%; /* #313647 Navy - Text (30%) */
     
-    /* Refined shadows with color theory depth */
-    --shadow-soft: 0 2px 8px rgba(49, 54, 71, 0.06), 0 1px 3px rgba(49, 54, 71, 0.03);
-    --shadow-medium: 0 4px 12px rgba(49, 54, 71, 0.1), 0 2px 6px rgba(49, 54, 71, 0.05);
-    --shadow-strong: 0 12px 24px rgba(49, 54, 71, 0.12), 0 4px 8px rgba(49, 54, 71, 0.06);
-    --shadow-glow: 0 0 20px rgba(163, 176, 135, 0.2), 0 0 40px rgba(163, 176, 135, 0.1);
+    /* Cards use cream tones for consistency */
+    --card: 40 65% 97%; /* Light cream cards */
+    --card-foreground: 216 26% 24%; /* Navy text */
     
-    /* Stunning background effects - Beautiful visible orbs */
-    --orb-primary: rgba(163, 176, 135, 0.35);
-    --orb-secondary: rgba(67, 86, 99, 0.25);
-    --orb-accent: rgba(49, 54, 71, 0.2);
+    --popover: 40 70% 95%;
+    --popover-foreground: 216 26% 24%;
+    
+    /* PRIMARY: Sage Green (10% - Accent color) */
+    --primary: 82 19% 56%; /* #A3B087 Sage - Main accent */
+    --primary-foreground: 0 0% 100%; /* White text on sage */
+    
+    /* SECONDARY: Slate Blue (Supporting structure) */
+    --secondary: 210 20% 40%; /* #435663 Slate - Secondary elements */
+    --secondary-foreground: 0 0% 100%; /* White text */
+    
+    /* Muted tones in cream family */
+    --muted: 40 50% 90%; /* Subtle cream */
+    --muted-foreground: 216 15% 35%; /* Muted navy */
+    
+    /* Accent maintains sage green */
+    --accent: 82 19% 56%; /* Sage */
+    --accent-foreground: 0 0% 100%;
+    
+    /* Destructive for errors */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Borders and inputs in cream tones */
+    --border: 40 35% 85%; /* Cream borders */
+    --input: 40 60% 93%; /* Cream input backgrounds */
+    --ring: 82 19% 56%; /* Sage focus ring */
+    --radius: 0.75rem;
+    
+    /* Premium shadows with navy undertones */
+    --shadow-soft: 0 2px 8px rgba(49, 54, 71, 0.08), 0 1px 3px rgba(49, 54, 71, 0.04);
+    --shadow-medium: 0 4px 16px rgba(49, 54, 71, 0.12), 0 2px 8px rgba(49, 54, 71, 0.06);
+    --shadow-strong: 0 12px 32px rgba(49, 54, 71, 0.15), 0 4px 12px rgba(49, 54, 71, 0.08);
+    --shadow-glow: 0 0 24px rgba(163, 176, 135, 0.25), 0 0 48px rgba(163, 176, 135, 0.12);
+    
+    /* Stunning orb effects - Light mode */
+    --orb-primary: rgba(163, 176, 135, 0.18); /* Sage orbs */
+    --orb-secondary: rgba(67, 86, 99, 0.12); /* Slate orbs */
+    --orb-accent: rgba(49, 54, 71, 0.08); /* Navy orbs */
   }
 
   .dark {
-    --background: 206 25% 12%; /* Deep navy background for dark mode */
-    --foreground: 40 54% 96%; /* Cream text */
-    --card: 206 25% 16%; /* Slightly lighter navy for cards */
-    --card-foreground: 40 54% 96%;
-    --popover: 206 25% 12%;
-    --popover-foreground: 40 54% 96%;
-    --primary: 93 18% 62%; /* Brighter sage for dark mode */
-    --primary-foreground: 206 25% 12%;
-    --secondary: 207 18% 50%; /* Lighter slate for dark mode */
-    --secondary-foreground: 40 54% 96%;
-    --muted: 206 20% 22%; /* Subtle dark navy */
-    --muted-foreground: 40 50% 70%; /* Lighter cream for contrast */
-    --accent: 93 18% 62%; /* Sage Green */
-    --accent-foreground: 206 25% 12%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 206 25% 12%;
-    --border: 206 20% 25%; /* Navy-based borders */
-    --input: 206 20% 20%;
-    --ring: 93 18% 62%;
+    /* DARK MODE - Navy Background (60%) */
+    --background: 216 26% 14%; /* #313647 Navy - Primary background (60%) */
+    --foreground: 40 70% 95%; /* Cream text (30%) */
     
-    /* Dark mode shadows */
-    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
-    --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.25);
-    --shadow-strong: 0 12px 24px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3);
-    --shadow-glow: 0 0 20px rgba(163, 176, 135, 0.3), 0 0 40px rgba(163, 176, 135, 0.15);
+    /* Cards in slightly lighter navy */
+    --card: 216 24% 18%; /* Elevated navy cards */
+    --card-foreground: 40 70% 95%;
     
-    /* Dark mode orbs - Beautiful visible orbs */
-    --orb-primary: rgba(163, 176, 135, 0.25);
-    --orb-secondary: rgba(67, 86, 99, 0.2);
-    --orb-accent: rgba(255, 248, 212, 0.15);
+    --popover: 216 26% 14%;
+    --popover-foreground: 40 70% 95%;
+    
+    /* PRIMARY: Brighter Sage for dark mode (10% - Accent) */
+    --primary: 82 25% 65%; /* Brighter sage for visibility */
+    --primary-foreground: 216 26% 14%; /* Navy text */
+    
+    /* SECONDARY: Lighter Slate for dark mode */
+    --secondary: 210 22% 55%; /* Lighter slate */
+    --secondary-foreground: 216 26% 14%;
+    
+    /* Muted in navy family */
+    --muted: 216 20% 22%; /* Subtle navy */
+    --muted-foreground: 40 60% 75%; /* Cream-ish */
+    
+    /* Accent maintains sage */
+    --accent: 82 25% 65%;
+    --accent-foreground: 216 26% 14%;
+    
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 40 70% 95%;
+    
+    /* Borders in navy tones */
+    --border: 216 20% 28%; /* Navy borders */
+    --input: 216 24% 18%; /* Navy inputs */
+    --ring: 82 25% 65%;
+    
+    /* Dark mode shadows - deeper */
+    --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.3);
+    --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(0, 0, 0, 0.35);
+    --shadow-strong: 0 12px 40px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-glow: 0 0 28px rgba(163, 176, 135, 0.35), 0 0 56px rgba(163, 176, 135, 0.18);
+    
+    /* Stunning orb effects - Dark mode */
+    --orb-primary: rgba(163, 176, 135, 0.15); /* Sage orbs */
+    --orb-secondary: rgba(67, 86, 99, 0.12); /* Slate orbs */
+    --orb-accent: rgba(255, 248, 212, 0.08); /* Cream orbs */
   }
 
   body {
@@ -398,44 +429,67 @@
     @apply w-full;
   }
   
-  /* Remove all gradient text classes - use solid colors */
+  /* Premium solid text styles - no gradients */
   .gradient-text {
     @apply text-foreground font-bold;
   }
   
   .gradient-text-2 {
-    @apply text-foreground font-bold;
+    @apply text-primary font-bold;
   }
   
   .gradient-text-3 {
-    @apply text-foreground font-bold;
+    @apply text-secondary font-bold;
   }
   
-  /* Solid button classes with color hierarchy */
+  /* Premium button classes with solid colors - no gradients */
   .btn-gradient-primary {
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(163, 176, 135, 0.2);
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(163, 176, 135, 0.25);
   }
   
   .btn-gradient-primary:hover {
-    background: hsl(var(--primary) / 0.85);
-    transform: translateY(-2px);
+    background: hsl(var(--primary) / 0.9);
+    transform: translateY(-2px) scale(1.02);
     box-shadow: var(--shadow-medium), var(--shadow-glow);
   }
   
   .btn-gradient-secondary {
     background: hsl(var(--secondary));
     color: hsl(var(--secondary-foreground));
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(67, 86, 99, 0.2);
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(67, 86, 99, 0.25);
   }
   
   .btn-gradient-secondary:hover {
-    background: hsl(var(--secondary) / 0.85);
-    transform: translateY(-2px);
+    background: hsl(var(--secondary) / 0.9);
+    transform: translateY(-2px) scale(1.02);
     box-shadow: var(--shadow-medium);
+  }
+  
+  /* Icon enhancements - better visibility */
+  svg {
+    @apply transition-colors duration-200;
+  }
+  
+  /* Form focus states - premium feel */
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.2);
+  }
+  
+  /* Enhanced card styles */
+  .premium-card {
+    @apply bg-card/90 backdrop-blur-xl border-2 border-border/60 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+  
+  .premium-card:hover {
+    @apply border-primary/40;
+    transform: translateY(-2px);
   }
 }
 

@@ -94,16 +94,22 @@ const Navbar = () => {
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           
-          {/* Logo section */}
+          {/* Logo section - Extraordinary Design */}
           <Link 
             to="/" 
             className="flex items-center space-x-2 group"
             aria-label="Go to home"
           >
-            <div className="w-9 h-9 md:w-10 md:h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md">
-              <span className="text-white font-bold text-lg md:text-xl">P</span>
+            <div className="relative w-9 h-9 md:w-10 md:h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-110 overflow-hidden">
+              {/* Custom P Logo SVG */}
+              <svg className="w-6 h-6 md:w-7 md:h-7 relative z-10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 4h8a6 6 0 0 1 6 6v0a6 6 0 0 1-6 6H8v4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary-foreground"/>
+                <circle cx="8" cy="10" r="1.5" fill="currentColor" className="text-primary-foreground opacity-80"/>
+              </svg>
+              {/* Pulse dot indicator */}
+              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-secondary rounded-full animate-pulse shadow-sm"></div>
             </div>
-            <span className="font-heading font-bold text-lg md:text-xl gradient-text">
+            <span className="font-heading font-bold text-lg md:text-xl text-foreground group-hover:text-primary transition-colors duration-300">
               PeerConnect
             </span>
           </Link>

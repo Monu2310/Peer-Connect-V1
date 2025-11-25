@@ -10,6 +10,7 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
 } from './firebase';
+import { onIdTokenChanged } from 'firebase/auth';
 import dataPreloader from '../lib/dataPreloader';
 import intelligentCache from '../lib/intelligentCache';
 
@@ -74,7 +75,9 @@ const authReducer = (state, action) => {
       const token = action.payload?.token || null;
       const normalizedUser = normalizeUser(action.payload?.user);
 
-      setAuthToken(token);
+      if (token) {
+        setAuthToken(token);
+      }
 
       if (normalizedUser) {
         localStorage.setItem(USER_DATA_KEY, JSON.stringify(normalizedUser));
@@ -129,6 +132,11 @@ const authReducer = (state, action) => {
         ...state,
         loading: action.payload
       };
+    case 'TOKEN_REFRESH':
+      return {
+        ...state,
+        token: action.payload
+      };
     default:
       return state;
   }
@@ -140,6 +148,28 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState('');
   const [authInitialized, setAuthInitialized] = useState(false);
 
+  // Listen for Firebase token changes (refresh)
+  useEffect(() => {
+    const unsubscribe = onIdTokenChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const token = await user.getIdToken();
+          setAuthToken(token);
+          localStorage.setItem(TOKEN_KEY, token);
+          dispatch({ type: 'TOKEN_REFRESH', payload: token });
+        } catch (err) {
+          console.error('Error refreshing token:', err);
+        }
+      } else {
+        // User signed out
+        // We handle this in the logout function or onAuthStateChanged usually, 
+        // but this ensures we clean up if Firebase thinks we are logged out.
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   // Save token to localStorage when it changes
   useEffect(() => {
     if (state.token) {
@@ -150,6 +180,7 @@ export const AuthProvider = ({ children }) => {
       setAuthToken(null);
     }
   }, [state.token]);
+
 
   // Load user data if token exists
   useEffect(() => {
@@ -273,7 +304,7 @@ export const AuthProvider = ({ children }) => {
 
       const actionCodeSettings = {
         url: getVerificationRedirectUrl(),
-        handleCodeInApp: false
+        handleCodeInApp: true
       };
 
       try {
@@ -406,7 +437,8 @@ export const AuthProvider = ({ children }) => {
 
       const idToken = await fbUser.getIdToken();
 
-      // Then tell our backend to verify the Firebase token and mint app JWT
+      // Then tell our backend to verify the Firebase token and sync user data
+      // We use the idToken as our app token now
       const res = await axios.post(
         `${API_URL}/api/auth/firebase-login`,
         { idToken },
@@ -419,12 +451,8 @@ export const AuthProvider = ({ children }) => {
         }
       );
 
-      if (!res.data || !res.data.token) {
-        throw new Error('Invalid response from server - no token received');
-      }
-
       // Store the token in localStorage and set in axios
-      setAuthToken(res.data.token);
+      setAuthToken(idToken);
 
       // Set fresh auth timestamp
       localStorage.setItem(AUTH_TIMESTAMP_KEY, Date.now().toString());
@@ -432,7 +460,10 @@ export const AuthProvider = ({ children }) => {
       // Dispatch success action
       dispatch({
         type: 'LOGIN_SUCCESS',
-        payload: res.data
+        payload: {
+          token: idToken,
+          user: res.data.user
+        }
       });
 
       // Load user data after login - force fresh data
@@ -441,7 +472,7 @@ export const AuthProvider = ({ children }) => {
           withCredentials: false,
           timeout: 10000,
           headers: {
-            'Authorization': `Bearer ${res.data.token}`,
+            'Authorization': `Bearer ${idToken}`,
             'Cache-Control': 'no-cache'
           }
         });

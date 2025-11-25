@@ -13,6 +13,11 @@ router.post('/request', auth, friendController.sendFriendRequest);
 // @access  Private
 router.post('/request-by-id', auth, friendController.sendFriendRequestById);
 
+// @route   POST /api/friends/request-by-email
+// @desc    Send a friend request by email
+// @access  Private
+router.post('/request-by-email', auth, friendController.sendFriendRequestByEmail);
+
 // @route   GET /api/friends/requests
 // @desc    Get all friend requests for current user
 // @access  Private

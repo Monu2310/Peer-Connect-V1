@@ -24,42 +24,52 @@ import React from 'react';
 const BeautifulBackground = ({ children, className = '' }) => {
   return (
     <div className={`min-h-screen bg-background relative ${className}`}>
-      {/* STUNNING Background Orbs - Fixed Position (stays on scroll) */}
+      {/* ELITE Background Orbs - Fixed Position (stays on scroll) */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         
-        {/* Orb 1: Primary Sage - Top Right */}
+        {/* Orb 1: Primary Sage - Top Right - Larger, more visible */}
         <div 
-          className="fixed top-0 right-0 w-[600px] h-[600px] rounded-full animate-orb-float-1 translate-x-1/3 -translate-y-1/3"
+          className="fixed top-0 right-0 w-[700px] h-[700px] rounded-full animate-orb-float-1 translate-x-1/4 -translate-y-1/4"
           style={{
-            background: 'radial-gradient(circle, var(--orb-primary), transparent 70%)',
+            background: 'radial-gradient(circle, var(--orb-primary), transparent 65%)',
+            filter: 'blur(70px)',
+          }}
+        />
+        
+        {/* Orb 2: Navy/Accent - Bottom Left - Enhanced visibility */}
+        <div 
+          className="fixed bottom-0 left-0 w-[650px] h-[650px] rounded-full animate-orb-float-2 -translate-x-1/4 translate-y-1/4"
+          style={{
+            background: 'radial-gradient(circle, var(--orb-accent), transparent 65%)',
+            filter: 'blur(75px)',
+          }}
+        />
+        
+        {/* Orb 3: Secondary Slate - Top Center Left - More prominent */}
+        <div 
+          className="fixed top-1/4 left-1/4 w-[550px] h-[550px] rounded-full animate-orb-float-3"
+          style={{
+            background: 'radial-gradient(circle, var(--orb-secondary), transparent 70%)',
             filter: 'blur(80px)',
           }}
         />
         
-        {/* Orb 2: Secondary Navy - Bottom Left */}
+        {/* Orb 4: Sage Accent - Bottom Right - Stronger presence */}
         <div 
-          className="fixed bottom-0 left-0 w-[600px] h-[600px] rounded-full animate-orb-float-2 -translate-x-1/3 translate-y-1/3"
-          style={{
-            background: 'radial-gradient(circle, var(--orb-accent), transparent 70%)',
-            filter: 'blur(100px)',
-          }}
-        />
-        
-        {/* Orb 3: Tertiary Slate - Top Center */}
-        <div 
-          className="fixed top-0 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full animate-orb-float-3 -translate-y-1/2"
-          style={{
-            background: 'radial-gradient(circle, var(--orb-secondary), transparent 70%)',
-            filter: 'blur(90px)',
-          }}
-        />
-        
-        {/* Orb 4: Subtle Sage Glow - Bottom Right */}
-        <div 
-          className="fixed bottom-1/4 right-0 w-[450px] h-[450px] rounded-full animate-subtle-glow translate-x-1/4"
+          className="fixed bottom-1/3 right-1/4 w-[500px] h-[500px] rounded-full animate-subtle-glow"
           style={{
             background: 'radial-gradient(circle, var(--orb-primary), transparent 70%)',
-            filter: 'blur(85px)',
+            filter: 'blur(65px)',
+          }}
+        />
+        
+        {/* Orb 5: Center Ambient - Adds depth */}
+        <div 
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full animate-orb-float-1"
+          style={{
+            background: 'radial-gradient(circle, var(--orb-secondary), transparent 75%)',
+            filter: 'blur(90px)',
+            opacity: 0.6,
           }}
         />
       </div>
