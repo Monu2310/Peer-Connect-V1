@@ -3,24 +3,37 @@ import { useLocation, Navigate } from 'react-router-dom';
 import VerifyEmail from './VerifyEmail';
 import ResetPassword from './ResetPassword';
 import { Loader2 } from 'lucide-react';
+import BeautifulBackground from '../components/effects/BeautifulBackground';
 
 const AuthAction = () => {
   const location = useLocation();
   const [mode, setMode] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const actionParams = params.get('mode');
-    setMode(actionParams);
+    const actionMode = params.get('mode');
+    console.log('AuthAction: URL params:', { mode: actionMode, fullSearch: location.search });
+    setMode(actionMode);
+    setIsLoading(false);
   }, [location.search]);
 
-  if (!mode) {
+  if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <BeautifulBackground>
+        <div className="flex justify-center items-center min-h-screen">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </BeautifulBackground>
     );
   }
+
+  if (!mode) {
+    console.warn('AuthAction: No mode parameter found, redirecting to login');
+    return <Navigate to="/login" replace />;
+  }
+
+  console.log('AuthAction: Rendering component for mode:', mode);
 
   switch (mode) {
     case 'verifyEmail':
@@ -28,9 +41,9 @@ const AuthAction = () => {
     case 'resetPassword':
       return <ResetPassword />;
     case 'recoverEmail':
-      // Handle email recovery if needed, or just redirect to login
       return <Navigate to="/login" replace />;
     default:
+      console.warn('AuthAction: Unknown mode:', mode);
       return <Navigate to="/login" replace />;
   }
 };

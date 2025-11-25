@@ -139,6 +139,7 @@ const ResetPassword = () => {
             {renderIcon()}
           </div>
           <h1 className="text-2xl font-semibold mb-2 text-foreground flex items-center justify-center gap-2">
+            <Lock className="w-6 h-6 text-foreground" />
             Reset Password
           </h1>
           <p className="text-sm text-muted-foreground mb-6 text-center">

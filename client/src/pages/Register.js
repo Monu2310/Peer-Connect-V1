@@ -2,8 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../core/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserPlus, Mail, Eye, EyeOff, CheckCircle, X, ArrowRight, ArrowLeft } from "lucide-react";
+import { UserPlus, Mail, Eye, EyeOff, CheckCircle, X, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
 import BeautifulBackground from "../components/effects/BeautifulBackground";
+import axios from "axios";
+import { API_URL } from "../api/config";
 
 const Register = () => {
   const [step, setStep] = useState(1);
@@ -27,9 +29,25 @@ const Register = () => {
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [registrationComplete, setRegistrationComplete] = useState(false);
   const [verificationNotice, setVerificationNotice] = useState("");
+  const [serverStatus, setServerStatus] = useState('unknown'); // 'unknown', 'waking', 'ready'
 
   const { register, error, setError, currentUser } = useAuth();
   const navigate = useNavigate();
+
+  // Wake up server on mount
+  useEffect(() => {
+    const checkServerStatus = async () => {
+      try {
+        await axios.get(`${API_URL}/api/health`, { timeout: 3000 });
+        setServerStatus('ready');
+      } catch (err) {
+        console.log('Server may be in sleep mode');
+        setServerStatus('unknown');
+      }
+    };
+    
+    checkServerStatus();
+  }, []);
 
   const {
     username,
@@ -118,6 +136,19 @@ const Register = () => {
     setLoading(true);
     setRegistrationComplete(false);
     setVerificationNotice("");
+
+    // If server status isn't 'ready', try to wake it first
+    if (serverStatus !== 'ready') {
+      setServerStatus('waking');
+      try {
+        // Try to ping the server to wake it up
+        await axios.get(`${API_URL}/api/health`, { timeout: 5000 })
+          .then(() => setServerStatus('ready'))
+          .catch(() => console.log('Server wake-up ping failed, proceeding anyway'));
+      } catch (err) {
+        console.log('Server wake-up attempt error:', err.message);
+      }
+    }
 
     try {
       const userData = {
@@ -428,8 +459,8 @@ const Register = () => {
                         >
                           {loading ? (
                             <>
-                              <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"></div>
-                              <span>Creating Account...</span>
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                              <span>{serverStatus === 'waking' ? 'Waking Server...' : 'Creating Account...'}</span>
                             </>
                           ) : (
                             <>

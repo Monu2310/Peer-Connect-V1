@@ -197,7 +197,7 @@ const Navbar = () => {
                 className="h-10 w-10 p-0"
                 aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
               >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                {mobileMenuOpen ? <X className="w-5 h-5 text-foreground" /> : <Menu className="w-5 h-5 text-foreground" />}
               </Button>
             )}
           </div>

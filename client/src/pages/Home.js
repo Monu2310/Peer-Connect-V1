@@ -185,13 +185,13 @@ const Home = () => {
             <motion.div variants={featureVariants}>
               <div className="group relative bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 md:p-8 h-full hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
                 <motion.div 
-                  className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-gradient-btn-primary mb-4 md:mb-6 shadow-lg"
+                  className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/10 mb-4 md:mb-6 shadow-sm"
                   whileHover={{ scale: 1.1, rotate: 5 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <Search className="w-6 h-6 md:w-7 md:h-7 text-white" />
+                  <Search className="w-6 h-6 md:w-7 md:h-7 text-primary" />
                 </motion.div>
-                <h3 className="text-xl md:text-2xl font-bold gradient-text mb-3 md:mb-4">
+                <h3 className="text-xl md:text-2xl font-bold text-foreground mb-3 md:mb-4">
                   Discover Activities
                 </h3>
                 <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
@@ -205,13 +205,13 @@ const Home = () => {
             <motion.div variants={featureVariants}>
               <div className="group relative bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 md:p-8 h-full hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
                 <motion.div 
-                  className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-gradient-btn-secondary mb-4 md:mb-6 shadow-lg"
+                  className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/10 mb-4 md:mb-6 shadow-sm"
                   whileHover={{ scale: 1.1, rotate: -5 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <PlusCircle className="w-6 h-6 md:w-7 md:h-7 text-white" />
+                  <PlusCircle className="w-6 h-6 md:w-7 md:h-7 text-primary" />
                 </motion.div>
-                <h3 className="text-xl md:text-2xl font-bold gradient-text-2 mb-3 md:mb-4">
+                <h3 className="text-xl md:text-2xl font-bold text-foreground mb-3 md:mb-4">
                   Create Experiences
                 </h3>
                 <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
@@ -225,13 +225,13 @@ const Home = () => {
             <motion.div variants={featureVariants}>
               <div className="group relative bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 md:p-8 h-full hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
                 <motion.div 
-                  className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-gradient-btn-primary mb-4 md:mb-6 shadow-lg"
+                  className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-primary/10 mb-4 md:mb-6 shadow-sm"
                   whileHover={{ scale: 1.1, rotate: 5 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <Users className="w-6 h-6 md:w-7 md:h-7 text-white" />
+                  <Users className="w-6 h-6 md:w-7 md:h-7 text-primary" />
                 </motion.div>
-                <h3 className="text-xl md:text-2xl font-bold gradient-text-3 mb-3 md:mb-4">
+                <h3 className="text-xl md:text-2xl font-bold text-foreground mb-3 md:mb-4">
                   Connect & Grow
                 </h3>
                 <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
@@ -295,10 +295,10 @@ const Home = () => {
             viewport={{ once: true }}
             className="flex items-center justify-center gap-2 mb-4"
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-btn-primary flex items-center justify-center shadow-md">
-              <Heart className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shadow-sm">
+              <Heart className="w-5 h-5 text-primary" />
             </div>
-            <span className="font-bold text-lg md:text-xl gradient-text">
+            <span className="font-bold text-lg md:text-xl text-foreground">
               PeerConnect
             </span>
           </motion.div>

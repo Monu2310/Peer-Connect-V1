@@ -15,12 +15,20 @@ const VerifyEmail = () => {
     const oobCode = params.get('oobCode');
     const mode = params.get('mode');
 
-    console.log('VerifyEmail: Checking params', { mode, hasOobCode: !!oobCode });
+    console.log('VerifyEmail: Checking params', { mode, hasOobCode: !!oobCode, fullSearch: location.search });
 
-    if (!oobCode || mode !== 'verifyEmail') {
+    if (!oobCode) {
       setStatus('error');
       setMessage('Invalid or missing verification code.');
-      console.error('VerifyEmail: Missing or invalid params');
+      console.error('VerifyEmail: Missing oobCode');
+      return;
+    }
+
+    // Allow if mode is missing (coming from AuthAction) or if it's verifyEmail
+    if (mode && mode !== 'verifyEmail') {
+      setStatus('error');
+      setMessage('Invalid verification mode.');
+      console.error('VerifyEmail: Wrong mode:', mode);
       return;
     }
 
@@ -77,7 +85,7 @@ const VerifyEmail = () => {
             {renderIcon()}
           </div>
           <h1 className="text-2xl font-semibold mb-2 text-foreground flex items-center justify-center gap-2">
-            <MailCheck className="w-5 h-5 text-primary" />
+            <MailCheck className="w-6 h-6 text-foreground" />
             Email Verification
           </h1>
           <p className="text-sm text-muted-foreground mb-6">

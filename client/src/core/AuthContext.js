@@ -329,7 +329,7 @@ export const AuthProvider = ({ children }) => {
         headers: {
           'Content-Type': 'application/json'
         },
-        timeout: 30000
+        timeout: 60000 // Increased to 60s for Render cold starts
       });
 
       // Sign out the unverified user to prevent accessing the app before email confirmation
