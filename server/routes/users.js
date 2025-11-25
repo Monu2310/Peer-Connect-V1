@@ -35,6 +35,11 @@ router.get('/notifications', auth, userController.getNotifications);
 // @access  Private
 router.post('/random-avatar', auth, userController.generateRandomAvatar);
 
+// @route   DELETE /api/users/account
+// @desc    Delete user account permanently
+// @access  Private
+router.delete('/account', auth, userController.deleteAccount);
+
 // @route   GET /api/users/:userId
 // @desc    Get user by ID
 // @access  Private

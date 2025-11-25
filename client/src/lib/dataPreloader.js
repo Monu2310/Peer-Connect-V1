@@ -40,7 +40,8 @@ class DataPreloader {
     const criticalRequests = [
       { key: 'user-profile', fn: () => api.get(`/api/users/${userId}`), priority: 'immediate' },
       { key: 'user-friends', fn: () => api.get('/api/friends'), priority: 'immediate' },
-      { key: 'recent-activities', fn: () => api.get('/api/activities?limit=20'), priority: 'fast' },
+      // NOTE: Do NOT preload /api/activities here - it returns ALL system activities
+      // Users should only see activities when they explicitly navigate to Activities page
       { key: 'notifications', fn: () => api.get('/api/users/notifications'), priority: 'fast' },
       { key: 'recommendations', fn: () => api.get('/api/recommendations'), priority: 'normal' }
     ];

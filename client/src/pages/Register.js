@@ -350,15 +350,80 @@ const Register = () => {
                       
                       {/* Major (Optional) */}
                       <div>
-                        <label className="block text-sm font-bold text-foreground mb-2 ml-1">Major <span className="text-muted-foreground font-medium">(Optional)</span></label>
-                        <input
+                        <label className="block text-sm font-bold text-foreground mb-2 ml-1">Program <span className="text-muted-foreground font-medium">(Optional)</span></label>
+                        <select
                           name="major"
-                          type="text"
                           value={major}
                           onChange={onChange}
-                          placeholder="e.g., Computer Science"
-                          className="w-full px-4 py-3.5 text-base rounded-xl border-2 border-border bg-input/60 backdrop-blur-sm text-foreground placeholder-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm"
-                        />
+                          className="w-full px-4 py-3.5 text-base rounded-xl border-2 border-border bg-input/60 backdrop-blur-sm text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm cursor-pointer"
+                        >
+                          <option value="">Select your program</option>
+                          <optgroup label="🎓 B.E. Programs">
+                            <option value="B.E. in Computer Science and Engineering">Computer Science and Engineering</option>
+                            <option value="B.E. in Electronics and Communication Engineering">Electronics and Communication Engineering</option>
+                            <option value="B.E. in Electrical Engineering">Electrical Engineering</option>
+                            <option value="B.E. in Mechanical Engineering">Mechanical Engineering</option>
+                            <option value="B.E. in Civil Engineering">Civil Engineering</option>
+                            <option value="B.E. in Chemical Engineering">Chemical Engineering</option>
+                            <option value="B.E. in Biotechnology">Biotechnology</option>
+                            <option value="B.E. in Production and Industrial Engineering">Production and Industrial Engineering</option>
+                            <option value="B.E. in Mechatronics Engineering">Mechatronics Engineering</option>
+                            <option value="B.E. in Computer Science and Business Systems">Computer Science and Business Systems</option>
+                            <option value="B.E. in Electronics and Computer Engineering">Electronics and Computer Engineering</option>
+                            <option value="B.E. in Aerospace Engineering">Aerospace Engineering</option>
+                          </optgroup>
+                          <optgroup label="🎓 B.Tech Programs">
+                            <option value="B.Tech in Computer Science and Engineering">Computer Science and Engineering</option>
+                            <option value="B.Tech in Electronics and Communication Engineering">Electronics and Communication Engineering</option>
+                            <option value="B.Tech in Electrical Engineering">Electrical Engineering</option>
+                            <option value="B.Tech in Mechanical Engineering">Mechanical Engineering</option>
+                            <option value="B.Tech in Civil Engineering">Civil Engineering</option>
+                            <option value="B.Tech in Chemical Engineering">Chemical Engineering</option>
+                          </optgroup>
+                          <optgroup label="📚 Other UG Programs">
+                            <option value="B.Arch in Architecture">B.Arch - Architecture</option>
+                            <option value="B.Sc in Mathematics and Computing">B.Sc - Mathematics and Computing</option>
+                            <option value="B.Sc in Physics">B.Sc - Physics</option>
+                            <option value="B.Sc in Chemistry">B.Sc - Chemistry</option>
+                            <option value="B.Sc in Biotechnology">B.Sc - Biotechnology</option>
+                            <option value="BBA">BBA - Business Administration</option>
+                            <option value="B.Com">B.Com - Commerce</option>
+                            <option value="BA in Economics">BA - Economics</option>
+                            <option value="BA in English">BA - English</option>
+                            <option value="BA in Psychology">BA - Psychology</option>
+                          </optgroup>
+                          <optgroup label="🎓 M.E. Programs">
+                            <option value="M.E. in Computer Science and Engineering">Computer Science and Engineering</option>
+                            <option value="M.E. in Electronics and Communication Engineering">Electronics and Communication Engineering</option>
+                            <option value="M.E. in Electrical Engineering">Electrical Engineering</option>
+                            <option value="M.E. in Mechanical Engineering">Mechanical Engineering</option>
+                            <option value="M.E. in Civil Engineering">Civil Engineering</option>
+                            <option value="M.E. in Chemical Engineering">Chemical Engineering</option>
+                            <option value="M.E. in Biotechnology">Biotechnology</option>
+                            <option value="M.E. in Software Engineering">Software Engineering</option>
+                            <option value="M.E. in VLSI Design">VLSI Design</option>
+                            <option value="M.E. in Power Systems">Power Systems</option>
+                            <option value="M.E. in Thermal Engineering">Thermal Engineering</option>
+                            <option value="M.E. in Structural Engineering">Structural Engineering</option>
+                          </optgroup>
+                          <optgroup label="📚 Other PG Programs">
+                            <option value="M.Sc in Mathematics">M.Sc - Mathematics</option>
+                            <option value="M.Sc in Physics">M.Sc - Physics</option>
+                            <option value="M.Sc in Chemistry">M.Sc - Chemistry</option>
+                            <option value="M.Sc in Biotechnology">M.Sc - Biotechnology</option>
+                            <option value="MBA">MBA - Business Administration</option>
+                            <option value="MCA">MCA - Computer Applications</option>
+                            <option value="M.Tech in Computer Science">M.Tech - Computer Science</option>
+                            <option value="M.Tech in Data Science">M.Tech - Data Science</option>
+                            <option value="M.Arch">M.Arch - Architecture</option>
+                          </optgroup>
+                          <optgroup label="🎓 Ph.D. Programs">
+                            <option value="Ph.D. in Engineering">Ph.D. - Engineering</option>
+                            <option value="Ph.D. in Sciences">Ph.D. - Sciences</option>
+                            <option value="Ph.D. in Management">Ph.D. - Management</option>
+                            <option value="Ph.D. in Liberal Arts">Ph.D. - Liberal Arts</option>
+                          </optgroup>
+                        </select>
                       </div>
                       
                       {/* Graduation Year (Optional) */}

@@ -67,6 +67,9 @@ const Profile = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
   const [friendRequestStatus, setFriendRequestStatus] = useState('none'); // none, sending, sent, error
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
@@ -342,6 +345,40 @@ const Profile = () => {
     } finally {
       setTimeout(() => setSuccess(''), 3000);
       setTimeout(() => setError(''), 5000);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmEmail !== currentUser?.email) {
+      setError('Email does not match. Account deletion cancelled.');
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://peer-connect-v1.onrender.com'}/api/users/account`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ confirmEmail: deleteConfirmEmail })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete account');
+      }
+
+      // Clear all local data
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Redirect to home
+      window.location.href = '/';
+    } catch (err) {
+      console.error('Error deleting account:', err);
+      setError('Failed to delete account. Please try again.');
+      setDeleting(false);
     }
   };
 
@@ -907,6 +944,90 @@ const Profile = () => {
             </div>
           </div>
         </motion.div>
+
+        {/* Delete Account Section - Only for Own Profile */}
+        {isOwnProfile && (
+          <motion.div variants={itemVariants} className="card shadow-lg mb-6 border-2 border-destructive/20">
+            <div className="px-4 py-5 sm:px-6 bg-destructive/5">
+              <h2 className="text-lg font-medium font-bold text-destructive flex items-center gap-2">
+                <Trash2 className="h-5 w-5" />
+                Danger Zone
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Permanently delete your account and all associated data.
+              </p>
+            </div>
+            <div className="border-t border-border px-4 py-5 sm:px-6">
+              {!showDeleteConfirm ? (
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="w-full sm:w-auto"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Account
+                </Button>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-destructive/10 border-2 border-destructive/30 rounded-lg p-4">
+                    <p className="font-bold text-destructive mb-2">⚠️ Warning: This action cannot be undone!</p>
+                    <p className="text-sm text-foreground mb-2">
+                      Deleting your account will permanently remove:
+                    </p>
+                    <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1 mb-3">
+                      <li>Your profile and all personal information</li>
+                      <li>All your activities and participations</li>
+                      <li>All your messages and conversations</li>
+                      <li>All your friend connections</li>
+                    </ul>
+                    <p className="text-sm font-semibold text-foreground">
+                      To confirm, please type your email address: <span className="text-destructive">{currentUser?.email}</span>
+                    </p>
+                  </div>
+                  <Input
+                    type="email"
+                    placeholder="Enter your email to confirm"
+                    value={deleteConfirmEmail}
+                    onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+                    className="border-destructive/50 focus:border-destructive"
+                    disabled={deleting}
+                  />
+                  <div className="flex gap-3">
+                    <Button
+                      variant="destructive"
+                      onClick={handleDeleteAccount}
+                      disabled={deleting || deleteConfirmEmail !== currentUser?.email}
+                      className="flex-1"
+                    >
+                      {deleting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Yes, Delete My Account
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowDeleteConfirm(false);
+                        setDeleteConfirmEmail('');
+                      }}
+                      disabled={deleting}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
       </div>
     </motion.div>
   );

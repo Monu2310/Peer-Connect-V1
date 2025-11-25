@@ -221,18 +221,10 @@ exports.firebaseRegister = async (req, res) => {
     }
 
     // Find or create local user
-    // Prefer firebaseUid for lookup to avoid mixing users
+    // ONLY lookup by firebaseUid - NEVER by email to prevent data mixing
     let user = await User.findOne({ firebaseUid }).exec();
 
-    // Fallback: migrate legacy user that was created before firebaseUid existed
-    if (!user) {
-      user = await User.findOne({ email }).exec();
-      if (user) {
-        user.firebaseUid = firebaseUid;
-        await user.save();
-      }
-    }
-
+    // If no user exists with this Firebase UID, create a brand new one
     if (!user) {
       // Ensure username uniqueness; if taken, append short suffix
       let finalUsername = username;
@@ -303,17 +295,10 @@ exports.firebaseLogin = async (req, res) => {
       return res.status(400).json({ message: 'Firebase token does not contain an email' });
     }
 
-    // Prefer firebaseUid for lookup to avoid cross-account leakage
+    // ONLY lookup by firebaseUid - NEVER by email to prevent data mixing
     let user = await User.findOne({ firebaseUid }).exec();
 
-    // Fallback for legacy users created before firebaseUid field
-    if (!user) {
-      user = await User.findOne({ email }).exec();
-      if (user) {
-        user.firebaseUid = firebaseUid;
-        await user.save();
-      }
-    }
+    // If no user exists with this Firebase UID, create a brand new one
     if (!user) {
       // Auto-provision user if missing, using part of email as username
       const baseUsername = email.split('@')[0];

@@ -241,3 +241,60 @@ exports.getNotifications = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
+// Delete user account permanently
+exports.deleteAccount = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { confirmEmail } = req.body;
+    
+    console.log('Delete account request for user:', userId);
+    
+    // Get user to verify email
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Verify email confirmation
+    if (confirmEmail !== user.email) {
+      return res.status(400).json({ message: 'Email confirmation does not match' });
+    }
+    
+    // Delete all user's related data
+    const Friend = require('../models/Friend');
+    const Activity = require('../models/Activity');
+    const Message = require('../models/Message');
+    const GroupMessage = require('../models/GroupMessage');
+    
+    // Delete friendships
+    await Friend.deleteMany({
+      $or: [{ requester: userId }, { recipient: userId }]
+    });
+    
+    // Remove user from activity participants and delete activities they created
+    await Activity.updateMany(
+      { participants: userId },
+      { $pull: { participants: userId } }
+    );
+    await Activity.deleteMany({ creator: userId });
+    
+    // Delete messages
+    await Message.deleteMany({
+      $or: [{ sender: userId }, { recipient: userId }]
+    });
+    await GroupMessage.deleteMany({ sender: userId });
+    
+    // Finally delete the user
+    await User.findByIdAndDelete(userId);
+    
+    console.log('User account deleted successfully:', user.email);
+    res.json({ 
+      message: 'Account deleted successfully',
+      deletedUser: user.email
+    });
+  } catch (err) {
+    console.error('Error deleting account:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};

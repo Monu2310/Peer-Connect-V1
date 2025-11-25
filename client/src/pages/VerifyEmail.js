@@ -33,21 +33,41 @@ const VerifyEmail = () => {
     }
 
     const verify = async () => {
-      try {
-        console.log('VerifyEmail: Calling applyActionCode...');
-        await applyActionCode(auth, oobCode);
-        console.log('VerifyEmail: Success! Email verified.');
-        setStatus('success');
-        setMessage('Your email has been verified. You can now log in.');
-      } catch (err) {
-        console.error('Email verification error:', err);
-        setStatus('error');
-        if (err.code === 'auth/invalid-action-code') {
-          setMessage('This verification link is invalid or has already been used.');
-        } else if (err.code === 'auth/expired-action-code') {
-          setMessage('This verification link has expired. Please request a new one by trying to log in again.');
-        } else {
-          setMessage(`We could not verify your email: ${err.message || 'Unknown error'}`);
+      const maxRetries = 3;
+      let retryCount = 0;
+      
+      while (retryCount < maxRetries) {
+        try {
+          console.log(`VerifyEmail: Calling applyActionCode (attempt ${retryCount + 1}/${maxRetries})...`);
+          await applyActionCode(auth, oobCode);
+          console.log('VerifyEmail: Success! Email verified.');
+          setStatus('success');
+          setMessage('Your email has been verified. You can now log in.');
+          return; // Success, exit
+        } catch (err) {
+          retryCount++;
+          console.error(`Email verification attempt ${retryCount} failed:`, err.code);
+          
+          // Retry on network errors
+          if (err.code === 'auth/network-request-failed' && retryCount < maxRetries) {
+            console.log(`🔄 Network error, retrying in 2 seconds... (${retryCount}/${maxRetries})`);
+            setMessage(`Connection issue (attempt ${retryCount}/${maxRetries}). Retrying...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          } else {
+            // Final failure or non-network error
+            console.error('Email verification final error:', err);
+            setStatus('error');
+            if (err.code === 'auth/invalid-action-code') {
+              setMessage('This verification link is invalid or has already been used.');
+            } else if (err.code === 'auth/expired-action-code') {
+              setMessage('This verification link has expired. Please request a new one by trying to log in again.');
+            } else if (err.code === 'auth/network-request-failed') {
+              setMessage('Network connection failed after multiple attempts. Please check your firewall/antivirus settings and ensure Firebase domains are not blocked. You may need to disable VPN or try a different network.');
+            } else {
+              setMessage(`We could not verify your email: ${err.message || 'Unknown error'}`);
+            }
+            return;
+          }
         }
       }
     };

@@ -33,9 +33,10 @@ const normalizeUser = (user) => {
   return normalizedId ? { ...user, id: normalizedId } : { ...user };
 };
 
-// Initial state for the reducer - load from localStorage if available
+// Initial state for the reducer - DO NOT load user from localStorage on init
+// Always fetch fresh from backend to prevent stale data issues
 const initialState = {
-  user: normalizeUser(JSON.parse(localStorage.getItem(USER_DATA_KEY))),
+  user: null, // Never trust localStorage on initial load
   token: localStorage.getItem(TOKEN_KEY),
   isAuthenticated: !!localStorage.getItem(TOKEN_KEY),
   loading: true
@@ -296,8 +297,49 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       console.log('Sending registration data:', {...userData, password: '[REDACTED]'});
-      // Create Firebase user
-      const { user: fbUser } = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
+      
+      // NUCLEAR CLEAR: Wipe everything before registration to prevent data mixing
+      console.log('🧹 CLEARING ALL CACHE BEFORE REGISTRATION...');
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+        if (window.indexedDB) {
+          const dbs = await indexedDB.databases();
+          dbs.forEach(db => indexedDB.deleteDatabase(db.name));
+        }
+      } catch (clearErr) {
+        console.warn('Error clearing storage:', clearErr);
+      }
+      intelligentCache.clear();
+      dataPreloader.preloadCache.clear();
+      dataPreloader.preloadPromises.clear();
+      dataPreloader.lastPreloadTimestamps.clear();
+      
+      // Create Firebase user with retry logic for network issues
+      let fbUser;
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        try {
+          console.log(`Firebase registration attempt ${retryCount + 1}/${maxRetries}`);
+          const result = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
+          fbUser = result.user;
+          console.log('✅ Firebase user created successfully');
+          break; // Success, exit retry loop
+        } catch (fbError) {
+          retryCount++;
+          console.error(`Firebase registration attempt ${retryCount} failed:`, fbError.code);
+          
+          if (fbError.code === 'auth/network-request-failed' && retryCount < maxRetries) {
+            console.log(`🔄 Retrying in 2 seconds... (${retryCount}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          } else {
+            // Final attempt failed or non-network error
+            throw fbError;
+          }
+        }
+      }
 
       // Ensure we have the latest verification status before continuing
       await fbUser.reload();
@@ -307,11 +349,28 @@ export const AuthProvider = ({ children }) => {
         handleCodeInApp: true
       };
 
-      try {
-        await sendEmailVerification(fbUser, actionCodeSettings);
-      } catch (verificationError) {
-        console.error('Failed to send verification email:', verificationError);
-        throw new Error('Could not send verification email. Please try again later.');
+      // Send verification email with retry logic
+      retryCount = 0;
+      while (retryCount < maxRetries) {
+        try {
+          console.log(`Sending verification email attempt ${retryCount + 1}/${maxRetries}`);
+          await sendEmailVerification(fbUser, actionCodeSettings);
+          console.log('✅ Verification email sent successfully');
+          break; // Success
+        } catch (verificationError) {
+          retryCount++;
+          console.error(`Verification email attempt ${retryCount} failed:`, verificationError.code);
+          
+          if (verificationError.code === 'auth/network-request-failed' && retryCount < maxRetries) {
+            console.log(`🔄 Retrying in 2 seconds... (${retryCount}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          } else if (retryCount >= maxRetries) {
+            console.error('All verification email attempts failed');
+            throw new Error('Could not send verification email after multiple attempts. Please try logging in and requesting a new verification email.');
+          } else {
+            throw verificationError;
+          }
+        }
       }
 
       const idToken = await fbUser.getIdToken();
@@ -384,17 +443,28 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('Attempting Firebase login and backend sync');
       
-      // First, clear ALL local storage related to previous user
-      // This ensures we don't mix data between different users
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USER_DATA_KEY);
-      localStorage.removeItem(AUTH_TIMESTAMP_KEY);
-      localStorage.removeItem('profile_data');
-      localStorage.removeItem('profile_data_timestamp');
-      localStorage.removeItem('user_preferences');
+      // NUCLEAR OPTION: Clear EVERYTHING to prevent any stale data bugs
+      // This is critical to prevent cross-user data contamination
+      console.log('🧹 CLEARING ALL CACHE AND STORAGE...');
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+        // Clear IndexedDB if it exists
+        if (window.indexedDB) {
+          const dbs = await indexedDB.databases();
+          dbs.forEach(db => indexedDB.deleteDatabase(db.name));
+        }
+      } catch (clearErr) {
+        console.warn('Error clearing storage:', clearErr);
+      }
       
-      // Clear any cached data in sessionStorage
-      sessionStorage.clear();
+      // Clear intelligent cache
+      intelligentCache.clear();
+      
+      // Clear dataPreloader cache
+      dataPreloader.preloadCache.clear();
+      dataPreloader.preloadPromises.clear();
+      dataPreloader.lastPreloadTimestamps.clear();
       
       // Reset auth token
       setAuthToken(null);
@@ -411,8 +481,31 @@ export const AuthProvider = ({ children }) => {
       // Set loading state to true at the beginning of login attempt
       dispatch({ type: 'SET_LOADING', payload: true });
 
-      // First sign in with Firebase
-      const fbResult = await signInWithEmailAndPassword(auth, email, password);
+      // First sign in with Firebase with retry logic for network issues
+      let fbResult;
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        try {
+          console.log(`Firebase login attempt ${retryCount + 1}/${maxRetries}`);
+          fbResult = await signInWithEmailAndPassword(auth, email, password);
+          console.log('✅ Firebase login successful');
+          break; // Success, exit retry loop
+        } catch (fbError) {
+          retryCount++;
+          console.error(`Firebase login attempt ${retryCount} failed:`, fbError.code);
+          
+          if (fbError.code === 'auth/network-request-failed' && retryCount < maxRetries) {
+            console.log(`🔄 Retrying in 2 seconds... (${retryCount}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          } else {
+            // Final attempt failed or non-network error
+            throw fbError;
+          }
+        }
+      }
+      
       const fbUser = fbResult.user;
 
       // Refresh user data to get the latest verification flag
@@ -525,6 +618,18 @@ export const AuthProvider = ({ children }) => {
     // Sign out from Firebase
     signOut(auth).catch(err => console.error('Firebase signout error:', err));
     
+    // Clear ALL localStorage data including any stale cached activities/friends
+    localStorage.clear();
+    
+    // Clear intelligent cache
+    intelligentCache.clear();
+    dataPreloader.preloadCache.clear();
+    dataPreloader.preloadPromises.clear();
+    dataPreloader.lastPreloadTimestamps.clear();
+    
+    // Stop background sync
+    dataPreloader.reset();
+    
     dispatch({ type: 'LOGOUT' });
   };
 
@@ -563,17 +668,9 @@ export const AuthProvider = ({ children }) => {
       console.error('Error loading user:', err);
       console.error('Status:', err.response?.status);
       
-      // Try to use cached user data if available
-      const userData = localStorage.getItem(USER_DATA_KEY);
-      if (userData) {
-        console.log('Using cached user data in loadUser');
-        const parsedUserData = JSON.parse(userData);
-        dispatch({
-          type: 'USER_LOADED',
-          payload: parsedUserData
-        });
-        return parsedUserData;
-      }
+      // NEVER use cached user data - always clear on error to prevent stale data bugs
+      console.warn('Failed to load user from backend - clearing all cached auth data');
+      localStorage.clear();
       
       dispatch({ type: 'AUTH_ERROR' });
       return null;
