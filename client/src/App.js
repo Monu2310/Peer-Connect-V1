@@ -10,6 +10,7 @@ import { ThemeProvider } from './core/ThemeContext';
 
 // Components
 import Navbar from './components/layout/Navbar';
+import AuthAction from './pages/AuthAction'; // Direct import instead of lazy
 
 // Lazy load pages with prefetch hints for code splitting
 const Home = lazy(() => import(/* webpackChunkName: "home" */ './pages/Home'));
@@ -18,7 +19,6 @@ const Register = lazy(() => import(/* webpackChunkName: "auth" */ './pages/Regis
 const ForgotPassword = lazy(() => import(/* webpackChunkName: "auth" */ './pages/ForgotPassword'));
 const VerifyEmail = lazy(() => import(/* webpackChunkName: "auth" */ './pages/VerifyEmail'));
 const ResetPassword = lazy(() => import(/* webpackChunkName: "auth" */ './pages/ResetPassword'));
-const AuthAction = lazy(() => import(/* webpackChunkName: "auth" */ './pages/AuthAction'));
 const Dashboard = lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/Dashboard'));
 const Profile = lazy(() => import(/* webpackChunkName: "profile" */ './pages/Profile'));
 const Activities = lazy(() => import(/* webpackChunkName: "activities" */ './pages/Activities'));
