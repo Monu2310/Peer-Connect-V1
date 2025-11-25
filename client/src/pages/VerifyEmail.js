@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { applyActionCode } from 'firebase/auth';
-import { auth } from '../core/firebase';
 import BeautifulBackground from '../components/effects/BeautifulBackground';
 import { CheckCircle, AlertCircle, Loader2, MailCheck } from 'lucide-react';
 
@@ -36,20 +34,42 @@ const VerifyEmail = () => {
       const maxRetries = 3;
       let retryCount = 0;
       
+      // Use Firebase REST API directly instead of SDK to bypass network issues
+      const FIREBASE_API_KEY = process.env.REACT_APP_FIREBASE_API_KEY || 'AIzaSyAWV8utdk-d9ssH7MvoeJgcZeUyyWl506s';
+      
       while (retryCount < maxRetries) {
         try {
-          console.log(`VerifyEmail: Calling applyActionCode (attempt ${retryCount + 1}/${maxRetries})...`);
-          await applyActionCode(auth, oobCode);
-          console.log('VerifyEmail: Success! Email verified.');
+          console.log(`VerifyEmail: Calling Firebase REST API (attempt ${retryCount + 1}/${maxRetries})...`);
+          
+          const response = await fetch(
+            `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${FIREBASE_API_KEY}`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                oobCode: oobCode
+              })
+            }
+          );
+
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.error?.message || 'Verification failed');
+          }
+          
+          console.log('VerifyEmail: Success! Email verified via REST API.');
           setStatus('success');
           setMessage('Your email has been verified. You can now log in.');
           return; // Success, exit
         } catch (err) {
           retryCount++;
-          console.error(`Email verification attempt ${retryCount} failed:`, err.code);
+          console.error(`Email verification attempt ${retryCount} failed:`, err.message);
           
           // Retry on network errors
-          if (err.code === 'auth/network-request-failed' && retryCount < maxRetries) {
+          if ((err.message.includes('network') || err.message.includes('fetch')) && retryCount < maxRetries) {
             console.log(`🔄 Network error, retrying in 2 seconds... (${retryCount}/${maxRetries})`);
             setMessage(`Connection issue (attempt ${retryCount}/${maxRetries}). Retrying...`);
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -57,12 +77,12 @@ const VerifyEmail = () => {
             // Final failure or non-network error
             console.error('Email verification final error:', err);
             setStatus('error');
-            if (err.code === 'auth/invalid-action-code') {
+            if (err.message.includes('INVALID_OOB_CODE')) {
               setMessage('This verification link is invalid or has already been used.');
-            } else if (err.code === 'auth/expired-action-code') {
+            } else if (err.message.includes('EXPIRED_OOB_CODE')) {
               setMessage('This verification link has expired. Please request a new one by trying to log in again.');
-            } else if (err.code === 'auth/network-request-failed') {
-              setMessage('Network connection failed after multiple attempts. Please check your firewall/antivirus settings and ensure Firebase domains are not blocked. You may need to disable VPN or try a different network.');
+            } else if (err.message.includes('network') || err.message.includes('fetch')) {
+              setMessage('Network connection failed after multiple attempts. Please check your internet connection and try again.');
             } else {
               setMessage(`We could not verify your email: ${err.message || 'Unknown error'}`);
             }
