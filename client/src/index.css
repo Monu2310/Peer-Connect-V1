@@ -6,57 +6,62 @@
 
 @layer base {
   :root {
-    /* ELITE Color Palette - 60-30-10 Rule Applied Perfectly */
-    /* 60% Background: #FFF8D4 Cream | 30% UI/Structure: #313647 Navy | 10% Accent: #A3B087 Sage | Support: #435663 Slate */
+    /* ELITE Color Palette - Light Yellow & Green Theme */
+    /* 
+       Background: Very Light Yellow rgb(255, 248, 212) -> 50 100% 92%
+       Cards: Slightly deeper cream for contrast
+       Text: Dark for readability
+       Primary: Sage Green rgb(163, 176, 135) -> 79 21% 61%
+       Accents: Green tones throughout
+    */
     
-    /* LIGHT MODE - Clean White Background with Palette Accents */
-    --background: 0 0% 100%; /* #FFFFFF - Clean White */
-    --foreground: 216 26% 24%; /* #313647 - Navy Text */
+    /* LIGHT MODE - Very Light Yellow Base */
+    --background: 50 100% 97%; /* Extra light yellow - almost white with yellow tint */
+    --foreground: 32 8% 20%; /* Dark brown-grey for text */
     
-    /* Cards - White with subtle borders */
-    --card: 0 0% 100%; 
-    --card-foreground: 216 26% 24%;
+    /* Cards - Slightly deeper cream for subtle contrast */
+    --card: 48 95% 94%; 
+    --card-foreground: 32 8% 20%;
     
-    --popover: 0 0% 100%;
-    --popover-foreground: 216 26% 24%;
+    --popover: 48 95% 88%;
+    --popover-foreground: 32 8% 20%;
     
-    /* PRIMARY: Sage Green (Accent) */
-    --primary: 82 19% 56%; /* #A3B087 Sage */
-    --primary-foreground: 0 0% 100%;
+    /* PRIMARY: Sage Green for all primary actions */
+    --primary: 79 21% 61%; /* Sage green */
+    --primary-foreground: 0 0% 100%; /* White text */
     
-    /* SECONDARY: Slate Blue */
-    --secondary: 210 20% 40%; /* #435663 Slate */
-    --secondary-foreground: 0 0% 100%;
+    /* SECONDARY: Lighter sage for secondary elements */
+    --secondary: 79 28% 75%;
+    --secondary-foreground: 32 8% 20%;
     
-    /* Muted tones - Cream tinted */
-    --muted: 48 100% 96%; /* Very light cream tint */
-    --muted-foreground: 216 20% 40%;
+    /* Muted - Very light sage green */
+    --muted: 79 35% 85%;
+    --muted-foreground: 32 8% 35%;
     
-    /* Accent - Cream for highlights */
-    --accent: 48 100% 91%; /* #FFF8D4 Cream */
-    --accent-foreground: 216 26% 24%;
+    /* Accent - Medium sage green */
+    --accent: 79 25% 68%;
+    --accent-foreground: 32 8% 15%;
     
     /* Destructive */
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     
-    /* Borders - Sage/Slate mix */
-    --border: 210 20% 90%; 
-    --input: 210 20% 96%;
-    --ring: 82 19% 56%;
+    /* Borders - Light sage green */
+    --border: 79 30% 75%;
+    --input: 79 30% 75%;
+    --ring: 79 21% 61%;
     --radius: 0.75rem;
     
-    /* Premium shadows - Navy tinted */
-    --shadow-soft: 0 4px 12px rgba(49, 54, 71, 0.05), 0 1px 2px rgba(49, 54, 71, 0.05);
-    --shadow-medium: 0 8px 24px rgba(49, 54, 71, 0.08), 0 4px 8px rgba(49, 54, 71, 0.04);
-    --shadow-strong: 0 16px 48px rgba(49, 54, 71, 0.12), 0 8px 16px rgba(49, 54, 71, 0.08);
-    --shadow-glow: 0 0 30px rgba(163, 176, 135, 0.3), 0 0 60px rgba(163, 176, 135, 0.15);
+    /* Shadows - Soft green-tinted */
+    --shadow-soft: 0 4px 12px rgba(163, 176, 135, 0.15), 0 1px 2px rgba(163, 176, 135, 0.1);
+    --shadow-medium: 0 8px 24px rgba(163, 176, 135, 0.2), 0 4px 8px rgba(163, 176, 135, 0.12);
+    --shadow-strong: 0 16px 48px rgba(163, 176, 135, 0.25), 0 8px 16px rgba(163, 176, 135, 0.15);
+    --shadow-glow: 0 0 30px rgba(163, 176, 135, 0.5), 0 0 60px rgba(163, 176, 135, 0.25);
     
-    /* VIBRANT ORB EFFECTS - Light Mode */
-    /* Using the palette colors for the mesh gradient */
-    --orb-primary: rgba(163, 176, 135, 0.15); /* Sage */
-    --orb-secondary: rgba(67, 86, 99, 0.10); /* Slate */
-    --orb-accent: rgba(255, 248, 212, 0.6); /* Cream - stronger here to show the color */
+    /* Orb Effects - Green-yellow blend */
+    --orb-primary: rgba(163, 176, 135, 0.4);
+    --orb-secondary: rgba(200, 210, 150, 0.3);
+    --orb-accent: rgba(255, 248, 212, 0.6);
   }
 
   .dark {
@@ -313,13 +318,13 @@
 @layer components {
   /* Glass morphism with enhanced effects */
   .glassmorphism {
-    @apply bg-background/60 backdrop-blur-xl border border-white/20;
+    @apply bg-background/60 backdrop-blur-xl border border-primary/20;
     box-shadow: var(--shadow-medium);
     backdrop-filter: blur(20px) saturate(180%);
   }
 
   .glassmorphism-strong {
-    @apply bg-background/40 backdrop-blur-2xl border border-white/30;
+    @apply bg-background/40 backdrop-blur-2xl border border-primary/30;
     box-shadow: var(--shadow-strong);
     backdrop-filter: blur(40px) saturate(200%);
   }
@@ -358,7 +363,7 @@
   .btn::before {
     content: '';
     @apply absolute inset-0 opacity-0 transition-opacity duration-300;
-    background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+    background: linear-gradient(45deg, transparent, rgba(255,248,212,0.2), transparent);
     animation: shimmer 3s infinite;
   }
   
@@ -401,7 +406,7 @@
   }
   
   .card {
-    @apply bg-card/80 backdrop-blur-sm rounded-2xl p-6 border border-white/10 transition-all duration-300;
+    @apply bg-card/80 backdrop-blur-sm rounded-2xl p-6 border border-primary/10 transition-all duration-300;
     box-shadow: var(--shadow-soft);
   }
   

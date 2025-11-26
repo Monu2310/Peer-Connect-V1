@@ -96,14 +96,14 @@ const NetflixStyleSelector = ({ isOpen, onClose, onSave, category = 'movies', in
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="bg-primary/10 backdrop-blur-sm p-6 border-b border-border/50">
+          <div className="bg-card/90 backdrop-blur-sm p-6 border-b border-border/50">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
                   <Icon className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold">Choose Your {categoryData.label}</h2>
+                  <h2 className="text-2xl font-bold text-foreground">Choose Your {categoryData.label}</h2>
                   <p className="text-sm text-muted-foreground">Select your favorite genres</p>
                 </div>
               </div>
@@ -135,7 +135,7 @@ const NetflixStyleSelector = ({ isOpen, onClose, onSave, category = 'movies', in
           </div>
 
           {/* Search */}
-          <div className="p-6 border-b border-border/50">
+          <div className="p-6 border-b border-border/50 bg-card/50">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
@@ -154,7 +154,7 @@ const NetflixStyleSelector = ({ isOpen, onClose, onSave, category = 'movies', in
           </div>
 
           {/* Genre Grid */}
-          <div className="p-6 overflow-y-auto max-h-[calc(85vh-300px)]">
+          <div className="p-6 overflow-y-auto max-h-[calc(85vh-300px)] bg-card/30">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {filteredOptions.map((option) => {
                 const isSelected = selected.includes(option);
@@ -197,7 +197,7 @@ const NetflixStyleSelector = ({ isOpen, onClose, onSave, category = 'movies', in
           </div>
 
           {/* Footer */}
-          <div className="bg-primary/5 p-6 border-t border-border/50 flex items-center justify-between">
+          <div className="bg-card/90 backdrop-blur-sm p-6 border-t border-border/50 flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               {selected.length} {categoryData.label.toLowerCase()} selected
             </p>

@@ -9,6 +9,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import BeautifulBackground from '../components/effects/BeautifulBackground';
 import { useAuth } from '../core/AuthContext';
 import { Badge } from '../components/ui/badge';
+import TiltCard from '../components/effects/TiltCard';
+import MagneticButton from '../components/effects/MagneticButton';
 
 const Activities = () => {
   const location = useLocation();
@@ -181,15 +183,17 @@ const Activities = () => {
             </p>
           </div>
           
-          <Button 
-            asChild 
-            className="min-h-12 btn-gradient-primary text-white font-semibold px-6 rounded-xl shadow-lg transform hover:scale-[1.02] transition-all duration-300 self-start"
-          >
-            <Link to="/activities/new" className="flex items-center gap-3">
-              <PlusCircle className="w-5 h-5" /> 
-              Create Activity
-            </Link>
-          </Button>
+          <MagneticButton strength={0.3}>
+            <Button 
+              asChild 
+              className="min-h-12 btn-gradient-primary text-white font-semibold px-6 rounded-xl shadow-lg transform hover:scale-[1.02] transition-all duration-300 self-start"
+            >
+              <Link to="/activities/new" className="flex items-center gap-3">
+                <PlusCircle className="w-5 h-5" /> 
+                Create Activity
+              </Link>
+            </Button>
+          </MagneticButton>
         </motion.div>
 
         {/* Search and Filter Section */}
@@ -271,10 +275,9 @@ const Activities = () => {
                 <motion.div 
                   key={activity._id}
                   variants={itemVariants}
-                  whileHover={{ y: -4 }}
-                  transition={{ duration: 0.2 }}
                 >
-                  <div className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl overflow-hidden h-full hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl">
+                  <TiltCard intensity={8} scale={1.03}>
+                    <div className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl overflow-hidden h-full hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl">
                     
                     {/* Activity image */}
                     {activity.image && (
@@ -351,6 +354,7 @@ const Activities = () => {
                       </div>
                     </div>
                   </div>
+                  </TiltCard>
                 </motion.div>
                 );
               })}

@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Calendar, Users, PlusCircle, UserPlus, Mail, User, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import BeautifulBackground from '../components/effects/BeautifulBackground';
+import TiltCard from '../components/effects/TiltCard';
+import MagneticButton from '../components/effects/MagneticButton';
 
 const Dashboard = () => {
   const { currentUser } = useAuth();
@@ -171,25 +173,29 @@ const Dashboard = () => {
               
               {/* Action buttons with proper touch targets - same size */}
               <div className="flex flex-col sm:flex-row gap-3 lg:flex-shrink-0">
-                <Button 
-                  asChild 
-                  className="h-11 px-6"
-                >
-                  <Link to="/profile" className="flex items-center justify-center gap-2">
-                    <User className="w-4 h-4" /> 
-                    My Profile
-                  </Link>
-                </Button>
-                <Button 
-                  asChild 
-                  variant="outline"
-                  className="h-11 px-6"
-                >
-                  <Link to="/activities/new" className="flex items-center justify-center gap-2">
-                    <PlusCircle className="w-4 h-4" /> 
-                    Create Activity
-                  </Link>
-                </Button>
+                <MagneticButton strength={0.3}>
+                  <Button 
+                    asChild 
+                    className="h-11 px-6"
+                  >
+                    <Link to="/profile" className="flex items-center justify-center gap-2">
+                      <User className="w-4 h-4" /> 
+                      My Profile
+                    </Link>
+                  </Button>
+                </MagneticButton>
+                <MagneticButton strength={0.3}>
+                  <Button 
+                    asChild 
+                    variant="outline"
+                    className="h-11 px-6"
+                  >
+                    <Link to="/activities/new" className="flex items-center justify-center gap-2">
+                      <PlusCircle className="w-4 h-4" /> 
+                      Create Activity
+                    </Link>
+                  </Button>
+                </MagneticButton>
               </div>
             </div>
           </div>
@@ -199,61 +205,69 @@ const Dashboard = () => {
         <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8 md:mb-12">
           
           {/* Activities Joined */}
-          <div className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-[#A3B087]" />
+          <TiltCard intensity={10} scale={1.05}>
+            <div className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-[#A3B087]" />
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl md:text-3xl font-bold">{stats.activitiesJoined}</p>
+                  <p className="text-sm text-muted-foreground">Joined</p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-2xl md:text-3xl font-bold">{stats.activitiesJoined}</p>
-                <p className="text-sm text-muted-foreground">Joined</p>
-              </div>
+              <p className="text-sm font-medium">Activities Joined</p>
             </div>
-            <p className="text-sm font-medium">Activities Joined</p>
-          </div>
+          </TiltCard>
 
           {/* Activities Created */}
-          <div className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
-                <PlusCircle className="w-5 h-5 text-[#A3B087]" />
+          <TiltCard intensity={10} scale={1.05}>
+            <div className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
+                  <PlusCircle className="w-5 h-5 text-[#A3B087]" />
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl md:text-3xl font-bold">{stats.activitiesCreated}</p>
+                  <p className="text-sm text-muted-foreground">Created</p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-2xl md:text-3xl font-bold">{stats.activitiesCreated}</p>
-                <p className="text-sm text-muted-foreground">Created</p>
-              </div>
+              <p className="text-sm font-medium">Activities Created</p>
             </div>
-            <p className="text-sm font-medium">Activities Created</p>
-          </div>
+          </TiltCard>
 
           {/* Friends */}
-          <div className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
-                <Users className="w-5 h-5 text-[#A3B087]" />
+          <TiltCard intensity={10} scale={1.05}>
+            <div className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-[#A3B087]" />
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl md:text-3xl font-bold">{stats.friendCount}</p>
+                  <p className="text-sm text-muted-foreground">Connected</p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-2xl md:text-3xl font-bold">{stats.friendCount}</p>
-                <p className="text-sm text-muted-foreground">Connected</p>
-              </div>
+              <p className="text-sm font-medium">Friends</p>
             </div>
-            <p className="text-sm font-medium">Friends</p>
-          </div>
+          </TiltCard>
 
           {/* Friend Requests */}
           <Link to="/friends">
-            <div className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-10 h-10 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
-                  <UserPlus className="w-5 h-5 text-[#A3B087]" />
+            <TiltCard intensity={10} scale={1.05}>
+              <div className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:bg-card/80 hover:border-border transition-all duration-300 hover:shadow-xl cursor-pointer">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
+                    <UserPlus className="w-5 h-5 text-[#A3B087]" />
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl md:text-3xl font-bold">{stats.pendingInvitations}</p>
+                    <p className="text-sm text-muted-foreground">Pending</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl md:text-3xl font-bold">{stats.pendingInvitations}</p>
-                  <p className="text-sm text-muted-foreground">Pending</p>
-                </div>
+                <p className="text-sm font-medium">Friend Requests</p>
               </div>
-              <p className="text-sm font-medium">Friend Requests</p>
-            </div>
+            </TiltCard>
           </Link>
         </motion.div>
 

@@ -10,7 +10,8 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
-import { Calendar, MapPin, Users, Trash2, Edit, UserPlus, Loader2, CheckCircle, MessageSquare, UserMinus, Clock, Target } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { Calendar, MapPin, Users, Trash2, Edit, UserPlus, Loader2, CheckCircle, MessageSquare, UserMinus, Clock, Target, AlertCircle, ArrowLeft, Activity } from 'lucide-react';
 import SkeletonCard from '../components/ui/SkeletonCard';
 import { motion, AnimatePresence } from 'framer-motion';
 import BeautifulBackground from '../components/effects/BeautifulBackground';
@@ -124,9 +125,33 @@ const ActivityDetail = () => {
   }, [maxParticipantsValue, participantsCount]);
 
   const isFull = Boolean(maxParticipantsValue) && spotsLeft === 0;
-  const canJoin = !authLoading && !isCreator && !hasJoined && !isFull;
+  
+  // Check if activity is past
+  const isActivityPast = useMemo(() => {
+    if (!activity?.date) return false;
+    const activityDate = new Date(activity.date);
+    const now = new Date();
+    
+    // Reset time part of activityDate to compare dates correctly if time is separate
+    const activityDateOnly = new Date(activityDate.getFullYear(), activityDate.getMonth(), activityDate.getDate());
+    const todayDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (activityDateOnly < todayDateOnly) return true;
+    
+    if (activityDateOnly.getTime() === todayDateOnly.getTime() && activity.time) {
+      const [hours, minutes] = activity.time.split(':').map(Number);
+      const activityTime = new Date(now);
+      activityTime.setHours(hours, minutes, 0, 0);
+      return now > activityTime;
+    }
+    
+    return false;
+  }, [activity]);
+
+  const canJoin = !authLoading && !isCreator && !hasJoined && !isFull && !isActivityPast;
 
   const handleJoin = async () => {
+    if (isActivityPast) return;
     setActionLoading(true);
     setError('');
     setSuccess('');
@@ -143,6 +168,7 @@ const ActivityDetail = () => {
   };
 
   const handleLeave = async () => {
+    if (isActivityPast) return;
     setActionLoading(true);
     setError('');
     setSuccess('');
@@ -184,6 +210,7 @@ const ActivityDetail = () => {
   };
 
   const handleRemoveParticipant = async (userId) => {
+    if (isActivityPast) return;
     setActionLoading(true);
     setError('');
     setSuccess('');
@@ -221,6 +248,9 @@ const ActivityDetail = () => {
       <div className="container mx-auto p-4 sm:p-6 lg:p-8 text-center text-muted-foreground">
         <h2 className="text-2xl font-bold">{error ? 'Error loading activity.' : 'Activity not found.'}</h2>
         <p>{error || 'The activity you are looking for does not exist or has been deleted.'}</p>
+        <Button asChild className="mt-4">
+          <Link to="/activities">Back to Activities</Link>
+        </Button>
       </div>
     </BeautifulBackground>
   );
@@ -236,380 +266,353 @@ const ActivityDetail = () => {
         initial="hidden"
         animate="show"
       >
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-        <motion.div variants={itemVariants} className="xl:col-span-8 space-y-6">
-          {(error || success) && (
-            <AnimatePresence mode="wait">
-              {error && (
-                <motion.div
-                  key="error-banner"
-                  initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  className="rounded-xl border border-destructive/40 bg-destructive/10 text-destructive px-4 py-3"
-                >
-                  {error}
-                </motion.div>
-              )}
-              {!error && success && (
-                <motion.div
-                  key="success-banner"
-                  initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  className="rounded-xl border border-emerald-400/40 bg-emerald-400/10 text-emerald-600 px-4 py-3 dark:text-emerald-300"
-                >
-                  {success}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          )}
-
-          <Card className="overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl shadow-xl">
-            {activity.image && (
-              <div className="relative">
-                <img src={activity.image} alt={activity.title} className="w-full h-64 object-cover" />
-                <div className="absolute inset-0 bg-[#313647]/40 backdrop-blur-sm" />
-                <div className="absolute bottom-0 left-0 right-0 p-6">
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <Badge className="bg-[#A3B087] text-white font-semibold border-0">{activity.category}</Badge>
-                    {spotsLeft !== null && (
-                      <Badge className={`${spotsLeft === 0 ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'} font-semibold border-0`}>
-                        {spotsLeft === 0 ? 'Full' : `${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left`}
-                      </Badge>
-                    )}
-                    {isCreator && (
-                      <Badge className="bg-[#313647] text-white font-semibold border-2 border-[#A3B087]">You host this</Badge>
-                    )}
-                    {!isCreator && hasJoined && (
-                      <Badge className="bg-[#A3B087]/80 text-white font-semibold border-0">You joined</Badge>
-                    )}
-                  </div>
-                  <CardTitle className="text-4xl font-bold text-white drop-shadow-2xl">{activity.title}</CardTitle>
-                </div>
-              </div>
-            )}
-            {!activity.image && (
-              <div className="relative h-48 bg-[#313647]">
-                <div className="absolute bottom-0 left-0 right-0 p-6">
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <Badge className="bg-[#A3B087] text-white font-semibold border-0">{activity.category}</Badge>
-                    {spotsLeft !== null && (
-                      <Badge className={`${spotsLeft === 0 ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'} font-semibold border-0`}>
-                        {spotsLeft === 0 ? 'Full' : `${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left`}
-                      </Badge>
-                    )}
-                    {isCreator && (
-                      <Badge className="bg-white/10 text-white font-semibold border-2 border-[#A3B087]">You host this</Badge>
-                    )}
-                    {!isCreator && hasJoined && (
-                      <Badge className="bg-[#A3B087]/80 text-white font-semibold border-0">You joined</Badge>
-                    )}
-                  </div>
-                  <CardTitle className="text-4xl font-bold text-white drop-shadow-2xl">{activity.title}</CardTitle>
-                </div>
-              </div>
-            )}
-            <div className="p-6">
-              <div className="flex items-center gap-3 p-4 bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl hover:border-border transition-all duration-300">
-                <Avatar className="h-14 w-14 ring-2 ring-[#A3B087]">
-                  <AvatarImage src={activity.creator?.profilePicture || '/avatar.svg'} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-lg">
-                    {activity.creator?.username?.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">Organized by</p>
-                  <Link to={creatorId ? `/profile/${creatorId}` : '#'} className="font-bold text-white hover:text-[#A3B087] transition-colors text-lg">
-                    {activity.creator?.username || 'Unknown'}
-                  </Link>
-                </div>
-              </div>
-            </div>
-            <CardContent className="p-6 pt-0 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-5 hover:border-border hover:shadow-lg transition-all duration-300 group">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-[#A3B087]/20 text-[#A3B087] p-3 group-hover:bg-[#A3B087] group-hover:text-white transition-all duration-300">
-                      <Calendar className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-wider text-gray-400 font-bold mb-1">WHEN</p>
-                      <p className="font-bold text-white text-lg">{new Date(activity.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                      <p className="text-sm text-gray-300 flex items-center gap-1 mt-1">
-                        <Clock className="h-4 w-4" /> {activity.time || 'Time TBA'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-5 hover:border-border hover:shadow-lg transition-all duration-300 group">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-[#A3B087]/20 text-[#A3B087] p-3 group-hover:bg-[#A3B087] group-hover:text-white transition-all duration-300">
-                      <MapPin className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-wider text-gray-400 font-bold mb-1">WHERE</p>
-                      <p className="font-bold text-white leading-tight line-clamp-2">{activity.location}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-5 hover:border-border hover:shadow-lg transition-all duration-300 group">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-[#A3B087]/20 text-[#A3B087] p-3 group-hover:bg-[#A3B087] group-hover:text-white transition-all duration-300">
-                      <Users className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-wider text-gray-400 font-bold mb-1">Capacity</p>
-                      <p className="font-bold text-white text-lg">{participantsCount}{maxParticipantsValue ? ` / ${maxParticipantsValue}` : ' attending'}</p>
-                      {spotsLeft !== null && (
-                        <p className={`text-sm font-bold mt-1 ${spotsLeft === 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                          {spotsLeft === 0 ? 'Full' : `${spotsLeft} remaining`}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4 bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
-                    <Target className="h-6 w-6 text-[#A3B087]" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white">About this activity</h3>
-                </div>
-                <p className="text-gray-200 leading-relaxed whitespace-pre-line text-base">
-                  {activity.description}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <motion.div variants={itemVariants}>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-[#A3B087]/20 flex items-center justify-center">
-                <Target className="h-6 w-6 text-[#A3B087]" />
-              </div>
-              <h3 className="text-3xl font-bold text-white">Similar Activities</h3>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {similarActivities.length > 0 ? (
-                similarActivities.map(act => (
-                  <Card key={act._id} className="bg-card/50 backdrop-blur-sm border border-border/50 hover:border-border hover:shadow-2xl hover:scale-105 transition-all duration-300 rounded-2xl overflow-hidden group">
-                    <CardHeader className="bg-primary/20 border-b border-border/50 p-5">
-                      <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors">{act.title}</CardTitle>
-                      <CardDescription className="capitalize font-semibold">{act.category}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-5">
-                      <p className="text-gray-300 line-clamp-2 mb-4">{act.description}</p>
-                      <Button asChild variant="link" className="p-0 h-auto text-[#A3B087] hover:text-[#313647] font-bold">
-                        <Link to={`/activities/${act._id}`}>View details →</Link>
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))
-              ) : (
-                <p className="text-gray-400 col-span-2 text-center py-8">No similar activities found.</p>
-              )}
-            </div>
-          </motion.div>
+        <motion.div variants={itemVariants} className="mb-6">
+          <Button variant="ghost" asChild className="pl-0 hover:bg-transparent hover:text-primary">
+            <Link to="/activities" className="flex items-center gap-2">
+              <ArrowLeft className="h-4 w-4" /> Back to Activities
+            </Link>
+          </Button>
         </motion.div>
 
-        <div className="xl:col-span-4 space-y-6">
-          <motion.div variants={itemVariants} className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl shadow-xl overflow-hidden sticky top-24">
-            <CardHeader className="pb-4 bg-primary/20 border-b border-border/50 p-6">
-              <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                <Users className="h-6 w-6" />
-                Participation
-              </CardTitle>
-              <CardDescription className="text-gray-200 font-medium mt-2">
-                {isCreator ? 'Manage your attendees and keep everything organised.' : isFull ? 'This activity has reached capacity.' : 'Secure your spot before it fills up!'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 p-6">
-              {isCreator ? (
-                <div className="flex flex-col gap-3">
-                  <Button asChild className="bg-[#435663] hover:bg-[#A3B087] text-white font-bold py-6 rounded-xl transition-all duration-300">
-                    <Link to={`/activities/edit/${activityId}`}>
-                      <Edit className="mr-2 h-5 w-5" /> Edit Activity
-                    </Link>
-                  </Button>
-                  <Button variant="destructive" onClick={() => setShowConfirmDelete(true)} className="py-6 rounded-xl font-bold" disabled={actionLoading}>
-                    {actionLoading ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : <Trash2 className="mr-2 h-5 w-5" />} Delete Activity
-                  </Button>
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+          <motion.div variants={itemVariants} className="xl:col-span-8 space-y-6">
+            {(error || success) && (
+              <AnimatePresence mode="wait">
+                {error && (
+                  <motion.div
+                    key="error-banner"
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    className="rounded-xl border border-destructive/40 bg-destructive/10 text-destructive px-4 py-3"
+                  >
+                    {error}
+                  </motion.div>
+                )}
+                {!error && success && (
+                  <motion.div
+                    key="success-banner"
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    className="rounded-xl border border-emerald-400/40 bg-emerald-400/10 text-emerald-600 px-4 py-3 dark:text-emerald-300"
+                  >
+                    {success}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            )}
+
+            <Card className="overflow-hidden bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl shadow-xl">
+              {activity.image && (
+                <div className="relative">
+                  <img src={activity.image} alt={activity.title} className="w-full h-64 md:h-80 object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                      <Badge className="bg-primary/90 hover:bg-primary text-primary-foreground border-0 px-3 py-1 text-sm">{activity.category}</Badge>
+                      
+                      {isActivityPast ? (
+                        <Badge variant="destructive" className="font-semibold border-0 px-3 py-1 text-sm flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> Activity Ended
+                        </Badge>
+                      ) : (
+                        spotsLeft !== null && (
+                          <Badge className={`${spotsLeft === 0 ? 'bg-destructive' : 'bg-emerald-500'} text-white font-semibold border-0 px-3 py-1 text-sm`}>
+                            {spotsLeft === 0 ? 'Full' : `${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left`}
+                          </Badge>
+                        )
+                      )}
+                      
+                      {isCreator && (
+                        <Badge variant="outline" className="bg-background/20 backdrop-blur-md text-white border-white/30">You host this</Badge>
+                      )}
+                      {!isCreator && hasJoined && (
+                        <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-100 border-emerald-500/30">You joined</Badge>
+                      )}
+                    </div>
+                    <CardTitle className="text-3xl md:text-4xl lg:text-5xl font-bold text-white drop-shadow-lg leading-tight">{activity.title}</CardTitle>
+                  </div>
                 </div>
-              ) : hasJoined ? (
-                <Button onClick={handleLeave} disabled={actionLoading} variant="outline" className="w-full py-6 rounded-xl border-2 border-[#A3B087] hover:border-red-500 hover:text-red-500 font-bold transition-all duration-300 text-white">
-                  {actionLoading ? <Loader2 className="animate-spin mr-2" /> : 'Leave Activity'}
-                </Button>
-              ) : (
-                <Button 
-                  onClick={handleJoin} 
-                  disabled={actionLoading || !canJoin} 
-                  className="w-full py-6 rounded-xl bg-[#435663] hover:bg-[#A3B087] text-white font-bold text-lg transition-all duration-300 disabled:opacity-50"
-                >
-                  {actionLoading ? <Loader2 className="animate-spin mr-2" /> : isFull ? 'Activity Full' : 'Join Activity'}
-                </Button>
               )}
-
-              <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-5 space-y-3">
-                <div className="flex items-center gap-3 text-white">
-                  <div className="w-10 h-10 rounded-lg bg-[#A3B087]/20 flex items-center justify-center">
-                    <Users className="h-5 w-5 text-[#A3B087]" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-gray-400 uppercase">Attendance</p>
-                    <span className="font-bold text-lg">{participantsCount}{maxParticipantsValue ? ` / ${maxParticipantsValue}` : ''} people</span>
+              {!activity.image && (
+                <div className="relative h-48 bg-gradient-to-br from-primary/20 to-accent/20">
+                  <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                      <Badge className="bg-primary/90 hover:bg-primary text-primary-foreground border-0 px-3 py-1 text-sm">{activity.category}</Badge>
+                      {isActivityPast ? (
+                        <Badge variant="destructive" className="font-semibold border-0 px-3 py-1 text-sm flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> Activity Ended
+                        </Badge>
+                      ) : (
+                        spotsLeft !== null && (
+                          <Badge className={`${spotsLeft === 0 ? 'bg-destructive' : 'bg-emerald-500'} text-white font-semibold border-0 px-3 py-1 text-sm`}>
+                            {spotsLeft === 0 ? 'Full' : `${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left`}
+                          </Badge>
+                        )
+                      )}
+                    </div>
+                    <CardTitle className="text-3xl md:text-4xl font-bold text-foreground">{activity.title}</CardTitle>
                   </div>
                 </div>
-                {spotsLeft !== null && (
-                  <p className={`text-sm font-bold px-3 py-2 rounded-lg ${spotsLeft === 0 ? 'bg-red-900/30 text-red-300' : 'bg-emerald-900/30 text-emerald-300'}`}>
-                    {spotsLeft === 0 ? 'No spots remaining' : `${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} available`}
-                  </p>
-                )}
-                {isCreator && (
-                  <p className="text-xs text-gray-400 bg-[#435663]/30 p-3 rounded-lg border border-[#A3B087]">
-                    Attendees automatically gain access to the group chat.
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </motion.div>
+              )}
+              
+              <CardContent className="p-6 md:p-8 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10 text-primary mt-1">
+                        <Calendar className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-foreground">Date & Time</h3>
+                        <p className="text-muted-foreground">
+                          {new Date(activity.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        </p>
+                        {activity.time && <p className="text-muted-foreground">{activity.time}</p>}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10 text-primary mt-1">
+                        <MapPin className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-foreground">Location</h3>
+                        <p className="text-muted-foreground">{activity.location}</p>
+                      </div>
+                    </div>
+                  </div>
 
-          <motion.div variants={itemVariants} className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl shadow-xl overflow-hidden">
-            <CardHeader className="bg-primary/20 border-b border-border/50 p-6">
-              <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                <Users className="h-6 w-6" />
-                Participants ({participantsCount}{maxParticipantsValue ? `/${maxParticipantsValue}` : ''})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-3">
-                {participants.length > 0 ? (
-                  participants.map(p => {
-                    const isParticipantCreator = p._id === creatorId;
-                    const participantName = p.username || p.name || 'Participant';
-                    const participantAvatar = p.profilePicture || '/avatar.svg';
-                    const isFriend = friendIds.includes(p._id);
-                    const participantKey = p._id || participantName;
-
-                    return (
-                      <div key={participantKey} className="flex items-center justify-between p-4 hover:bg-[#435663]/30 rounded-xl transition-all duration-300 border border-border/50 hover:border-[#A3B087]/50 group">
-                        <Link to={p._id ? `/profile/${p._id}` : '#'} className="flex items-center flex-1 min-w-0">
-                          <Avatar className="h-12 w-12 mr-3 ring-2 ring-primary/50 group-hover:ring-primary transition-all">
-                            <AvatarImage src={participantAvatar} />
-                            <AvatarFallback className="bg-primary/20 text-primary font-bold">
-                              {participantName.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-white group-hover:text-[#A3B087] transition-colors truncate">{participantName}</span>
-                              {isParticipantCreator && (
-                                <Badge className="text-xs bg-[#A3B087] text-white border-0">Host</Badge>
-                              )}
-                            </div>
-                            {isFriend && (
-                              <span className="text-xs text-gray-400 font-semibold">Friend</span>
-                            )}
-                          </div>
-                        </Link>
-
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10 text-primary mt-1">
+                        <Users className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-foreground">Participants</h3>
                         <div className="flex items-center gap-2">
-                          {currentUserId && p._id && currentUserId !== p._id && (
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              asChild
-                              className="h-10 w-10 p-0 border-2 border-[#435663]/30 hover:border-[#A3B087] hover:bg-[#A3B087]/10 rounded-xl"
-                            >
-                              <Link to={`/messages/${p._id}`}>
-                                <MessageSquare className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                          )}
-
-                          {currentUserId && p._id && currentUserId !== p._id && !isFriend && (
-                            <Button 
-                              size="sm" 
-                              onClick={() => handleFriendRequest(p._id)} 
-                              disabled={friendRequestStatus[p._id] === 'sending' || friendRequestStatus[p._id] === 'sent'} 
-                              className="h-10 w-10 p-0 bg-[#A3B087] hover:bg-[#313647] rounded-xl"
-                            >
-                              {friendRequestStatus[p._id] === 'sending' ? (
-                                <Loader2 className="animate-spin h-4 w-4" />
-                              ) : friendRequestStatus[p._id] === 'sent' ? (
-                                <CheckCircle className="h-4 w-4" />
-                              ) : (
-                                <UserPlus className="h-4 w-4" />
-                              )}
-                            </Button>
-                          )}
-
-                          {isCreator && p._id && !isParticipantCreator && (
-                            <Button 
-                              size="sm" 
-                              variant="destructive"
-                              onClick={() => handleRemoveParticipant(p._id)}
-                              disabled={actionLoading}
-                              className="h-10 w-10 p-0 rounded-xl"
-                              title="Remove participant"
-                            >
-                              <UserMinus className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <p className="text-muted-foreground">
+                            {participantsCount} {maxParticipantsValue ? `/ ${maxParticipantsValue}` : ''} joined
+                          </p>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="link" className="h-auto p-0 text-primary font-medium hover:text-primary/80">
+                                View List
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="bg-card border-primary/20 text-foreground max-w-md">
+                              <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2">
+                                  <Users className="h-5 w-5 text-primary" />
+                                  Participants ({participantsCount})
+                                </DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar mt-4">
+                                {participants.length > 0 ? (
+                                  participants.map((participant) => (
+                                    <div key={participant._id} className="flex items-center justify-between group p-2 rounded-lg hover:bg-accent/50 transition-colors">
+                                      <Link to={`/profile/${participant._id}`} className="flex items-center gap-3 flex-1">
+                                        <Avatar className="h-10 w-10 border border-border">
+                                          <AvatarImage src={participant.profilePicture || '/avatar.svg'} />
+                                          <AvatarFallback>{participant.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                          <p className="font-medium text-sm group-hover:text-primary transition-colors">{participant.username}</p>
+                                          {participant._id === creatorId && (
+                                            <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">Host</span>
+                                          )}
+                                        </div>
+                                      </Link>
+                                      
+                                      {currentUser && participant._id !== currentUserId && (
+                                        <div className="flex items-center gap-1">
+                                          {isCreator && (
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                              onClick={() => handleRemoveParticipant(participant._id)}
+                                              title="Remove participant"
+                                              disabled={isActivityPast}
+                                            >
+                                              <UserMinus className="h-4 w-4" />
+                                            </Button>
+                                          )}
+                                          {!friendIds.includes(participant._id) && (
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                              onClick={() => handleFriendRequest(participant._id)}
+                                              disabled={friendRequestStatus[participant._id] === 'sent' || friendRequestStatus[participant._id] === 'sending'}
+                                              title="Add Friend"
+                                            >
+                                              {friendRequestStatus[participant._id] === 'sending' ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                              ) : friendRequestStatus[participant._id] === 'sent' ? (
+                                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                              ) : (
+                                                <UserPlus className="h-4 w-4" />
+                                              )}
+                                            </Button>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))
+                                ) : (
+                                  <p className="text-muted-foreground text-center py-4">No participants yet.</p>
+                                )}
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                         </div>
                       </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-center py-8">
-                    <Users className="h-16 w-16 mx-auto text-gray-400 mb-3" />
-                    <p className="text-gray-400 font-medium">No participants yet. Be the first to join!</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </motion.div>
+                    </div>
 
-          {hasJoined && (
-            <motion.div variants={itemVariants} className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl shadow-xl overflow-hidden">
-              <CardHeader className="bg-primary/20 border-b border-border/50 p-6">
-                <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                  <MessageSquare className="h-6 w-6" />
-                  Group Chat
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <ActivityGroupChat activityId={activityId} />
-              </CardContent>
-            </motion.div>
-          )}
-        </div>
-      </div>
-      <AnimatePresence>
-        {showConfirmDelete && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          >
-            <Card className="w-full max-w-md p-6">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-2xl font-bold text-destructive">Confirm Deletion</CardTitle>
-                <CardDescription>Are you sure you want to delete this activity? This action cannot be undone.</CardDescription>
-              </CardHeader>
-              <CardContent className="flex justify-end space-x-2 pt-4">
-                <Button variant="outline" onClick={() => setShowConfirmDelete(false)} className="btn-outline">Cancel</Button>
-                <Button variant="destructive" onClick={handleDelete} disabled={actionLoading} className="btn-destructive">
-                  {actionLoading ? <Loader2 className="animate-spin mr-2" /> : 'Delete'}
-                </Button>
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10 text-primary mt-1">
+                        <UserPlus className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-foreground">Hosted by</h3>
+                        <Link to={`/profile/${creatorId}`} className="text-primary hover:underline font-medium">
+                          {activity.creator?.username || 'Unknown'}
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-xl font-semibold flex items-center gap-2">
+                    <Target className="h-5 w-5 text-primary" />
+                    About this Activity
+                  </h3>
+                  <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                    {activity.description}
+                  </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-4 pt-4 border-t border-border/50">
+                  {isCreator ? (
+                    <>
+                      <Button asChild variant="outline" className="flex-1 sm:flex-none" disabled={isActivityPast}>
+                        <Link to={`/edit-activity/${activityId}`}>
+                          <Edit className="mr-2 h-4 w-4" /> Edit Activity
+                        </Link>
+                      </Button>
+                      
+                      {!showConfirmDelete ? (
+                        <Button variant="destructive" onClick={() => setShowConfirmDelete(true)} className="flex-1 sm:flex-none">
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete Activity
+                        </Button>
+                      ) : (
+                        <div className="flex items-center gap-2 flex-1 sm:flex-none animate-in fade-in slide-in-from-left-2">
+                          <span className="text-sm text-muted-foreground hidden sm:inline">Are you sure?</span>
+                          <Button variant="destructive" onClick={handleDelete} disabled={actionLoading}>
+                            {actionLoading ? <Loader2 className="animate-spin h-4 w-4" /> : 'Yes, Delete'}
+                          </Button>
+                          <Button variant="ghost" onClick={() => setShowConfirmDelete(false)}>Cancel</Button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {hasJoined ? (
+                        <Button 
+                          variant="destructive" 
+                          onClick={handleLeave} 
+                          disabled={actionLoading || isActivityPast}
+                          className="flex-1 sm:flex-none"
+                        >
+                          {actionLoading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <UserMinus className="mr-2 h-4 w-4" />}
+                          Leave Activity
+                        </Button>
+                      ) : (
+                        <Button 
+                          onClick={handleJoin} 
+                          disabled={!canJoin || actionLoading || isActivityPast}
+                          className="flex-1 sm:flex-none btn-primary"
+                        >
+                          {actionLoading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                          {isActivityPast ? 'Activity Ended' : isFull ? 'Activity Full' : 'Join Activity'}
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </motion.div>
-        )}
-      </AnimatePresence>
+
+          {/* Sidebar */}
+          <motion.div variants={itemVariants} className="xl:col-span-4 space-y-6">
+            {/* Group Chat Section */}
+            {(hasJoined || isCreator) && (
+              <Card className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl shadow-lg overflow-hidden">
+                <CardHeader className="bg-primary/5 border-b border-border/50">
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5 text-primary" />
+                    Activity Group Chat
+                  </CardTitle>
+                  <CardDescription>
+                    Chat with other participants of this activity
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <ActivityGroupChat 
+                    activityId={activityId} 
+                    hasJoined={hasJoined || isCreator}
+                    currentUser={currentUser}
+                    isReadOnly={isActivityPast}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Participants Card Removed - Moved to Main Card Dialog */}
+
+            {/* Similar Activities */}
+            {similarActivities.length > 0 && (
+              <Card className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-lg">Similar Activities</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {similarActivities.slice(0, 3).map((similar) => (
+                    <Link key={similar._id} to={`/activity/${similar._id}`} className="block group">
+                      <div className="flex gap-3 items-start p-2 rounded-lg hover:bg-accent/50 transition-colors">
+                        <div className="h-16 w-16 rounded-md overflow-hidden bg-muted flex-shrink-0">
+                          {similar.image ? (
+                            <img src={similar.image} alt={similar.title} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center bg-primary/10 text-primary">
+                              <Activity className="h-6 w-6" />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-sm group-hover:text-primary transition-colors line-clamp-1">{similar.title}</h4>
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(similar.date).toLocaleDateString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {similar.location}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </motion.div>
+        </div>
       </motion.div>
     </BeautifulBackground>
   );

@@ -12,7 +12,7 @@ const DarkModeToggle = () => {
   return (
     <motion.button
       onClick={handleClick}
-      className="relative inline-flex items-center justify-center p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none transition-all duration-200 hover:shadow-md active:scale-95"
+      className="relative inline-flex items-center justify-center p-2 rounded-full hover:bg-primary/10 dark:hover:bg-[#FFF8D4]/20 focus:outline-none transition-all duration-200 hover:shadow-md active:scale-95"
       whileTap={{ scale: 0.9 }}
       whileHover={{ scale: 1.1 }}
       aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}

@@ -777,23 +777,26 @@ export const AuthProvider = ({ children }) => {
     loadUser,
     // Add updateUserProfile function to keep auth state in sync with profile updates
     updateUserProfile: (updatedUserData) => {
-      // Update auth state
+      // Merge the incoming partial update with the existing auth user state
+      const mergedUser = normalizeUser({ ...(state.user || {}), ...(updatedUserData || {}) });
+
+      // Dispatch merged user to reducer so everything depending on auth state updates
       dispatch({
         type: 'USER_LOADED',
-        payload: updatedUserData
+        payload: mergedUser
       });
-      
+
       // Also update preferences in localStorage if they exist
       const userPreferences = localStorage.getItem('user_preferences');
       if (userPreferences) {
         const parsedPreferences = JSON.parse(userPreferences);
         localStorage.setItem('user_preferences', JSON.stringify({
           ...parsedPreferences,
-          hobbies: updatedUserData.hobbies || parsedPreferences.hobbies || [],
-          favoriteSubjects: updatedUserData.favoriteSubjects || parsedPreferences.favoriteSubjects || [],
-          sports: updatedUserData.sports || parsedPreferences.sports || [],
-          musicGenres: updatedUserData.musicGenres || parsedPreferences.musicGenres || [],
-          movieGenres: updatedUserData.movieGenres || parsedPreferences.movieGenres || []
+          hobbies: mergedUser.hobbies || parsedPreferences.hobbies || [],
+          favoriteSubjects: mergedUser.favoriteSubjects || parsedPreferences.favoriteSubjects || [],
+          sports: mergedUser.sports || parsedPreferences.sports || [],
+          musicGenres: mergedUser.musicGenres || parsedPreferences.musicGenres || [],
+          movieGenres: mergedUser.movieGenres || parsedPreferences.movieGenres || []
         }));
       }
     }

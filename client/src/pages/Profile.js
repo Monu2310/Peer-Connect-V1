@@ -45,6 +45,10 @@ import AvatarSelector from '../components/AvatarSelector';
 import NetflixStyleSelector from '../components/NetflixStyleSelector';
 import BeautifulBackground from '../components/effects/BeautifulBackground';
 import GlowOrb from '../components/effects/GlowOrb';
+import ParticleExplosion from '../components/effects/ParticleExplosion';
+import MagneticButton from '../components/effects/MagneticButton';
+import RippleEffect from '../components/effects/RippleEffect';
+import TiltCard from '../components/effects/TiltCard';
 
 const Profile = () => {
   const { userId } = useParams();
@@ -134,14 +138,18 @@ const Profile = () => {
     setError('');
     try {
       const profileData = await getUserProfile(userId || currentUser?.id);
+      if (!profileData) {
+        throw new Error('Failed to load profile');
+      }
+
       setFormData(prev => ({
         ...prev,
-        username: profileData.username || prev.username,
-        email: profileData.email || prev.email,
+        username: profileData.username || prev.username || currentUser?.username || '',
+        email: profileData.email || prev.email || currentUser?.email || '',
         bio: profileData.bio || '',
         location: profileData.location || '',
         interests: profileData.interests || [],
-        profilePicture: profileData.profilePicture || '/avatar.svg',
+        profilePicture: profileData.profilePicture || prev.profilePicture || currentUser?.profilePicture || '/avatar.svg',
         hobbies: profileData.hobbies || [],
         favoriteSubjects: profileData.favoriteSubjects || [],
         sports: profileData.sports || [],
@@ -187,7 +195,27 @@ const Profile = () => {
         getFriends(),
       ]);
 
-      setJoinedActivities(Array.isArray(joined) ? joined : []);
+      const isActivityPast = (activity) => {
+        if (!activity?.date) return false;
+        const activityDate = new Date(activity.date);
+        const now = new Date();
+        
+        const activityDateOnly = new Date(activityDate.getFullYear(), activityDate.getMonth(), activityDate.getDate());
+        const todayDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        if (activityDateOnly < todayDateOnly) return true;
+        
+        if (activityDateOnly.getTime() === todayDateOnly.getTime() && activity.time) {
+          const [hours, minutes] = activity.time.split(':').map(Number);
+          const activityTime = new Date(now);
+          activityTime.setHours(hours, minutes, 0, 0);
+          return now > activityTime;
+        }
+        
+        return false;
+      };
+
+      setJoinedActivities(Array.isArray(joined) ? joined.filter(a => !isActivityPast(a)) : []);
       setCreatedActivities(Array.isArray(created) ? created : []);
       setFriendsList(Array.isArray(friends) ? friends : friends.accepted || friends.data || []);
 
@@ -258,25 +286,53 @@ const Profile = () => {
     }
   };
 
+  // State for particle effect
+  const [particleEffect, setParticleEffect] = useState({ trigger: false, x: 0, y: 0 });
+
   const handleAvatarSelect = async (avatarUrl) => {
     try {
       setUploadingImage(true);
       setSuccess('');
       setError('');
       
-      const updatedFormData = {
+      // Update formData immediately for instant UI feedback
+      setFormData(prev => ({
+        ...prev,
+        profilePicture: avatarUrl
+      }));
+
+      // Build payload from the latest formData (merge) to avoid stale closures
+      const dataToSend = {
         ...formData,
         profilePicture: avatarUrl
       };
+
+      const updatedUserData = await updateUserProfile(dataToSend);
       
-      const updatedUserData = await updateUserProfile(updatedFormData);
+      // Ensure we use the avatar URL from backend response or fallback to what we sent
+      const finalAvatarUrl = updatedUserData.profilePicture || avatarUrl;
       
-      setFormData(updatedFormData);
-      updateAuthUserProfile(updatedUserData);
+      // Update auth context with the complete updated user object
+      updateAuthUserProfile({ ...updatedUserData, profilePicture: finalAvatarUrl });
+      
+      // Update local formData to match backend
+      setFormData(prev => ({
+        ...prev,
+        ...updatedUserData,
+        profilePicture: finalAvatarUrl
+      }));
+      
       setSuccess('Avatar updated successfully!');
       setShowAvatarSelector(false);
+      
+      // Trigger particle effect
+      setParticleEffect({ trigger: true, x: window.innerWidth / 2, y: 200 });
+      setTimeout(() => setParticleEffect({ trigger: false, x: 0, y: 0 }), 100);
     } catch (err) {
+      console.error('Avatar update error:', err);
       setError('Failed to update avatar');
+      // Revert on error
+      fetchProfileData();
     } finally {
       setUploadingImage(false);
       setTimeout(() => setSuccess(''), 3000);
@@ -326,13 +382,21 @@ const Profile = () => {
     const formDataObj = new FormData();
     formDataObj.append('profilePicture', file);
     const response = await uploadProfilePicture(formDataObj);
-    
-    const newProfilePicture = response.profilePicture || response.imageUrl;
+
+    // Prefer full user object if backend returned one, otherwise use profilePicture
+    const newProfilePicture = response.profilePicture || response.imageUrl || response.user?.profilePicture;
+
     setFormData(prev => ({
       ...prev,
       profilePicture: newProfilePicture
     }));
-    updateAuthUserProfile({...currentUser, profilePicture: newProfilePicture});
+
+    if (response.user) {
+      updateAuthUserProfile(response.user);
+    } else {
+      updateAuthUserProfile({ ...currentUser, profilePicture: newProfilePicture });
+    }
+
     setSuccess('Profile picture uploaded successfully');
     setTimeout(() => setSuccess(''), 3000);
   };
@@ -422,8 +486,14 @@ const Profile = () => {
 
   return (
     <BeautifulBackground>
+      <ParticleExplosion 
+        trigger={particleEffect.trigger} 
+        x={particleEffect.x} 
+        y={particleEffect.y} 
+        color="rgb(163, 176, 135)"
+      />
       <motion.div 
-        className="relative z-10 w-full"
+        className="relative z-10 w-full pb-12"
         variants={containerVariants}
         initial="hidden"
         animate="show"
@@ -465,25 +535,29 @@ const Profile = () => {
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-3">
-                  <Button asChild>
-                    <Link to={`/messages/${userId}`}>
-                      <MessageSquare className="mr-2 h-4 w-4" /> Message
-                    </Link>
-                  </Button>
-                  <Button
-                    onClick={handleSendFriendRequest}
-                    disabled={friendRequestStatus === 'sending' || friendRequestStatus === 'sent' || friendRequestStatus === 'friends'}
-                  >
-                    {friendRequestStatus === 'sending' ? (
-                      <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                    ) : friendRequestStatus === 'sent' ? (
-                      <><CheckCircle className="mr-2 h-4 w-4" /> Sent</>
-                    ) : friendRequestStatus === 'friends' ? (
-                      <><Users className="mr-2 h-4 w-4" /> Friends</>
-                    ) : (
-                      <><UserPlus className="mr-2 h-4 w-4" /> Add Friend</>
-                    )}
-                  </Button>
+                  <MagneticButton strength={0.3}>
+                    <Button asChild>
+                      <Link to={`/messages/${userId}`}>
+                        <MessageSquare className="mr-2 h-4 w-4" /> Message
+                      </Link>
+                    </Button>
+                  </MagneticButton>
+                  <MagneticButton strength={0.3}>
+                    <Button
+                      onClick={handleSendFriendRequest}
+                      disabled={friendRequestStatus === 'sending' || friendRequestStatus === 'sent' || friendRequestStatus === 'friends'}
+                    >
+                      {friendRequestStatus === 'sending' ? (
+                        <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                      ) : friendRequestStatus === 'sent' ? (
+                        <><CheckCircle className="mr-2 h-4 w-4" /> Sent</>
+                      ) : friendRequestStatus === 'friends' ? (
+                        <><Users className="mr-2 h-4 w-4" /> Friends</>
+                      ) : (
+                        <><UserPlus className="mr-2 h-4 w-4" /> Add Friend</>
+                      )}
+                    </Button>
+                  </MagneticButton>
                 </div>
               )}
             </div>
@@ -524,9 +598,17 @@ const Profile = () => {
             <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 md:p-8">
               <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
                 <div className="relative">
-                  <Avatar className="h-24 w-24 md:h-32 md:w-32 ring-4 ring-primary/20">
+                  <Avatar key={formData.profilePicture} className="h-24 w-24 md:h-32 md:w-32 ring-4 ring-primary/20">
                     <AvatarImage src={formData.profilePicture || '/avatar.svg'} alt={formData.username} />
-                    <AvatarFallback className="text-4xl bg-primary/20">{formData.username.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback className="text-2xl bg-primary/20">
+                      {(() => {
+                        const name = formData.username || '';
+                        const parts = name.trim().split(/\s+/);
+                        if (!name) return '';
+                        if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+                        return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
+                      })()}
+                    </AvatarFallback>
                   </Avatar>
                   {isOwnProfile && isEditing && (
                     <Button
@@ -554,7 +636,8 @@ const Profile = () => {
                         name="email"
                         type="email"
                         value={formData.email}
-                        onChange={handleChange}
+                        disabled
+                        className="opacity-70 cursor-not-allowed"
                         placeholder="Email"
                       />
                     </>
@@ -749,7 +832,7 @@ const Profile = () => {
           {/* Activities Section */}
           <motion.div variants={itemVariants} className="mb-8">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-muted/50 border border-border/30 p-1 rounded-xl mb-6">
+              <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1 rounded-xl mb-6">
                 <TabsTrigger value="joined" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm font-medium">
                   <Users className="h-4 w-4 mr-2" />
                   Joined Activities

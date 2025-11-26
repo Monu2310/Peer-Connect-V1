@@ -11,6 +11,7 @@ import { ThemeProvider } from './core/ThemeContext';
 // Components
 import Navbar from './components/layout/Navbar';
 import AuthAction from './pages/AuthAction'; // Direct import instead of lazy
+import DynamicBackground from './components/effects/DynamicBackground';
 
 // Lazy load pages with prefetch hints for code splitting
 const Home = lazy(() => import(/* webpackChunkName: "home" */ './pages/Home'));
@@ -43,8 +44,9 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
+        <DynamicBackground />
         <Navbar />
-        <div className="main-container min-h-screen bg-background text-foreground transition-colors duration-200 pt-16">
+        <div className="main-container min-h-screen bg-background text-foreground transition-colors duration-200 pt-16 relative z-10">
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<Home />} />

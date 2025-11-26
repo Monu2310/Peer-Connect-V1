@@ -5,15 +5,18 @@ import { API_URL } from '../api/config';
 import axios from 'axios';
 import { sendActivityMessage, getActivityMessages } from '../api/messageService';
 import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Send, Loader2, AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 // Create a shared socket instance at the module level
 let sharedSocket = null;
 
-const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUser }) => {
+const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUser, isReadOnly }) => {
   const { currentUser: authCurrentUser, token } = useAuth();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  const [isExpanded, setIsExpanded] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(false);
   const [hasJoinedActivity, setHasJoinedActivity] = useState(false);
@@ -38,9 +41,6 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
     
     const senderId = String(message.sender.id || message.sender._id || message.sender);
     const userId = String(currentUser.id || currentUser._id);
-    
-    // Log sender and user IDs for debugging
-    console.log('Message Sender ID:', senderId, 'Current User ID:', userId);
     
     return senderId === userId;
   };
@@ -105,7 +105,6 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
         const parsed = JSON.parse(savedMessages);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setMessages(parsed);
-          console.log(`Loaded ${parsed.length} messages from cache`);
         }
       }
     } catch (err) {
@@ -117,13 +116,11 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
   useEffect(() => {
     // Don't try to connect if user hasn't joined
     if ((!hasJoinedActivity && !isCheckingParticipation) && !hasJoined) {
-      console.log("Not connecting to socket: user hasn't joined activity");
       return;
     }
 
     // Initialize socket if no global instance exists
     if (!sharedSocket) {
-      console.log("Creating new socket connection to:", API_URL);
       const authToken = token || localStorage.getItem('token');
       
       sharedSocket = io(API_URL, {
@@ -136,8 +133,6 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
           token: authToken
         }
       });
-      
-      console.log("Global socket instance created");
     }
     
     // Store reference to shared socket in ref
@@ -145,17 +140,14 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
     
     // Connect to the socket if not already connected
     if (!socketRef.current.connected) {
-      console.log("Socket connecting...");
       socketRef.current.connect();
     } else {
-      console.log("Socket already connected");
       setIsConnected(true);
       setConnectionError(false);
     }
     
     // Handle socket connection events
     const handleConnect = () => {
-      console.log("Socket connected successfully");
       setIsConnected(true);
       setConnectionError(false);
       setLoadingMessages(true);
@@ -166,12 +158,6 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
         userId: currentUser?.id,
         username: currentUser?.username || currentUser?.name || currentUser?.email || "User"
       }, (response) => {
-        if (response?.success) {
-          console.log(`Joined activity room: ${roomId}`);
-        } else {
-          console.log(`Room join acknowledgement not received, assuming joined: ${roomId}`);
-        }
-        
         // Get existing messages (regardless of join confirmation)
         fetchMessages();
       });
@@ -181,7 +167,6 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
       // Set a timeout to prevent infinite loading state
       const messageLoadingTimeout = setTimeout(() => {
         setLoadingMessages(false);
-        console.log("Message loading timed out - server did not respond");
         setMessages(prevMessages => {
           if (prevMessages.length === 0) {
             // Add a system message if we have no messages
@@ -198,644 +183,298 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
       }, 8000); // 8 seconds timeout
       
       // First try socket method
-      const socketSuccess = new Promise((resolve) => {
-        socketRef.current.emit('get-activity-messages', { roomId }, (messages) => {
-          if (Array.isArray(messages) && messages.length > 0) {
-            console.log(`Socket: Received ${messages.length} messages`);
-            resolve({ success: true, source: 'socket', messages });
-          } else {
-            console.log("Socket: No messages or invalid response");
-            resolve({ success: false, source: 'socket' });
-          }
-        });
+      socketRef.current.emit('get-activity-messages', roomId, (response) => {
+        clearTimeout(messageLoadingTimeout);
+        setLoadingMessages(false);
         
-        // If no response within 3 seconds, consider socket approach failed
-        setTimeout(() => {
-          resolve({ success: false, source: 'socket', timedOut: true });
-        }, 3000);
+        if (response && response.success && Array.isArray(response.messages)) {
+          setMessages(response.messages);
+          // Cache messages
+          localStorage.setItem(messagesKey, JSON.stringify(response.messages));
+        } else {
+          // Fallback to REST API if socket fails
+          fallbackToRestApi();
+        }
       });
-      
-      // Then try API method
-      const apiSuccess = async () => {
-        try {
-          console.log("Trying API method for fetching messages");
-          const messages = await getActivityMessages(activityId);
-          console.log(`API: Received ${messages.length} messages`);
-          return { success: true, source: 'api', messages };
-        } catch (err) {
-          console.error("API message fetch failed:", err);
-          return { success: false, source: 'api', error: err };
-        }
-      };
-      
-      // Try both methods and use the first that succeeds
-      (async () => {
-        try {
-          // Race the methods
-          const [socketResult, apiResult] = await Promise.all([
-            socketSuccess,
-            apiSuccess()
-          ]);
-          
-          // Clear the timeout since we got a response
-          clearTimeout(messageLoadingTimeout);
-          setLoadingMessages(false);
-          
-          // Determine which result to use (prefer socket if both succeed)
-          const result = socketResult.success ? socketResult : 
-                        apiResult.success ? apiResult : null;
-          
-          if (!result || !result.success) {
-            console.error("Both methods failed to fetch messages");
-            
-            // Check if we have cached messages first
-            const cachedMessages = localStorage.getItem(messagesKey);
-            if (cachedMessages) {
-              try {
-                const parsed = JSON.parse(cachedMessages);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  console.log(`Using ${parsed.length} cached messages as fallback`);
-                  setMessages(parsed);
-                  return;
-                }
-              } catch (e) {
-                console.error("Error parsing cached messages:", e);
-              }
-            }
-            
-            // Show error if no cache
-            setMessages([{
-              _id: `system-${Date.now()}`,
-              content: "Couldn't load messages. Please try refreshing the page.",
-              sender: { id: 'system', username: 'System' },
-              timestamp: new Date().toISOString(),
-              isSystem: true
-            }]);
-            return;
-          }
-          
-          // Process the successful result
-          const messages = result.messages;
-          console.log(`Using messages from ${result.source}: ${messages.length} messages`);
-          
-          setMessages(prevMessages => {
-            // Create a set of existing message IDs for faster lookup
-            const existingIds = new Set(prevMessages.filter(m => m._id).map(m => m._id));
-            
-            // Filter out messages we already have
-            const newMessages = messages.filter(m => m._id && !existingIds.has(m._id));
-            
-            // Combine with existing messages (excluding system messages)
-            const combined = [...prevMessages.filter(m => !m.isSystem), ...newMessages];
-            
-            // Sort by timestamp
-            const sorted = combined.sort((a, b) => {
-              const timeA = new Date(a.timestamp || a.createdAt);
-              const timeB = new Date(b.timestamp || b.createdAt);
-              return timeA - timeB;
-            });
-            
-            // Cache the messages in localStorage
-            try {
-              localStorage.setItem(messagesKey, JSON.stringify(sorted.slice(-50)));
-            } catch (err) {
-              console.error("Error caching messages:", err);
-            }
-            
-            return sorted;
-          });
-        } catch (error) {
-          console.error("Error during message fetching:", error);
-          clearTimeout(messageLoadingTimeout);
-          setLoadingMessages(false);
-          
-          // Show error message
-          setMessages(prevMessages => {
-            if (prevMessages.length === 0) {
-              return [{
-                _id: `system-${Date.now()}`,
-                content: "Error loading messages. Please try again.",
-                sender: { id: 'system', username: 'System' },
-                timestamp: new Date().toISOString(),
-                isSystem: true
-              }];
-            }
-            return prevMessages;
-          });
-        }
-      })();
     };
     
-    const handleConnectError = (error) => {
-      console.error("Socket connection error:", error);
+    const fallbackToRestApi = async () => {
+      try {
+        const msgs = await getActivityMessages(activityId);
+        if (Array.isArray(msgs)) {
+          setMessages(msgs);
+          localStorage.setItem(messagesKey, JSON.stringify(msgs));
+        }
+      } catch (err) {
+        console.error("Failed to fetch messages via REST:", err);
+      } finally {
+        setLoadingMessages(false);
+      }
+    };
+
+    const handleDisconnect = () => {
+      setIsConnected(false);
+    };
+
+    const handleConnectError = (err) => {
+      console.error("Socket connection error:", err);
       setConnectionError(true);
       setIsConnected(false);
-      setLoadingMessages(false);
     };
-    
-    const handleDisconnect = (reason) => {
-      console.log("Socket disconnected:", reason);
-      setIsConnected(false);
-    };
-    
-    // Handle new messages from server
+
     const handleNewMessage = (message) => {
-      if (!message || !message._id) {
-        console.warn("Received invalid message format:", message);
-        return;
+      if (message && message.activity === activityId) {
+        setMessages((prevMessages) => {
+          // Check if message already exists to prevent duplicates
+          const exists = prevMessages.some(m => m._id === message._id);
+          if (exists) return prevMessages;
+          
+          const newMessages = [...prevMessages, message];
+          // Update cache
+          localStorage.setItem(messagesKey, JSON.stringify(newMessages));
+          return newMessages;
+        });
       }
-      
-      console.log("Received new message:", message);
-      setMessages(prevMessages => {
-        // Skip if we already have this message
-        if (prevMessages.some(m => m._id === message._id)) {
-          console.log("Message already exists in state, skipping");
-          return prevMessages;
-        }
-        
-        // Add message and sort by timestamp
-        const updated = [...prevMessages, message].sort((a, b) => {
-          const timeA = new Date(a.timestamp || a.createdAt);
-          const timeB = new Date(b.timestamp || b.createdAt);
-          return timeA - timeB;
-        });
-        
-        // Cache messages
-        try {
-          const messagesToStore = updated.filter(msg => !msg.pending && !msg.error);
-          localStorage.setItem(messagesKey, JSON.stringify(messagesToStore.slice(-50)));
-        } catch (err) {
-          console.error("Error caching messages:", err);
-        }
-        
-        return updated;
-      });
     };
-    
-    // Handle message confirmations
-    const handleMessageConfirmation = (data) => {
-      if (!data?.message?._id) {
-        console.warn("Received invalid message confirmation:", data);
-        return;
-      }
-      
-      console.log("Message confirmed by server:", data.message);
-      setMessages(prevMessages => {
-        const updated = prevMessages.map(msg => {
-          // Find pending message by matching content and sender
-          if (msg.pending && 
-              msg.content === data.message.content && 
-              msg.sender.id === data.message.sender.id) {
-            // Replace temporary message with confirmed one from server
-            return { ...data.message, pending: false };
-          }
-          return msg;
-        });
-        
-        // Cache messages
-        try {
-          const messagesToStore = updated.filter(msg => !msg.pending && !msg.error);
-          localStorage.setItem(messagesKey, JSON.stringify(messagesToStore.slice(-50)));
-        } catch (err) {
-          console.error("Error caching messages:", err);
-        }
-        
-        return updated;
-      });
-    };
-    
-    // Handle message errors
-    const handleMessageError = (error) => {
-      console.error("Server reported message error:", error);
-      // Mark all pending messages as failed
-      setMessages(prevMessages => {
-        return prevMessages.map(msg => {
-          if (msg.pending) {
-            return { ...msg, pending: false, error: true, content: `${msg.content} (Failed to send)` };
-          }
-          return msg;
-        });
-      });
-    };
-    
-    // Register event handlers
+
     socketRef.current.on('connect', handleConnect);
-    socketRef.current.on('connect_error', handleConnectError);
     socketRef.current.on('disconnect', handleDisconnect);
-    socketRef.current.on('activity-message', handleNewMessage);
-    socketRef.current.on('activity-message-confirmation', handleMessageConfirmation);
-    socketRef.current.on('activity-message-error', handleMessageError);
-    
-    // If already connected, manually trigger the connect handler
+    socketRef.current.on('connect_error', handleConnectError);
+    socketRef.current.on('new-activity-message', handleNewMessage);
+
+    // If already connected, manually trigger join
     if (socketRef.current.connected) {
       handleConnect();
-    } else {
-      // Force trigger fetchMessages if socket is taking too long to connect
-      const connectionTimeout = setTimeout(() => {
-        if (!isConnected && !connectionError) {
-          console.log("Connection taking too long, trying to fetch messages anyway");
-          setIsConnected(true); // Optimistically set connected to allow UI to show
-          fetchMessages();
-        }
-      }, 5000);
-      
-      return () => clearTimeout(connectionTimeout);
     }
-    
-    // Cleanup function
+
     return () => {
       if (socketRef.current) {
-        // Leave the room but stay connected
-        socketRef.current.emit('leave-activity-room', { roomId });
-        
-        // Remove all event listeners
         socketRef.current.off('connect', handleConnect);
-        socketRef.current.off('connect_error', handleConnectError);
         socketRef.current.off('disconnect', handleDisconnect);
-        socketRef.current.off('activity-message', handleNewMessage);
-        socketRef.current.off('activity-message-confirmation', handleMessageConfirmation);
-        socketRef.current.off('activity-message-error', handleMessageError);
+        socketRef.current.off('connect_error', handleConnectError);
+        socketRef.current.off('new-activity-message', handleNewMessage);
+        
+        // Leave the room when component unmounts
+        socketRef.current.emit('leave-activity-room', { roomId, userId: currentUser?.id });
       }
     };
-  }, [activityId, currentUser, token, roomId, hasJoinedActivity, hasJoined, isCheckingParticipation, messagesKey]);
+  }, [roomId, currentUser, activityId, hasJoinedActivity, hasJoined, isCheckingParticipation, messagesKey, token]);
 
-  // Auto-scroll to bottom when messages change
+  // Scroll to bottom when messages change
   useEffect(() => {
-    if (messages.length > 0 && isExpanded) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages, isExpanded]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-  // Send a message
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    
-    if (!newMessage.trim()) {
-      return;
-    }
-    
-    if (!socketRef.current || !socketRef.current.connected) {
-      console.log("Socket not connected, attempting to reconnect...");
-      if (socketRef.current) {
-        socketRef.current.connect();
-      }
-      
-      // Show reconnection message to user
-      setMessages(prev => [...prev, {
-        _id: `system-${Date.now()}`,
-        content: "Reconnecting to chat... Please try again in a moment.",
-        sender: { id: 'system', username: 'System' },
-        timestamp: new Date().toISOString(),
-        isSystem: true
-      }]);
-      
-      return;
-    }
-    
-    // Create message data
-    const messageData = {
-      roomId,
-      content: newMessage,
-      sender: {
-        id: currentUser?.id,
-        username: currentUser?.username || currentUser?.name || currentUser?.email || "User"
-      },
-      timestamp: new Date().toISOString()
-    };
-    
-    // Clear input immediately for better UX
-    setNewMessage('');
-    
-    // Generate temporary ID for this message
+    if (!newMessage.trim() || !currentUser || isReadOnly) return;
+
+    const messageContent = newMessage.trim();
+    setNewMessage(''); // Clear input immediately for better UX
+
+    // Optimistic update
     const tempId = `temp-${Date.now()}`;
-    
-    // Add message to UI with pending status
-    setMessages(prev => [...prev, { 
-      ...messageData, 
-      _id: tempId, 
-      pending: true 
-    }]);
-    
-    // Send the message with timeout
-    console.log("Sending message:", messageData);
-    
-    // Use both socket and direct API to ensure message is sent
-    // This dual approach increases reliability
-    
-    // 1. First try with socket.io
-    const sendWithSocket = () => {
-      return new Promise((resolve) => {
-        const timeoutId = setTimeout(() => {
-          console.log("Socket message send timed out");
-          resolve({ success: false, method: 'socket' });
-        }, 5000);
-        
-        socketRef.current.emit('send-activity-message', messageData, (response) => {
-          clearTimeout(timeoutId);
-          console.log("Socket response:", response);
-          resolve({ 
-            success: !!(response && !response.error), 
-            method: 'socket',
-            response 
-          });
-        });
-      });
+    const optimisticMessage = {
+      _id: tempId,
+      content: messageContent,
+      sender: {
+        _id: currentUser.id || currentUser._id,
+        username: currentUser.username || currentUser.name,
+        profilePicture: currentUser.profilePicture
+      },
+      activity: activityId,
+      timestamp: new Date().toISOString(),
+      isOptimistic: true
     };
-    
-    // 2. Second try with direct API
-    const sendWithAPI = async () => {
-      try {
-        console.log("Sending message via API endpoint");
-        const result = await sendActivityMessage(
+
+    setMessages(prev => [...prev, optimisticMessage]);
+
+    try {
+      // Try sending via socket first
+      if (socketRef.current && socketRef.current.connected) {
+        socketRef.current.emit('send-activity-message', {
           activityId,
-          messageData.content,
-          messageData.sender.username
-        );
-        console.log("API message send success:", result);
-        return { 
-          success: true, 
-          method: 'api',
-          data: result
-        };
-      } catch (err) {
-        console.error("API message send failed:", err);
-        return { 
-          success: false, 
-          method: 'api',
-          error: err.message 
-        };
-      }
-    };
-    
-    // Try both methods in sequence
-    (async () => {
-      try {
-        // First try socket - it's faster when working
-        const socketResult = await sendWithSocket();
-        
-        if (socketResult.success) {
-          console.log("Message sent successfully via socket");
-          return; // We're good - confirmation will come through socket events
-        }
-        
-        console.log("Socket send failed, trying API fallback");
-        
-        // If socket fails, try API
-        const apiResult = await sendWithAPI();
-        
-        if (apiResult.success) {
-          console.log("Message sent successfully via API fallback");
-          
-          // Update the message in UI since we won't get a socket confirmation
-          setMessages(prev => {
-            return prev.map(msg => {
-              if (msg._id === tempId) {
-                return { 
-                  ...msg, 
-                  _id: apiResult.data._id || tempId,
-                  pending: false, 
-                  error: false 
-                };
-              }
-              return msg;
-            });
-          });
-          
-          // Force a reload of all messages to ensure consistency
-          setTimeout(() => {
-            if (socketRef.current && socketRef.current.connected) {
-              socketRef.current.emit('get-activity-messages', { roomId }, messages => {
-                if (Array.isArray(messages) && messages.length > 0) {
-                  setMessages(() => {
-                    // Just replace all messages for simplicity
-                    return messages.sort((a, b) => {
-                      const timeA = new Date(a.timestamp || a.createdAt);
-                      const timeB = new Date(b.timestamp || b.createdAt);
-                      return timeA - timeB;
-                    });
-                  });
-                }
-              });
-            }
-          }, 500);
-          
-          return;
-        }
-        
-        // Both methods failed
-        console.error("Failed to send message via both socket and API");
-        throw new Error("Failed to send message");
-      } catch (err) {
-        console.error("Error sending message:", err);
-        
-        // Mark message as error in UI
-        setMessages(prev => {
-          return prev.map(msg => {
-            if (msg._id === tempId) {
-              // Add retry button to message
-              return { 
-                ...msg, 
-                pending: false, 
-                error: true,
-                content: msg.content,
-                originalContent: msg.content,
-                canRetry: true
-              };
-            }
-            return msg;
-          });
+          content: messageContent,
+          senderId: currentUser.id || currentUser._id
+        }, (response) => {
+          if (!response || !response.success) {
+            // If socket send fails, try REST API
+            sendViaRest(messageContent, tempId);
+          } else {
+            // Replace optimistic message with real one
+            setMessages(prev => prev.map(m => m._id === tempId ? response.message : m));
+          }
         });
+      } else {
+        // If socket not connected, use REST API
+        await sendViaRest(messageContent, tempId);
       }
-    })();
-  };
-  
-  // Function to retry sending a failed message
-  const handleRetry = (message) => {
-    if (!message.canRetry) return;
-    
-    // Create a new message with the original content
-    const retryContent = message.originalContent || message.content.replace(" (Failed to send)", "");
-    
-    // Remove the failed message
-    setMessages(prev => prev.filter(m => m._id !== message._id));
-    
-    // Set the input field with the original content
-    setNewMessage(retryContent);
-    
-    // Focus the input field
-    setTimeout(() => {
-      document.querySelector('input[type="text"]')?.focus();
-    }, 100);
+    } catch (err) {
+      console.error("Error sending message:", err);
+      // Mark message as failed
+      setMessages(prev => prev.map(m => m._id === tempId ? { ...m, error: true } : m));
+    }
   };
 
-  // Don't render if user hasn't joined
-  if ((!hasJoinedActivity && !isCheckingParticipation) && !hasJoined) {
-    console.log("Not rendering group chat: user hasn't joined activity");
-    return null;
+  const sendViaRest = async (content, tempId) => {
+    try {
+      const response = await sendActivityMessage(activityId, content);
+      setMessages(prev => prev.map(m => m._id === tempId ? response : m));
+    } catch (err) {
+      console.error("REST API send failed:", err);
+      setMessages(prev => prev.map(m => m._id === tempId ? { ...m, error: true } : m));
+    }
+  };
+
+  if (isCheckingParticipation) {
+    return (
+      <div className="flex justify-center items-center h-64 bg-muted/30">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
-  // Helper function to manually reconnect
-  const handleReconnect = () => {
-    setConnectionError(false);
-    if (socketRef.current) {
-      socketRef.current.connect();
-      setMessages(prev => [...prev, {
-        _id: `system-${Date.now()}`,
-        content: "Reconnecting...",
-        sender: { id: 'system', username: 'System' },
-        timestamp: new Date().toISOString(),
-        isSystem: true
-      }]);
-    }
-  };
+  if (!hasJoinedActivity && !hasJoined) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 bg-muted/30 p-6 text-center">
+        <AlertCircle className="h-10 w-10 text-muted-foreground mb-2" />
+        <h3 className="text-lg font-semibold">Join to Chat</h3>
+        <p className="text-muted-foreground">You need to join this activity to view and send messages.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="card shadow-lg">
-      <div 
-        className="bg-primary text-primary-foreground px-4 py-3 flex justify-between items-center cursor-pointer rounded-t-lg"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <h2 className="font-semibold">Activity Group Chat</h2>
-        <div className="flex items-center">
-          <span className="mr-3 text-sm">{messages.length} messages</span>
-          {connectionError && (
-            <span className="mr-3 text-xs bg-red-600 text-white px-2 py-1 rounded-full">
-              Connection Error
-            </span>
-          )}
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            className={`h-5 w-5 transition-transform ${isExpanded ? 'transform rotate-180' : ''}`}
-            viewBox="0 0 20 20" 
-            fill="currentColor"
-          >
-            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
-        </div>
-      </div>
-      
-      {isExpanded && (
-        <>
-          <div 
-            className="p-4 h-64 overflow-y-auto bg-background custom-scrollbar"
-            style={{ scrollBehavior: 'smooth' }}
-          >
-            {(!isConnected && !connectionError) || loadingMessages ? (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary mb-2"></div>
-                <p>{loadingMessages ? "Loading messages..." : "Connecting to chat..."}</p>
-              </div>
-            ) : connectionError ? (
-              <div className="flex flex-col items-center justify-center h-full text-destructive-foreground">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <p>Failed to connect to chat.</p>
-                <Button 
-                  onClick={handleReconnect}
-                  className="mt-2 btn-primary"
-                >
-                  Reconnect
-                </Button>
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                <p>No messages yet. Be the first to say something!</p>
-              </div>
-            ) : (
-              messages.map((message, index) => (
-                <div 
-                  key={message._id || index} 
-                  className={`mb-3 ${
-                    message.isSystem 
-                      ? 'text-center' 
-                      : isCurrentUser(message) 
-                        ? 'text-right' 
-                        : 'text-left'
-                  }`}
-                  onClick={() => message.canRetry && handleRetry(message)}
-                >
-                  <div className="inline-block">
-                    <div 
-                      className={`px-3 py-2 rounded-lg max-w-xs md:max-w-md lg:max-w-lg inline-block ${
-                        message.isSystem
-                          ? message.error
-                            ? 'bg-destructive/10 text-destructive-foreground'
-                            : 'bg-muted text-muted-foreground'
-                          : message.error 
-                            ? 'bg-destructive/10 text-destructive-foreground cursor-pointer' 
-                            : message.pending
-                              ? 'bg-primary/10 text-primary'
-                              : isCurrentUser(message) 
-                                ? 'bg-primary text-primary-foreground' 
-                                : 'bg-card text-foreground'
-                      }`}
+    <div className="flex flex-col h-[600px] bg-background">
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+        {loadingMessages && messages.length === 0 ? (
+          <div className="flex justify-center items-center h-full">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground bg-card/80 dark:bg-card/80 rounded-xl p-4 m-4 backdrop-blur-sm">
+            <p>No messages yet. Be the first to say hello!</p>
+          </div>
+        ) : (
+          messages.map((msg, index) => {
+            const isMe = isCurrentUser(msg);
+            const isSystem = msg.isSystem;
+            const showSenderInfo = !isMe && !isSystem && (index === 0 || messages[index - 1].sender?._id !== msg.sender?._id);
+            
+            if (isSystem) {
+              return (
+                <div key={msg._id || index} className="flex justify-center my-2">
+                  <span className="bg-muted dark:bg-muted text-xs text-muted-foreground px-3 py-1 rounded-full shadow-sm">
+                    {msg.content}
+                  </span>
+                </div>
+              );
+            }
+
+            return (
+              <div key={msg._id || index} className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-1 group`}>
+                {!isMe && (
+                  <div className={`flex flex-col justify-end mr-2 ${!showSenderInfo ? 'invisible' : ''}`}>
+                    <Link to={`/profile/${msg.sender?._id || msg.sender?.id}`}>
+                      <Avatar className="h-8 w-8 cursor-pointer hover:opacity-80 ring-2 ring-background">
+                        <AvatarImage src={msg.sender?.profilePicture} />
+                        <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                          {msg.sender?.username?.[0]?.toUpperCase() || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Link>
+                  </div>
+                )}
+                
+                <div className={`max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                  {showSenderInfo && (
+                    <Link 
+                      to={`/profile/${msg.sender?._id || msg.sender?.id}`}
+                      className="text-xs font-medium text-muted-foreground mb-1 ml-1 hover:underline"
                     >
-                      {!message.isSystem && !isCurrentUser(message) && (
-                        <div className="font-medium text-xs mb-1">
-                          {message.sender.username}
-                        </div>
-                      )}
-                      <p className="break-words">
-                        {message.error && message.canRetry 
-                          ? message.content.replace(" (Failed to send)", "") 
-                          : message.content}
-                        {message.error && message.canRetry && (
-                          <span className="text-destructive ml-1 text-xs">(Tap to retry)</span>
-                        )}
-                      </p>
-                      {!message.isSystem && (
-                        <div 
-                          className={`text-xs mt-1 ${
-                            isCurrentUser(message) 
-                              ? 'text-blue-100' 
-                              : 'text-gray-500'
-                          }`}
-                        >
-                          {new Date(message.timestamp || message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          {message.pending && (
-                            <span className="ml-1 animate-spin inline-block">↻</span>
+                      {msg.sender?.username || 'Unknown User'}
+                    </Link>
+                  )}
+                  
+                  <div className={`px-3 py-2 shadow-sm relative text-sm ${
+                    isMe 
+                      ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-none' 
+                      : 'bg-card dark:bg-card text-foreground dark:text-foreground rounded-2xl rounded-tl-none'
+                  } ${msg.error ? 'opacity-70 border border-red-500' : ''}`}>
+                    <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.content}</p>
+                    <div className={`text-[10px] flex items-center justify-end gap-1 mt-1 ${isMe ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                      <span>
+                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      {isMe && (
+                        <span className="ml-0.5">
+                          {msg.isOptimistic ? (
+                            <ClockIcon className="h-3 w-3" />
+                          ) : (
+                            <CheckIcon className="h-3 w-3" />
                           )}
-                        </div>
+                        </span>
                       )}
                     </div>
                   </div>
+                  {msg.error && (
+                    <span className="text-xs text-red-500 mt-1">Failed to send</span>
+                  )}
                 </div>
-              ))
-            )}
-            <div ref={messagesEndRef} />
+              </div>
+            );
+          })
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input Area */}
+      <div className="p-3 bg-muted/30 dark:bg-muted/10 border-t border-border/50">
+        {isReadOnly ? (
+          <div className="text-center py-3 bg-muted/50 dark:bg-muted/20 rounded-lg text-muted-foreground text-sm font-medium">
+            This activity has ended. Chat is read-only.
           </div>
-          
-          <form onSubmit={handleSendMessage} className="p-2 border-t flex">
-            <input
-              type="text"
+        ) : (
+          <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+            <Input
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Type a message..."
-              className="flex-1 border rounded-l-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary"
-              disabled={!isConnected || connectionError}
+              className="flex-1 bg-card dark:bg-card/50 border-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-full px-4 py-6"
+              disabled={!isConnected && !messages.length}
             />
-            <button 
+            <Button 
               type="submit" 
-              className={`text-white px-4 py-2 rounded-r-lg ${
-                !isConnected || connectionError || !newMessage.trim()
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-primary hover:bg-primary-dark'
-              }`}
-              disabled={!isConnected || connectionError || !newMessage.trim()}
+              size="icon" 
+              className="h-12 w-12 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
+              disabled={!newMessage.trim() || (!isConnected && !messages.length)}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-              </svg>
-            </button>
+              {(!isConnected && !messages.length) ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Send className="h-5 w-5" />
+              )}
+            </Button>
           </form>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 };
+
+// Helper icons
+const ClockIcon = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </svg>
+);
+
+const CheckIcon = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
 
 export default ActivityGroupChat;

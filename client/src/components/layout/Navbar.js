@@ -73,9 +73,23 @@ const Navbar = () => {
 
   const getUserDisplayName = () => {
     if (!currentUser) return '';
-    return currentUser.name || currentUser.username || '';
+    // Prefer explicit username, then name, then email local-part, finally a safe fallback
+    if (currentUser.username) return currentUser.username;
+    if (currentUser.name) return currentUser.name;
+    if (currentUser.email) return currentUser.email.split('@')[0];
+    return 'User';
+  };
+
+  const getUserInitials = () => {
+    if (!currentUser) return '';
+    const name = currentUser.name || currentUser.username || '';
+    if (!name) return '';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
   };
   const userDisplayName = getUserDisplayName();
+  const userInitials = getUserInitials();
   const userEmail = currentUser?.email;
   
   const isHomePage = location.pathname === '/';
@@ -191,7 +205,7 @@ const Navbar = () => {
                   <Avatar className="h-9 w-9 ring-2 ring-primary transition-transform group-hover:scale-105">
                     <AvatarImage src={currentUser?.profilePicture || '/avatar.svg'} alt={userDisplayName} />
                     <AvatarFallback className="bg-primary/20 text-primary">
-                      {userDisplayName.charAt(0)}
+                      {userInitials}
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-sm font-bold text-foreground group-hover:text-[#A3B087] transition-colors">{userDisplayName}</span>
@@ -273,7 +287,7 @@ const Navbar = () => {
                   <Avatar className="h-10 w-10 ring-2 ring-primary">
                     <AvatarImage src={currentUser?.profilePicture || '/avatar.svg'} alt={userDisplayName} />
                     <AvatarFallback className="bg-primary/20 text-primary">
-                      {userDisplayName.charAt(0)}
+                      {userInitials}
                     </AvatarFallback>
                   </Avatar>
                   <p className="font-semibold text-sm">{userDisplayName}</p>
@@ -320,39 +334,42 @@ const Navbar = () => {
       </AnimatePresence>
 
       <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader className="space-y-3 text-center sm:text-left">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive sm:mx-0">
-              <LogOut className="h-5 w-5" />
-            </div>
-            <DialogTitle className="text-2xl font-bold tracking-tight">Sign out?</DialogTitle>
-            <DialogDescription>
-              We'll save your preferences so you can pick up where you left off next time.
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-xl border border-border/50 shadow-2xl rounded-2xl p-0 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" />
+          
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle className="text-xl font-bold text-foreground flex items-center gap-2">
+              <LogOut className="h-5 w-5 text-primary" />
+              Sign Out
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground mt-2">
+              Are you sure you want to sign out of your account? You'll need to sign in again to access your dashboard.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-            <p className="font-semibold text-foreground">{userDisplayName || 'Current session'}</p>
-            {userEmail && (
-              <p className="mt-1 text-xs text-muted-foreground/80 break-all">{userEmail}</p>
-            )}
+          
+          <div className="flex items-center justify-center py-8 bg-muted/10">
+            <div className="relative">
+              <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full" />
+              <div className="h-20 w-20 rounded-full bg-card border border-border/50 flex items-center justify-center relative shadow-lg">
+                <LogOut className="h-8 w-8 text-primary ml-1" />
+              </div>
+            </div>
           </div>
-          <DialogFooter className="mt-6 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={closeLogoutDialog}
-              className="w-full sm:w-auto"
+          
+          <DialogFooter className="p-6 pt-2 bg-muted/5 flex gap-3 sm:justify-end">
+            <Button 
+              variant="outline" 
+              onClick={closeLogoutDialog} 
+              className="border-border/50 hover:bg-muted hover:text-foreground rounded-xl"
             >
-              Stay logged in
+              Cancel
             </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={confirmLogout}
-              className="w-full sm:w-auto"
+            <Button 
+              variant="destructive" 
+              onClick={confirmLogout} 
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl shadow-lg shadow-destructive/20"
             >
-              <LogOut className="mr-2 h-4 w-4" />
-              Log out
+              Sign Out
             </Button>
           </DialogFooter>
         </DialogContent>
