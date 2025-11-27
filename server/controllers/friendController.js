@@ -342,3 +342,38 @@ exports.removeFriend = async (req, res) => {
     res.status(500).send('Server error');
   }
 };
+
+// Remove friendship by other user's id (find the friendship between current user and the provided userId)
+exports.removeFriendByUser = async (req, res) => {
+  try {
+    const { userId: otherUserId } = req.params;
+    const userId = req.user.id;
+
+    // Find the friendship record between the two users
+    const friendship = await Friend.findOne({
+      $or: [
+        { requester: userId, recipient: otherUserId },
+        { requester: otherUserId, recipient: userId }
+      ]
+    });
+
+    if (!friendship) {
+      return res.status(404).json({ message: 'Friendship not found' });
+    }
+
+    // Ensure current user is part of the friendship
+    if (friendship.requester.toString() !== userId && friendship.recipient.toString() !== userId) {
+      return res.status(401).json({ message: 'Not authorized to remove this friendship' });
+    }
+
+    await friendship.deleteOne();
+
+    res.json({ message: 'Friend removed successfully' });
+  } catch (err) {
+    console.error('❌ Backend: Error removing friendship by user:', err.message);
+    if (err.kind === 'ObjectId') {
+      return res.status(404).json({ message: 'Friendship not found' });
+    }
+    res.status(500).send('Server error');
+  }
+};

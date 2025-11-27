@@ -44,3 +44,6 @@ router.get('/', auth, friendController.getFriends);
 router.delete('/:friendshipId', auth, friendController.removeFriend);
 
 module.exports = router;
+
+// Added: route to remove friendship by other user's id
+router.delete('/by-user/:userId', auth, friendController.removeFriendByUser);

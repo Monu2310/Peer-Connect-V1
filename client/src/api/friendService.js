@@ -118,6 +118,17 @@ export const removeFriend = async (friendId) => {
   }
 };
 
+// Remove friend by other user's ID (server will find the friendship between current user and the provided user)
+export const removeFriendByUser = async (userId) => {
+  try {
+    const response = await api.delete(`/api/friends/by-user/${userId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error removing friend by user:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
 // Send message in group chat
 export const sendGroupMessage = async (groupId, message) => {
   try {

@@ -6,7 +6,7 @@ import {
   getUserProfile, 
   uploadProfilePicture,
 } from '../api/userService';
-import { getFriends, sendFriendRequestById } from '../api/friendService';
+import { getFriends, sendFriendRequestById, removeFriendByUser } from '../api/friendService';
 import { getMyCreatedActivities, getMyJoinedActivities } from '../api/activityService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../components/ui/button';
@@ -42,13 +42,11 @@ import {
   Sparkles
 } from 'lucide-react';
 import AvatarSelector from '../components/AvatarSelector';
-import NetflixStyleSelector from '../components/NetflixStyleSelector';
 import BeautifulBackground from '../components/effects/BeautifulBackground';
 import GlowOrb from '../components/effects/GlowOrb';
 import ParticleExplosion from '../components/effects/ParticleExplosion';
 import MagneticButton from '../components/effects/MagneticButton';
-import RippleEffect from '../components/effects/RippleEffect';
-import TiltCard from '../components/effects/TiltCard';
+// Removed unused visual effect imports (RippleEffect, TiltCard) to satisfy ESLint
 
 const Profile = () => {
   const { userId } = useParams();
@@ -84,6 +82,7 @@ const Profile = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [friendRequestStatus, setFriendRequestStatus] = useState('none');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRemoveFriendConfirm, setShowRemoveFriendConfirm] = useState(false);
   const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
@@ -136,6 +135,7 @@ const Profile = () => {
   const fetchProfileData = useCallback(async () => {
     setLoading(true);
     setError('');
+    let profileLoaded = false;
     try {
       const profileData = await getUserProfile(userId || currentUser?.id);
       if (!profileData) {
@@ -161,30 +161,66 @@ const Profile = () => {
       }));
 
       if (!isOwnProfile && currentUser) {
-        const friends = await getFriends();
-        const isFriend = friends.some(f => 
-          (f.requester._id === userId && f.recipient._id === currentUser.id) ||
-          (f.recipient._id === userId && f.requester._id === currentUser.id)
-        );
-        if (isFriend) {
-          setFriendRequestStatus('friends');
-        } else {
-          const sentRequests = friends.filter(f => f.requester._id === currentUser.id && f.status === 'pending');
-          const hasSentRequest = sentRequests.some(f => f.recipient._id === userId);
-          if (hasSentRequest) {
-            setFriendRequestStatus('sent');
+        try {
+          const friends = await getFriends();
+          const friendsListSafe = Array.isArray(friends) ? friends : (friends?.accepted || friends?.data || []);
+
+          const isFriend = Array.isArray(friendsListSafe) && friendsListSafe.some(f => {
+            // Support different friend object shapes defensively
+            const requesterId = f?.requester?._id || f?.requester?._id || f?.requester || f?.user?._id || f?._id;
+            const recipientId = f?.recipient?._id || f?.recipient || f?.user?._id;
+            return (
+              (requesterId && recipientId && ((requesterId === userId && recipientId === currentUser.id) || (recipientId === userId && requesterId === currentUser.id))) ||
+              // if friend item is a user object
+              (f?._id && f._id === userId)
+            );
+          });
+
+          if (isFriend) {
+            setFriendRequestStatus('friends');
           } else {
-            setFriendRequestStatus('none');
+            const sentRequests = Array.isArray(friendsListSafe) ? friendsListSafe.filter(f => (f?.requester?._id === currentUser.id || f?.requester === currentUser.id) && f.status === 'pending') : [];
+            const hasSentRequest = Array.isArray(sentRequests) && sentRequests.some(f => (f?.recipient?._id === userId || f?.recipient === userId));
+            if (hasSentRequest) {
+              setFriendRequestStatus('sent');
+            } else {
+              setFriendRequestStatus('none');
+            }
           }
+        } catch (friendErr) {
+          console.warn('Error checking friend status:', friendErr);
+          // don't surface this as a profile load error if profile data loaded
+          setFriendRequestStatus('none');
         }
       }
 
+      profileLoaded = true;
+
     } catch (err) {
-      setError('Failed to load profile.');
+      if (!profileLoaded) setError('Failed to load profile.');
     } finally {
       setLoading(false);
     }
   }, [userId, currentUser, isOwnProfile]);
+
+  const handleRemoveFriend = async () => {
+    if (!userId) return;
+    try {
+      setLoading(true);
+      await removeFriendByUser(userId);
+      setFriendRequestStatus('none');
+      setFriendsList(prev => prev.filter(f => (f?._id || f?.recipient?._id || f?.requester?._id) !== userId));
+      setSuccess('Friend removed');
+      setShowRemoveFriendConfirm(false);
+    } catch (err) {
+      console.error('Failed to remove friend', err);
+      setError(err.response?.data?.message || 'Failed to remove friend. Please try again.');
+    } finally {
+      setLoading(false);
+      setTimeout(() => setSuccess(''), 3000);
+      setTimeout(() => setError(''), 5000);
+    }
+  };
 
   const fetchActivitiesAndFriends = useCallback(async () => {
     setStatsLoading(true);
@@ -543,20 +579,29 @@ const Profile = () => {
                     </Button>
                   </MagneticButton>
                   <MagneticButton strength={0.3}>
-                    <Button
-                      onClick={handleSendFriendRequest}
-                      disabled={friendRequestStatus === 'sending' || friendRequestStatus === 'sent' || friendRequestStatus === 'friends'}
-                    >
-                      {friendRequestStatus === 'sending' ? (
-                        <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                      ) : friendRequestStatus === 'sent' ? (
-                        <><CheckCircle className="mr-2 h-4 w-4" /> Sent</>
-                      ) : friendRequestStatus === 'friends' ? (
-                        <><Users className="mr-2 h-4 w-4" /> Friends</>
-                      ) : (
-                        <><UserPlus className="mr-2 h-4 w-4" /> Add Friend</>
-                      )}
-                    </Button>
+                    {friendRequestStatus === 'friends' ? (
+                      <div className="flex gap-2">
+                        <Button disabled>
+                          <Users className="mr-2 h-4 w-4" /> Already Friends
+                        </Button>
+                        <Button variant="outline" onClick={() => setShowRemoveFriendConfirm(true)} disabled={loading}>
+                          {loading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Trash2 className="mr-2 h-4 w-4" />} Remove
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={handleSendFriendRequest}
+                        disabled={friendRequestStatus === 'sending' || friendRequestStatus === 'sent'}
+                      >
+                        {friendRequestStatus === 'sending' ? (
+                          <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                        ) : friendRequestStatus === 'sent' ? (
+                          <><CheckCircle className="mr-2 h-4 w-4" /> Sent</>
+                        ) : (
+                          <><UserPlus className="mr-2 h-4 w-4" /> Add Friend</>
+                        )}
+                      </Button>
+                    )}
                   </MagneticButton>
                 </div>
               )}
@@ -564,6 +609,31 @@ const Profile = () => {
           </motion.div>
 
           {/* Alerts */}
+          <AnimatePresence>
+            {showRemoveFriendConfirm && !isOwnProfile && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-4 bg-card/50 border border-border/30 p-4 rounded-xl w-full max-w-3xl"
+              >
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div>
+                    <p className="font-bold">Remove Friend</p>
+                    <p className="text-sm text-muted-foreground">Are you sure you want to remove {formData.username} from your friends? This action can be reversed by sending a new friend request.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="destructive" onClick={handleRemoveFriend} disabled={loading}>
+                      {loading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Trash2 className="mr-2 h-4 w-4" />} Remove
+                    </Button>
+                    <Button variant="outline" onClick={() => setShowRemoveFriendConfirm(false)} disabled={loading}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <AnimatePresence>
             {error && (
               <motion.div 
