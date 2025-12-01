@@ -27,6 +27,37 @@ const generateRandomProfileImage = (seed) => {
   return `https://api.dicebear.com/7.x/${randomStyle}/svg?seed=${randomSeed}`;
 };
 
+// Sanitize preference arrays to ensure consistent matching downstream
+const normalizePreferenceArray = (input) => {
+  if (input === undefined || input === null) {
+    return [];
+  }
+
+  let values = [];
+  if (Array.isArray(input)) {
+    values = input;
+  } else if (typeof input === 'string') {
+    values = input.split(',');
+  } else {
+    values = [input];
+  }
+
+  const seen = new Set();
+  const normalized = [];
+
+  values.forEach(item => {
+    if (typeof item !== 'string') return;
+    const trimmed = item.trim();
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    normalized.push(trimmed);
+  });
+
+  return normalized;
+};
+
 // Get user by ID
 exports.getUserById = async (req, res) => {
   try {
@@ -80,17 +111,15 @@ exports.updateProfile = async (req, res) => {
     
     // Handle interests specially - could be array or string
     if (interests !== undefined) {
-      profileFields.interests = Array.isArray(interests) 
-        ? interests
-        : interests.split(',').map(i => i.trim()).filter(i => i);
+      profileFields.interests = normalizePreferenceArray(interests);
     }
     
     // Handle preference fields
-    if (hobbies !== undefined) profileFields.hobbies = Array.isArray(hobbies) ? hobbies : [];
-    if (favoriteSubjects !== undefined) profileFields.favoriteSubjects = Array.isArray(favoriteSubjects) ? favoriteSubjects : [];
-    if (sports !== undefined) profileFields.sports = Array.isArray(sports) ? sports : [];
-    if (musicGenres !== undefined) profileFields.musicGenres = Array.isArray(musicGenres) ? musicGenres : [];
-    if (movieGenres !== undefined) profileFields.movieGenres = Array.isArray(movieGenres) ? movieGenres : [];
+    if (hobbies !== undefined) profileFields.hobbies = normalizePreferenceArray(hobbies);
+    if (favoriteSubjects !== undefined) profileFields.favoriteSubjects = normalizePreferenceArray(favoriteSubjects);
+    if (sports !== undefined) profileFields.sports = normalizePreferenceArray(sports);
+    if (musicGenres !== undefined) profileFields.musicGenres = normalizePreferenceArray(musicGenres);
+    if (movieGenres !== undefined) profileFields.movieGenres = normalizePreferenceArray(movieGenres);
     
     // Update user
     const user = await User.findByIdAndUpdate(

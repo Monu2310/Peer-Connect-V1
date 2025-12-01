@@ -4,73 +4,77 @@ const User = require('../models/User');
 const Friend = require('../models/Friend');
 const { calculateSimilarityScore, calculateDetailedSimilarity } = require('../utils/similarityScoring');
 
+const normalizeArrayForSimilarity = (values) => {
+  if (!Array.isArray(values)) return [];
+  return values
+    .map(value => typeof value === 'string' ? value.trim().toLowerCase() : '')
+    .filter(Boolean);
+};
+
+const countOverlap = (arr1, arr2) => {
+  if (!arr1.length || !arr2.length) return 0;
+  const set2 = new Set(arr2);
+  return arr1.filter(value => set2.has(value)).length;
+};
+
+const normalizeSingleValue = (value) => (
+  typeof value === 'string' ? value.trim().toLowerCase() : ''
+);
+
 // Helper function to calculate preference similarity between users
 const calculateUserSimilarity = (user1Preferences, user2Preferences) => {
   let similarity = 0;
   let totalFields = 0;
-  
-  // Compare hobbies
-  if (user1Preferences.hobbies && user2Preferences.hobbies) {
-    const commonHobbies = user1Preferences.hobbies.filter(hobby => 
-      user2Preferences.hobbies.includes(hobby)
-    );
-    similarity += commonHobbies.length * 2; // Weight hobbies higher
-    totalFields += Math.max(user1Preferences.hobbies.length, user2Preferences.hobbies.length);
+
+  const hobbies1 = normalizeArrayForSimilarity(user1Preferences.hobbies);
+  const hobbies2 = normalizeArrayForSimilarity(user2Preferences.hobbies);
+  if (hobbies1.length && hobbies2.length) {
+    similarity += countOverlap(hobbies1, hobbies2) * 2; // Weight hobbies higher
+    totalFields += Math.max(hobbies1.length, hobbies2.length);
   }
-  
-  // Compare sports
-  if (user1Preferences.sports && user2Preferences.sports) {
-    const commonSports = user1Preferences.sports.filter(sport => 
-      user2Preferences.sports.includes(sport)
-    );
-    similarity += commonSports.length * 1.5; // Weight sports
-    totalFields += Math.max(user1Preferences.sports.length, user2Preferences.sports.length);
+
+  const sports1 = normalizeArrayForSimilarity(user1Preferences.sports);
+  const sports2 = normalizeArrayForSimilarity(user2Preferences.sports);
+  if (sports1.length && sports2.length) {
+    similarity += countOverlap(sports1, sports2) * 1.5;
+    totalFields += Math.max(sports1.length, sports2.length);
   }
-  
-  // Compare favorite subjects
-  if (user1Preferences.favoriteSubjects && user2Preferences.favoriteSubjects) {
-    const commonSubjects = user1Preferences.favoriteSubjects.filter(subject => 
-      user2Preferences.favoriteSubjects.includes(subject)
-    );
-    similarity += commonSubjects.length * 1.5; // Weight subjects
-    totalFields += Math.max(user1Preferences.favoriteSubjects.length, user2Preferences.favoriteSubjects.length);
+
+  const subjects1 = normalizeArrayForSimilarity(user1Preferences.favoriteSubjects);
+  const subjects2 = normalizeArrayForSimilarity(user2Preferences.favoriteSubjects);
+  if (subjects1.length && subjects2.length) {
+    similarity += countOverlap(subjects1, subjects2) * 1.5;
+    totalFields += Math.max(subjects1.length, subjects2.length);
   }
-  
-  // Compare music genres
-  if (user1Preferences.musicGenres && user2Preferences.musicGenres) {
-    const commonMusic = user1Preferences.musicGenres.filter(genre => 
-      user2Preferences.musicGenres.includes(genre)
-    );
-    similarity += commonMusic.length;
-    totalFields += Math.max(user1Preferences.musicGenres.length, user2Preferences.musicGenres.length);
+
+  const music1 = normalizeArrayForSimilarity(user1Preferences.musicGenres);
+  const music2 = normalizeArrayForSimilarity(user2Preferences.musicGenres);
+  if (music1.length && music2.length) {
+    similarity += countOverlap(music1, music2);
+    totalFields += Math.max(music1.length, music2.length);
   }
-  
-  // Compare movie genres
-  if (user1Preferences.movieGenres && user2Preferences.movieGenres) {
-    const commonMovies = user1Preferences.movieGenres.filter(genre => 
-      user2Preferences.movieGenres.includes(genre)
-    );
-    similarity += commonMovies.length;
-    totalFields += Math.max(user1Preferences.movieGenres.length, user2Preferences.movieGenres.length);
+
+  const movies1 = normalizeArrayForSimilarity(user1Preferences.movieGenres);
+  const movies2 = normalizeArrayForSimilarity(user2Preferences.movieGenres);
+  if (movies1.length && movies2.length) {
+    similarity += countOverlap(movies1, movies2);
+    totalFields += Math.max(movies1.length, movies2.length);
   }
-  
-  // Compare general interests
-  if (user1Preferences.interests && user2Preferences.interests) {
-    const commonInterests = user1Preferences.interests.filter(interest => 
-      user2Preferences.interests.includes(interest)
-    );
-    similarity += commonInterests.length;
-    totalFields += Math.max(user1Preferences.interests.length, user2Preferences.interests.length);
+
+  const interests1 = normalizeArrayForSimilarity(user1Preferences.interests);
+  const interests2 = normalizeArrayForSimilarity(user2Preferences.interests);
+  if (interests1.length && interests2.length) {
+    similarity += countOverlap(interests1, interests2);
+    totalFields += Math.max(interests1.length, interests2.length);
   }
-  
-  // If users have the same major, add bonus points
-  if (user1Preferences.major && user2Preferences.major && 
-      user1Preferences.major.toLowerCase() === user2Preferences.major.toLowerCase()) {
+
+  const major1 = normalizeSingleValue(user1Preferences.major);
+  const major2 = normalizeSingleValue(user2Preferences.major);
+  if (major1 && major2 && major1 === major2) {
     similarity += 3;
     totalFields += 1;
   }
-  
-  // Normalize similarity score (0-100)
+
   return totalFields > 0 ? (similarity / totalFields) * 100 : 0;
 };
 
@@ -241,6 +245,7 @@ exports.getFriendRecommendations = async (req, res) => {
     // Build OR conditions for users with ANY shared preferences
     const orConditions = [];
     if (user.major) orConditions.push({ major: user.major });
+    if (user.interests?.length) orConditions.push({ interests: { $in: user.interests } });
     if (user.hobbies?.length) orConditions.push({ hobbies: { $in: user.hobbies } });
     if (user.favoriteSubjects?.length) orConditions.push({ favoriteSubjects: { $in: user.favoriteSubjects } });
     if (user.sports?.length) orConditions.push({ sports: { $in: user.sports } });
@@ -254,7 +259,7 @@ exports.getFriendRecommendations = async (req, res) => {
     
     // Fetch only relevant users with ONLY needed fields (50-60% data reduction)
     const potentialFriends = await User.find(prefilterQuery)
-      .select('username profilePicture major hobbies favoriteSubjects sports musicGenres movieGenres')
+      .select('username profilePicture major interests hobbies favoriteSubjects sports musicGenres movieGenres')
       .limit(50) // Limit to 50 candidates instead of all users
       .lean(); // Plain objects for faster processing
     
@@ -287,45 +292,45 @@ exports.getFriendRecommendations = async (req, res) => {
   }
 };
 
+const collectSharedValues = (type, valuesA, valuesB) => {
+  if (!Array.isArray(valuesA) || !Array.isArray(valuesB) || !valuesA.length || !valuesB.length) {
+    return [];
+  }
+
+  const normalizedB = new Set(
+    valuesB
+      .map(value => (typeof value === 'string' ? value.trim().toLowerCase() : ''))
+      .filter(Boolean)
+  );
+
+  const seen = new Set();
+  const shared = [];
+
+  valuesA.forEach(value => {
+    if (typeof value !== 'string') return;
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const normalized = trimmed.toLowerCase();
+    if (seen.has(normalized) || !normalizedB.has(normalized)) return;
+    seen.add(normalized);
+    shared.push({ type, value: trimmed });
+  });
+
+  return shared;
+};
+
 // Helper function to find shared interests between users for display
 function findSharedInterests(user1, user2) {
-  const sharedItems = [];
+  const sharedItems = [
+    ...collectSharedValues('interest', user1.interests, user2.interests),
+    ...collectSharedValues('hobby', user1.hobbies, user2.hobbies),
+    ...collectSharedValues('sport', user1.sports, user2.sports),
+    ...collectSharedValues('subject', user1.favoriteSubjects, user2.favoriteSubjects),
+    ...collectSharedValues('music', user1.musicGenres, user2.musicGenres),
+    ...collectSharedValues('movie', user1.movieGenres, user2.movieGenres)
+  ];
   
-  // Check different preference categories
-  if (user1.hobbies && user2.hobbies) {
-    user1.hobbies.forEach(hobby => {
-      if (user2.hobbies.includes(hobby)) {
-        sharedItems.push({ type: 'hobby', value: hobby });
-      }
-    });
-  }
-  
-  if (user1.sports && user2.sports) {
-    user1.sports.forEach(sport => {
-      if (user2.sports.includes(sport)) {
-        sharedItems.push({ type: 'sport', value: sport });
-      }
-    });
-  }
-  
-  if (user1.favoriteSubjects && user2.favoriteSubjects) {
-    user1.favoriteSubjects.forEach(subject => {
-      if (user2.favoriteSubjects.includes(subject)) {
-        sharedItems.push({ type: 'subject', value: subject });
-      }
-    });
-  }
-  
-  if (user1.interests && user2.interests) {
-    user1.interests.forEach(interest => {
-      if (user2.interests.includes(interest)) {
-        sharedItems.push({ type: 'interest', value: interest });
-      }
-    });
-  }
-  
-  // Return at most 3 shared items
-  return sharedItems.slice(0, 3);
+  return sharedItems.slice(0, 5);
 }
 
 // Get similar activities to a specific activity

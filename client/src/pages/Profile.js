@@ -85,6 +85,59 @@ const SimpleCheckboxGroup = ({ label, options, selected, onChange }) => {
   );
 };
 
+const PreferenceList = ({ label, icon: Icon, items = [], placeholder = 'Not set yet.' }) => (
+  <div className="space-y-3">
+    <div className="flex items-center gap-2">
+      {Icon ? <Icon className="h-4 w-4 text-primary" /> : null}
+      <p className="text-sm font-semibold">{label}</p>
+    </div>
+    {Array.isArray(items) && items.length > 0 ? (
+      <div className="flex flex-wrap gap-2">
+        {items.map((item) => (
+          <span
+            key={`${label}-${item}`}
+            className="px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20"
+          >
+            {item}
+          </span>
+        ))}
+      </div>
+    ) : (
+      <p className="text-sm text-muted-foreground">{placeholder}</p>
+    )}
+  </div>
+);
+
+const sanitizePreferenceArray = (value) => {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  const sanitized = [];
+  value.forEach(item => {
+    if (typeof item !== 'string') return;
+    const trimmed = item.trim();
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    sanitized.push(trimmed);
+  });
+  return sanitized;
+};
+
+const buildProfilePayload = (state = {}) => ({
+  username: state.username || '',
+  email: state.email || '',
+  bio: state.bio || '',
+  location: state.location || '',
+  profilePicture: state.profilePicture || '/avatar.svg',
+  interests: sanitizePreferenceArray(state.interests),
+  hobbies: sanitizePreferenceArray(state.hobbies),
+  favoriteSubjects: sanitizePreferenceArray(state.favoriteSubjects),
+  sports: sanitizePreferenceArray(state.sports),
+  musicGenres: sanitizePreferenceArray(state.musicGenres),
+  movieGenres: sanitizePreferenceArray(state.movieGenres)
+});
+
 const Profile = () => {
   const { userId } = useParams();
   const { currentUser, updateUserProfile: updateAuthUserProfile, loading: authLoading } = useAuth();
@@ -374,19 +427,7 @@ const Profile = () => {
 
     try {
       // Ensure ALL fields are properly formatted and sent
-      const dataToSend = {
-        username: formData.username,
-        email: formData.email,
-        bio: formData.bio || '',
-        location: formData.location || '',
-        profilePicture: formData.profilePicture,
-        interests: Array.isArray(formData.interests) ? formData.interests : [],
-        hobbies: Array.isArray(formData.hobbies) ? formData.hobbies : [],
-        favoriteSubjects: Array.isArray(formData.favoriteSubjects) ? formData.favoriteSubjects : [],
-        sports: Array.isArray(formData.sports) ? formData.sports : [],
-        musicGenres: Array.isArray(formData.musicGenres) ? formData.musicGenres : [],
-        movieGenres: Array.isArray(formData.movieGenres) ? formData.movieGenres : []
-      };
+      const dataToSend = buildProfilePayload(formData);
 
       console.log('Saving profile with data:', dataToSend);
       const updatedUserData = await updateUserProfile(dataToSend);
@@ -440,10 +481,10 @@ const Profile = () => {
       }));
 
       // Build payload from the latest formData (merge) to avoid stale closures
-      const dataToSend = {
+      const dataToSend = buildProfilePayload({
         ...formData,
         profilePicture: avatarUrl
-      };
+      });
 
       const updatedUserData = await updateUserProfile(dataToSend);
       
@@ -908,6 +949,50 @@ const Profile = () => {
             </div>
           </motion.div>
 
+          {/* Preference Overview */}
+          {(!isOwnProfile || !isEditing) && (
+            <motion.div variants={itemVariants} className="mb-8">
+              <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 space-y-6">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="h-6 w-6 text-primary" />
+                  <h3 className="text-xl font-semibold">Interests & Entertainment</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <PreferenceList
+                    label="Hobbies"
+                    icon={Sparkles}
+                    items={sanitizePreferenceArray(formData.hobbies)}
+                    placeholder={isOwnProfile ? 'Add some hobbies in edit mode.' : 'No hobbies shared yet.'}
+                  />
+                  <PreferenceList
+                    label="Favorite Subjects"
+                    icon={Book}
+                    items={sanitizePreferenceArray(formData.favoriteSubjects)}
+                    placeholder={isOwnProfile ? 'Pick your favorite subjects in edit mode.' : 'No subjects shared yet.'}
+                  />
+                  <PreferenceList
+                    label="Sports"
+                    icon={Activity}
+                    items={sanitizePreferenceArray(formData.sports)}
+                    placeholder={isOwnProfile ? 'Select the sports you enjoy in edit mode.' : 'No sports shared yet.'}
+                  />
+                  <PreferenceList
+                    label="Music Genres"
+                    icon={Music}
+                    items={sanitizePreferenceArray(formData.musicGenres)}
+                    placeholder={isOwnProfile ? 'Choose the music genres you vibe with.' : 'No music tastes shared yet.'}
+                  />
+                  <PreferenceList
+                    label="Movies & TV"
+                    icon={Film}
+                    items={sanitizePreferenceArray(formData.movieGenres)}
+                    placeholder={isOwnProfile ? 'Select your go-to movie or TV genres.' : 'No movie preferences shared yet.'}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {/* Simple Preferences - Checkboxes */}
           {isOwnProfile && isEditing && (
             <motion.div variants={itemVariants} className="mb-8">
@@ -922,7 +1007,7 @@ const Profile = () => {
                   label="Hobbies"
                   options={['Reading', 'Gaming', 'Photography', 'Cooking', 'Traveling', 'Sports', 'Music', 'Art', 'Writing', 'Fitness']}
                   selected={formData.hobbies || []}
-                  onChange={(selected) => setFormData({...formData, hobbies: selected})}
+                  onChange={(selected) => setFormData(prev => ({ ...prev, hobbies: selected }))}
                 />
                 
                 {/* Favorite Subjects */}
@@ -930,7 +1015,7 @@ const Profile = () => {
                   label="Favorite Subjects"
                   options={['Math', 'Science', 'History', 'Literature', 'Art', 'Music', 'Physics', 'Chemistry', 'Biology', 'Computer Science']}
                   selected={formData.favoriteSubjects || []}
-                  onChange={(selected) => setFormData({...formData, favoriteSubjects: selected})}
+                  onChange={(selected) => setFormData(prev => ({ ...prev, favoriteSubjects: selected }))}
                 />
                 
                 {/* Sports */}
@@ -938,7 +1023,7 @@ const Profile = () => {
                   label="Sports"
                   options={['Basketball', 'Football', 'Soccer', 'Tennis', 'Swimming', 'Running', 'Yoga', 'Gym', 'Cycling', 'Volleyball']}
                   selected={formData.sports || []}
-                  onChange={(selected) => setFormData({...formData, sports: selected})}
+                  onChange={(selected) => setFormData(prev => ({ ...prev, sports: selected }))}
                 />
                 
                 {/* Music Genres */}
@@ -946,7 +1031,7 @@ const Profile = () => {
                   label="Music"
                   options={['Pop', 'Rock', 'Hip Hop', 'Jazz', 'Classical', 'Electronic', 'Country', 'R&B', 'Indie', 'Metal']}
                   selected={formData.musicGenres || []}
-                  onChange={(selected) => setFormData({...formData, musicGenres: selected})}
+                  onChange={(selected) => setFormData(prev => ({ ...prev, musicGenres: selected }))}
                 />
                 
                 {/* Movie Genres */}
@@ -954,7 +1039,7 @@ const Profile = () => {
                   label="Movies/TV"
                   options={['Action', 'Comedy', 'Drama', 'Horror', 'Sci-Fi', 'Romance', 'Thriller', 'Documentary', 'Animation', 'Fantasy']}
                   selected={formData.movieGenres || []}
-                  onChange={(selected) => setFormData({...formData, movieGenres: selected})}
+                  onChange={(selected) => setFormData(prev => ({ ...prev, movieGenres: selected }))}
                 />
               </div>
             </motion.div>
