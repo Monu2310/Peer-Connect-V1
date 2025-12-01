@@ -202,13 +202,34 @@ const ActivityDetail = () => {
     }
   };
   
-  const handleFriendRequest = async (targetUserId) => {
-    setFriendRequestStatus(prev => ({ ...prev, [targetUserId]: 'sending' }));
+  const handleFriendRequest = async (targetUserId, targetName) => {
+    if (!targetUserId) return;
+    setFriendRequestStatus(prev => ({
+      ...prev,
+      [targetUserId]: { state: 'sending' }
+    }));
+    setError('');
+    setSuccess('');
     try {
       await sendFriendRequestById(targetUserId);
-      setFriendRequestStatus(prev => ({ ...prev, [targetUserId]: 'sent' }));
+      setFriendRequestStatus(prev => ({
+        ...prev,
+        [targetUserId]: { state: 'sent' }
+      }));
+      const confirmation = `Friend request sent${targetName ? ` to ${targetName}` : ''}.`;
+      setSuccess(confirmation);
+      setTimeout(() => setSuccess(''), 4000);
+      if (typeof window !== 'undefined' && window.CustomEvent) {
+        window.dispatchEvent(new CustomEvent('friendRequestSent', { detail: { userId: targetUserId } }));
+      }
     } catch (err) {
-      setFriendRequestStatus(prev => ({ ...prev, [targetUserId]: 'error' }));
+      const message = err?.response?.data?.message || 'Failed to send friend request.';
+      setFriendRequestStatus(prev => ({
+        ...prev,
+        [targetUserId]: { state: 'error', message }
+      }));
+      setError(message);
+      setTimeout(() => setError(''), 5000);
     }
   };
 
@@ -422,9 +443,16 @@ const ActivityDetail = () => {
                                         </Avatar>
                                         <div>
                                           <p className="font-medium text-sm group-hover:text-primary transition-colors">{participant.username}</p>
-                                          {participant._id === creatorId && (
-                                            <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">Host</span>
-                                          )}
+                                          <div className="flex flex-wrap gap-2 mt-1">
+                                            {participant._id === creatorId && (
+                                              <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">Host</span>
+                                            )}
+                                            {friendIds.includes(participant._id) && participant._id !== creatorId && (
+                                              <span className="text-xs text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                <CheckCircle className="h-3 w-3" /> Friend
+                                              </span>
+                                            )}
+                                          </div>
                                         </div>
                                       </Link>
                                       
@@ -443,22 +471,31 @@ const ActivityDetail = () => {
                                             </Button>
                                           )}
                                           {!friendIds.includes(participant._id) && (
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                              onClick={() => handleFriendRequest(participant._id)}
-                                              disabled={friendRequestStatus[participant._id] === 'sent' || friendRequestStatus[participant._id] === 'sending'}
-                                              title="Add Friend"
-                                            >
-                                              {friendRequestStatus[participant._id] === 'sending' ? (
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                              ) : friendRequestStatus[participant._id] === 'sent' ? (
-                                                <CheckCircle className="h-4 w-4 text-green-500" />
-                                              ) : (
-                                                <UserPlus className="h-4 w-4" />
+                                            <div className="flex flex-col items-end gap-1">
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                                onClick={() => handleFriendRequest(participant._id, participant.username)}
+                                                disabled={friendRequestStatus[participant._id]?.state === 'sent' || friendRequestStatus[participant._id]?.state === 'sending'}
+                                                title={friendRequestStatus[participant._id]?.state === 'error' ? friendRequestStatus[participant._id]?.message : 'Add Friend'}
+                                              >
+                                                {friendRequestStatus[participant._id]?.state === 'sending' ? (
+                                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                                ) : friendRequestStatus[participant._id]?.state === 'sent' ? (
+                                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                                ) : friendRequestStatus[participant._id]?.state === 'error' ? (
+                                                  <AlertCircle className="h-4 w-4 text-destructive" />
+                                                ) : (
+                                                  <UserPlus className="h-4 w-4" />
+                                                )}
+                                              </Button>
+                                              {friendRequestStatus[participant._id]?.state === 'error' && friendRequestStatus[participant._id]?.message && (
+                                                <p className="text-[11px] text-destructive max-w-[140px] text-right leading-tight">
+                                                  {friendRequestStatus[participant._id]?.message}
+                                                </p>
                                               )}
-                                            </Button>
+                                            </div>
                                           )}
                                         </div>
                                       )}

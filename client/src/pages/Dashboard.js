@@ -6,7 +6,7 @@ import { getFriends, sendFriendRequestById, getFriendRequests } from '../api/fri
 import { getFriendRecommendations, getActivityRecommendations, getUserInsights } from '../api/recommendationService';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { Calendar, Users, PlusCircle, UserPlus, Mail, User, Sparkles } from 'lucide-react';
+import { Calendar, Users, PlusCircle, UserPlus, Mail, User, Sparkles, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import BeautifulBackground from '../components/effects/BeautifulBackground';
 import TiltCard from '../components/effects/TiltCard';
@@ -24,6 +24,17 @@ const Dashboard = () => {
   const [recommendedFriends, setRecommendedFriends] = useState([]);
   const [recommendedActivities, setRecommendedActivities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [friendIds, setFriendIds] = useState([]);
+  const [incomingRequestIds, setIncomingRequestIds] = useState([]);
+  const [friendActionStatus, setFriendActionStatus] = useState({});
+  const [friendActionFeedback, setFriendActionFeedback] = useState(null);
+
+  const extractId = (entity) => {
+    if (!entity) return null;
+    if (typeof entity === 'string') return entity;
+    if (typeof entity === 'object') return entity._id || entity.id || null;
+    return null;
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -115,6 +126,16 @@ const Dashboard = () => {
         setRecommendedFriends(friendRecs.slice(0, 4));
         setRecommendedActivities(activityRecs.slice(0, 3));
 
+        const extractedFriendIds = Array.isArray(friends)
+          ? friends.map(friend => extractId(friend)).filter(Boolean)
+          : [];
+        setFriendIds(extractedFriendIds);
+
+        const inboundRequestIds = Array.isArray(friendRequests)
+          ? friendRequests.map(request => extractId(request.requester || request.sender)).filter(Boolean)
+          : [];
+        setIncomingRequestIds(inboundRequestIds);
+
       } catch (error) {
         console.error("Failed to fetch dashboard data", error);
       } finally {
@@ -124,6 +145,38 @@ const Dashboard = () => {
 
     fetchDashboardData();
   }, []);
+
+  const handleSendFriendRequest = async (targetUserId, targetName) => {
+    if (!targetUserId) return;
+    setFriendActionStatus(prev => ({
+      ...prev,
+      [targetUserId]: { state: 'sending' }
+    }));
+    setFriendActionFeedback(null);
+    try {
+      await sendFriendRequestById(targetUserId);
+      setFriendActionStatus(prev => ({
+        ...prev,
+        [targetUserId]: { state: 'sent' }
+      }));
+      setFriendActionFeedback({
+        type: 'success',
+        message: `Friend request sent${targetName ? ` to ${targetName}` : ''}.`
+      });
+      setTimeout(() => setFriendActionFeedback(null), 4000);
+      if (typeof window !== 'undefined' && window.CustomEvent) {
+        window.dispatchEvent(new CustomEvent('friendRequestSent', { detail: { userId: targetUserId } }));
+      }
+    } catch (error) {
+      const message = error?.response?.data?.message || 'Failed to send friend request.';
+      setFriendActionStatus(prev => ({
+        ...prev,
+        [targetUserId]: { state: 'error', message }
+      }));
+      setFriendActionFeedback({ type: 'error', message });
+      setTimeout(() => setFriendActionFeedback(null), 6000);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -361,6 +414,17 @@ const Dashboard = () => {
             <h2 className="text-xl md:text-2xl font-bold font-bold">
               Friend Recommendations
             </h2>
+            {friendActionFeedback && (
+              <div
+                className={`text-sm px-3 py-2 rounded-xl border ${
+                  friendActionFeedback.type === 'success'
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600'
+                    : 'bg-destructive/10 border-destructive/30 text-destructive'
+                }`}
+              >
+                {friendActionFeedback.message}
+              </div>
+            )}
             
             <div className="space-y-4">
               {recommendedFriends.map((friend) => (
@@ -401,14 +465,65 @@ const Dashboard = () => {
                     </div>
                   )}
                   
-                  <Button 
-                    size="sm" 
-                    onClick={() => sendFriendRequestById(friend._id)} 
-                    className="w-full min-h-8  text-white font-medium rounded-lg"
-                  >
-                    <UserPlus className="w-4 h-4 mr-2" /> 
-                    Add Friend
-                  </Button>
+                  {(() => {
+                    const isFriend = friendIds.includes(friend._id);
+                    const hasIncomingRequest = incomingRequestIds.includes(friend._id);
+                    const actionState = friendActionStatus[friend._id]?.state;
+                    const actionMessage = friendActionStatus[friend._id]?.message;
+
+                    if (isFriend) {
+                      return (
+                        <Button size="sm" className="w-full" variant="secondary" disabled>
+                          <CheckCircle className="w-4 h-4 mr-2" /> Already Friends
+                        </Button>
+                      );
+                    }
+
+                    if (hasIncomingRequest) {
+                      return (
+                        <Button asChild size="sm" variant="outline" className="w-full">
+                          <Link to="/friends">
+                            <AlertCircle className="w-4 h-4 mr-2" /> Respond to Request
+                          </Link>
+                        </Button>
+                      );
+                    }
+
+                    const isDisabled = actionState === 'sending' || actionState === 'sent';
+
+                    return (
+                      <>
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleSendFriendRequest(friend._id, friend.username)} 
+                          className="w-full min-h-8 text-white font-medium rounded-lg"
+                          disabled={isDisabled}
+                        >
+                          {actionState === 'sending' ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Sending...
+                            </>
+                          ) : actionState === 'sent' ? (
+                            <>
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Request Sent
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus className="w-4 h-4 mr-2" />
+                              Add Friend
+                            </>
+                          )}
+                        </Button>
+                        {actionState === 'error' && actionMessage && (
+                          <p className="text-xs text-destructive mt-2">
+                            {actionMessage}
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               ))}
               
