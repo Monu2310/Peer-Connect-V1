@@ -87,8 +87,10 @@ const Register = () => {
       try {
         await axios.get(`${API_URL}/api/health`, { timeout: 5000 })
           .then(() => setServerStatus('ready'))
-          .catch(() => {});
-      } catch (err) {}
+          .catch(() => { /* Server wake-up failed, continue anyway */ });
+      } catch (err) {
+        // Server wake-up failed, continue anyway
+      }
     }
 
     try {
