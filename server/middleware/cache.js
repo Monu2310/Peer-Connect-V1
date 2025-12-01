@@ -9,6 +9,17 @@ const cacheResponse = (ttl = 600, keyGenerator = null) => {
       return next();
     }
 
+    // Never cache personalized/authed responses – they must stay fresh and per-user
+    const hasAuthHeader = Boolean(
+      req.headers['x-auth-token'] ||
+      (req.headers['authorization'] && req.headers['authorization'].toLowerCase().startsWith('bearer ')) ||
+      req.cookies?.token
+    );
+
+    if (hasAuthHeader) {
+      return next();
+    }
+
     // Generate cache key
     const cacheKey = keyGenerator 
       ? keyGenerator(req) 

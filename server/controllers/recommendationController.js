@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Activity = require('../models/Activity');
 const User = require('../models/User');
 const Friend = require('../models/Friend');
@@ -139,6 +140,18 @@ const calculateActivityRelevance = (userPreferences, activity) => {
   return matchedTerms > 0 ? (relevance / (matchedTerms * 5)) * 100 : 0;
 };
 
+const toObjectIdSafe = (value) => {
+  if (!value) {
+    return null;
+  }
+  try {
+    return new mongoose.Types.ObjectId(value);
+  } catch (err) {
+    console.warn('Skipping invalid ObjectId during recommendation build:', value);
+    return null;
+  }
+};
+
 // Get personalized activity recommendations
 exports.getRecommendations = async (req, res) => {
   try {
@@ -185,12 +198,15 @@ exports.getRecommendations = async (req, res) => {
 exports.getFriendRecommendations = async (req, res) => {
   try {
     const userId = req.user.id;
-    const mongoose = require('mongoose');
     
     // Get user profile with all preference fields (lean for performance)
     const user = await User.findById(userId)
       .select('interests major hobbies favoriteSubjects sports musicGenres movieGenres')
       .lean();
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
     
     // Get ALL friend relationships (accepted AND pending) to exclude them
     const existingFriendships = await Friend.find({
@@ -201,23 +217,26 @@ exports.getFriendRecommendations = async (req, res) => {
     }).select('requester recipient status').lean();
     
     // Extract ALL friend IDs (accepted friends + pending requests in both directions)
-    const friendIds = existingFriendships.map(friendship => {
-      const friendId = friendship.requester.toString() === userId 
-        ? friendship.recipient.toString() 
-        : friendship.requester.toString();
-      return mongoose.Types.ObjectId(friendId);
-    });
+    const friendIds = existingFriendships
+      .map(friendship => {
+        const requesterId = friendship.requester?.toString();
+        const recipientId = friendship.recipient?.toString();
+        const friendId = requesterId === userId ? recipientId : requesterId;
+        return toObjectIdSafe(friendId);
+      })
+      .filter(Boolean);
     
-    // Add current user ID to the exclusion list (convert to ObjectId)
-    const excludeIds = [...friendIds, mongoose.Types.ObjectId(userId)];
-    
+    const excludeIds = [...friendIds];
+    const selfObjectId = toObjectIdSafe(userId);
+    if (selfObjectId) {
+      excludeIds.push(selfObjectId);
+    }
+
     console.log(`Excluding ${excludeIds.length} users from recommendations (self + ${friendIds.length} friends/requests)`);
     
     // OPTIMIZATION: Pre-filter candidates at database level to reduce processing
     // Only fetch users who share at least ONE preference dimension with current user
-    const prefilterQuery = {
-      _id: { $nin: excludeIds }
-    };
+    const prefilterQuery = excludeIds.length ? { _id: { $nin: excludeIds } } : {};
     
     // Build OR conditions for users with ANY shared preferences
     const orConditions = [];

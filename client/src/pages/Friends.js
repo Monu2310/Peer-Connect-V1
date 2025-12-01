@@ -127,61 +127,61 @@ const Friends = () => {
       setError('Invalid request ID');
       return;
     }
+    
+    // Find the request being accepted
+    const requestToAccept = friendRequests.find(req => req._id === requestId);
+    if (!requestToAccept) {
+      setError('Request not found');
+      return;
+    }
+
     try {
       console.log('🔵 Accepting friend request:', requestId);
       
-      // Optimistically remove from UI immediately
+      // STEP 1: Optimistically update UI IMMEDIATELY
+      // Remove from requests list
       setFriendRequests(prev => prev.filter(req => req._id !== requestId));
+      
+      // Add requester to friends list immediately
+      const newFriend = requestToAccept.requester;
+      if (newFriend) {
+        setFriends(prev => {
+          const exists = prev.some(f => String(f._id || f.id) === String(newFriend._id || newFriend.id));
+          if (exists) return prev;
+          return [newFriend, ...prev];
+        });
+      }
+      
+      // Show success message immediately
+      setSuccess('Friend request accepted! They are now in your friends list.');
 
+      // STEP 2: Call backend API
       const result = await acceptFriendRequest(requestId);
       console.log('✅ Friend request accepted successfully:', result);
 
-      // Try to derive the new friend user from the response and update UI immediately
-      try {
-        let newFriendUser = null;
-        // Response may be a populated Friend doc: { requester, recipient, status }
-        if (result && result.requester && result.recipient) {
-          const requester = result.requester;
-          const recipient = result.recipient;
-          const recipientId = (recipient._id || recipient.id || recipient).toString();
-          const currentId = currentUser?.id || currentUser?._id;
-          // The new friend is the other user (the one who is NOT the current user)
-          newFriendUser = (recipientId === String(currentId)) ? requester : recipient;
-        } else if (result && result.friend) {
-          // older/alternative shape: { friend: { requester, recipient } }
-          const f = result.friend;
-          if (f && f.requester && f.recipient) {
-            const recipientId = (f.recipient._id || f.recipient.id || f.recipient).toString();
-            const currentId = currentUser?.id || currentUser?._id;
-            newFriendUser = (recipientId === String(currentId)) ? f.requester : f.recipient;
-          }
-        }
-
-        if (newFriendUser) {
-          // Add to friends list locally for immediate UX
-          setFriends(prev => {
-            // avoid duplicates
-            const exists = prev.some(u => (u._id || u.id || u) && String(u._id || u.id || u) === String(newFriendUser._id || newFriendUser.id || newFriendUser));
-            if (exists) return prev;
-            return [newFriendUser, ...prev];
-          });
-        }
-
-        // Invalidate warmed cache and notify other pages
-        try { intelligentCache.delete('user:friends'); } catch (e) { /* ignore */ }
-        if (typeof window !== 'undefined' && window.CustomEvent) {
-          window.dispatchEvent(new CustomEvent('friendshipChanged', { detail: { requestId, added: Boolean(newFriendUser) } }));
-        }
-      } catch (e) {
-        console.debug('Error applying optimistic friend update', e);
+      // STEP 3: Invalidate cache and notify other components
+      try { 
+        intelligentCache.delete('user:friends');
+        intelligentCache.delete('user:friend-requests');
+        intelligentCache.invalidateByTags(['friends', 'social']);
+      } catch (e) { /* ignore */ }
+      
+      if (typeof window !== 'undefined' && window.CustomEvent) {
+        window.dispatchEvent(new CustomEvent('friendshipChanged', { 
+          detail: { requestId, action: 'accepted', friend: newFriend } 
+        }));
       }
 
-      // Re-fetch all data to update lists with server data (ensure canonical state)
-      await fetchFriendsData();
-      setSuccess('Friend request accepted! They are now in your friends list.');
+      // STEP 4: Re-fetch immediately to keep UI perfectly in sync
+      try {
+        await fetchFriendsData();
+      } catch (e) {
+        console.debug('Background refresh failed:', e);
+      }
+
     } catch (err) {
       console.error('❌ Error accepting friend request:', err);
-      // If error, refetch to restore accurate state
+      // On error, revert optimistic update by refetching
       await fetchFriendsData();
       setError(err.response?.data?.message || 'Failed to accept friend request.');
     } finally {
@@ -261,6 +261,7 @@ const Friends = () => {
           <AnimatePresence>
             {error && (
               <motion.div 
+                key="error-alert"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -271,6 +272,7 @@ const Friends = () => {
             )}
             {success && (
               <motion.div 
+                key="success-alert"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -300,7 +302,7 @@ const Friends = () => {
 
             <AnimatePresence>
               {/* Friends Tab */}
-              <TabsContent value="friends" className="mt-0">
+              <TabsContent key="tab-friends" value="friends" className="mt-0">
                 {friends.length === 0 ? (
                   <motion.div key="no-friends" variants={itemVariants} className="flex items-center justify-center min-h-[350px]">
                     <div className="text-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-8 max-w-sm">
@@ -356,7 +358,7 @@ const Friends = () => {
               </TabsContent>
 
               {/* Requests Tab */}
-              <TabsContent value="requests" className="mt-0">
+              <TabsContent key="tab-requests" value="requests" className="mt-0">
                 {friendRequests.length === 0 ? (
                   <motion.div key="no-requests" variants={itemVariants} className="flex items-center justify-center min-h-[350px]">
                     <div className="text-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-8 max-w-sm">
@@ -406,14 +408,14 @@ const Friends = () => {
               </TabsContent>
 
               {/* Suggested Peers Tab */}
-              <TabsContent value="suggested" className="mt-0">
+              <TabsContent key="tab-suggested" value="suggested" className="mt-0">
                 <motion.div key="suggested-peers" variants={containerVariants} initial="hidden" animate="show">
                   <SuggestedPeers limit={9} />
                 </motion.div>
               </TabsContent>
 
               {/* Add Friend Tab */}
-              <TabsContent value="add" className="mt-0">
+              <TabsContent key="tab-add" value="add" className="mt-0">
                 <motion.div key="add-friend-form" variants={itemVariants} className="flex items-center justify-center min-h-[350px]">
                   <div className="w-full max-w-md bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-8">
                     <h3 className="text-xl font-semibold mb-2 gradient-text">Send Friend Request</h3>
