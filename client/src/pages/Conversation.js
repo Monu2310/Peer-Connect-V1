@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../core/AuthContext';
 import { getMessages, sendMessage, markAsRead } from '../api/messageService';
 import { getUserProfile } from '../api/userService';
+import { useDebounce } from '../hooks/performanceHooks';
 import io from 'socket.io-client';
 import { API_URL } from '../api/config';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -127,23 +128,22 @@ const Conversation = () => {
     }
   }, [messages]);
   
-  const handleTyping = useCallback(() => {
-    if (!socketRef.current || !currentUser || !currentUser._id) return;
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
+  // Debounced typing indicator - only emits once per 500ms instead of every keystroke
+  const [typingValue, setTypingValue] = useState('');
+  const debouncedTyping = useDebounce(typingValue, 500);
+  
+  useEffect(() => {
+    if (debouncedTyping && socketRef.current && currentUser?._id) {
+      socketRef.current.emit('typing', {
+        roomId,
+        userId: currentUser._id
+      });
     }
-
-    // Emit a typing event and debounce subsequent ones
-    socketRef.current.emit('typing', {
-      roomId,
-      userId: currentUser._id
-    });
-
-    typingTimeoutRef.current = setTimeout(() => {
-      // No-op timeout used for debouncing; receiver clears their own indicator
-    }, 500);
-  }, [roomId, currentUser]);
+  }, [debouncedTyping, roomId, currentUser]);
+  
+  const handleTyping = useCallback(() => {
+    setTypingValue(Date.now().toString());
+  }, []);
   
   // Helper function to format date separators
   const formatDateSeparator = (date) => {
@@ -210,15 +210,13 @@ const Conversation = () => {
       setNewMessage('');
       
       // Send message via API (this will return the real message with real _id)
+      // Server will broadcast via Socket.IO after saving, no need to emit here
       const sentMessage = await sendMessage(userId, newMessage);
       
       // Replace temp message with real message from server
       setMessages(prev => prev.map(msg => 
         msg._id === tempId ? { ...sentMessage, pending: false } : msg
       ));
-      
-      // Emit message through socket (server will broadcast to recipient only)
-      socketRef.current.emit('send-message', sentMessage);
     } catch (err) {
       console.error('Error sending message:', err);
       // Remove failed message from UI

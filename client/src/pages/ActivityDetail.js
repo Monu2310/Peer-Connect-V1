@@ -151,7 +151,7 @@ const ActivityDetail = () => {
   const canJoin = !authLoading && !isCreator && !hasJoined && !isFull && !isActivityPast;
 
   const handleJoin = async () => {
-    if (isActivityPast) return;
+    if (isActivityPast || actionLoading) return;
     setActionLoading(true);
     setError('');
     setSuccess('');
@@ -164,11 +164,12 @@ const ActivityDetail = () => {
       setError(message);
     } finally {
       setActionLoading(false);
+      setTimeout(() => setSuccess(''), 3000);
     }
   };
 
   const handleLeave = async () => {
-    if (isActivityPast) return;
+    if (isActivityPast || actionLoading) return;
     setActionLoading(true);
     setError('');
     setSuccess('');
@@ -181,10 +182,12 @@ const ActivityDetail = () => {
       setError(message);
     } finally {
       setActionLoading(false);
+      setTimeout(() => setSuccess(''), 3000);
     }
   };
 
   const handleDelete = async () => {
+    if (actionLoading) return;
     setActionLoading(true);
     setError('');
     setSuccess('');
@@ -194,8 +197,8 @@ const ActivityDetail = () => {
     } catch (err) {
       const message = err?.response?.data?.message || 'Failed to delete activity.';
       setError(message);
-    } finally {
       setActionLoading(false);
+      setTimeout(() => setError(''), 5000);
     }
   };
   
@@ -277,7 +280,7 @@ const ActivityDetail = () => {
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
           <motion.div variants={itemVariants} className="xl:col-span-8 space-y-6">
             {(error || success) && (
-              <AnimatePresence mode="wait">
+              <AnimatePresence>
                 {error && (
                   <motion.div
                     key="error-banner"
@@ -398,7 +401,7 @@ const ActivityDetail = () => {
                           <Dialog>
                             <DialogTrigger asChild>
                               <Button variant="link" className="h-auto p-0 text-primary font-medium hover:text-primary/80">
-                                View List
+                                View 
                               </Button>
                             </DialogTrigger>
                             <DialogContent className="bg-card border-primary/20 text-foreground max-w-md">

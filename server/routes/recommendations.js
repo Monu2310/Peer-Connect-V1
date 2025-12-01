@@ -23,4 +23,14 @@ router.get('/similar/:activityId', auth, recommendationController.getSimilarActi
 // @access  Private
 router.get('/insights', auth, recommendationController.getUserInsights);
 
+// @route   GET /api/recommendations/peers
+// @desc    Get ML-powered suggested peers based on comprehensive similarity
+// @access  Private
+router.get('/peers', auth, recommendationController.getSuggestedPeers);
+
+// @route   GET /api/recommendations/similarity/:targetUserId
+// @desc    Get detailed similarity score with a specific user
+// @access  Private
+router.get('/similarity/:targetUserId', auth, recommendationController.getSimilarityWithUser);
+
 module.exports = router;

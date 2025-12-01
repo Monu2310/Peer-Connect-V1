@@ -85,7 +85,7 @@ exports.updateProfile = async (req, res) => {
         : interests.split(',').map(i => i.trim()).filter(i => i);
     }
     
-    // Handle new preference fields
+    // Handle preference fields
     if (hobbies !== undefined) profileFields.hobbies = Array.isArray(hobbies) ? hobbies : [];
     if (favoriteSubjects !== undefined) profileFields.favoriteSubjects = Array.isArray(favoriteSubjects) ? favoriteSubjects : [];
     if (sports !== undefined) profileFields.sports = Array.isArray(sports) ? sports : [];
@@ -136,26 +136,52 @@ exports.searchUsers = async (req, res) => {
   }
 };
 
-// Get dashboard stats for current user
+// Get dashboard stats for current user (optimized with aggregation)
 exports.getDashboardStats = async (req, res) => {
   try {
-    // Get count of pending friend requests
-    const pendingRequests = await Friend.countDocuments({
-      recipient: req.user.id,
-      status: 'pending'
-    });
+    // OPTIMIZATION: Use single aggregation pipeline instead of 2 separate queries
+    const stats = await Friend.aggregate([
+      {
+        $match: {
+          $or: [
+            { requester: req.user.id },
+            { recipient: req.user.id }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          pendingRequests: {
+            $sum: {
+              $cond: [
+                { $and: [
+                  { $eq: ['$recipient', req.user.id] },
+                  { $eq: ['$status', 'pending'] }
+                ]},
+                1,
+                0
+              ]
+            }
+          },
+          friends: {
+            $sum: {
+              $cond: [
+                { $eq: ['$status', 'accepted'] },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      }
+    ]);
     
-    // Get count of friends
-    const friends = await Friend.countDocuments({
-      $or: [
-        { requester: req.user.id, status: 'accepted' },
-        { recipient: req.user.id, status: 'accepted' }
-      ]
-    });
+    const result = stats.length > 0 ? stats[0] : { pendingRequests: 0, friends: 0 };
     
     res.json({
-      pendingRequests,
-      friends
+      pendingRequests: result.pendingRequests,
+      friends: result.friends
     });
   } catch (err) {
     console.error(err.message);

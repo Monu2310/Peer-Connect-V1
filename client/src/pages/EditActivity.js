@@ -279,7 +279,7 @@ const EditActivity = () => {
             </div>
           </motion.div>
 
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             {error && (
               <motion.div
                 key="error-banner"

@@ -43,15 +43,16 @@ export const getFriendRequests = async () => {
     const response = await api.get('/api/friends/requests');
     console.log("Friend requests API response:", response.data);
     
-    // Process profile pictures for friend requests
+    // Process profile pictures for friend requests (handle 'requester' and 'sender' shapes)
     if (response.data && Array.isArray(response.data)) {
       response.data.forEach(request => {
-        if (request.sender && request.sender.profilePicture && !request.sender.profilePicture.startsWith('http')) {
-          request.sender.profilePicture = `${API_URL}${request.sender.profilePicture.startsWith('/') ? '' : '/'}${request.sender.profilePicture}`;
+        const requester = request.requester || request.sender || request.requesterId;
+        if (requester && requester.profilePicture && !requester.profilePicture.startsWith('http')) {
+          requester.profilePicture = `${API_URL}${requester.profilePicture.startsWith('/') ? '' : '/'}${requester.profilePicture}`;
         }
       });
     }
-    
+
     return response.data || [];
   } catch (error) {
     console.error('Error getting friend requests:', error.response?.data || error.message);
@@ -87,6 +88,23 @@ export const acceptFriendRequest = async (requestId) => {
       response.data.friend.profilePicture = `${API_URL}${response.data.friend.profilePicture.startsWith('/') ? '' : '/'}${response.data.friend.profilePicture}`;
     }
     
+    // Invalidate caches to trigger UI refresh
+    if (typeof window !== 'undefined') {
+      try {
+        const { default: intelligentCache } = await import('../lib/intelligentCache');
+        intelligentCache.delete('user:friend-requests');
+        intelligentCache.delete('user:friends');
+        intelligentCache.invalidateByTags(['friends', 'social']);
+      } catch (cacheErr) {
+        console.debug('Cache invalidation skipped:', cacheErr.message);
+      }
+      
+      // Dispatch event to refresh UI components
+      window.dispatchEvent(new CustomEvent('friendshipChanged', { 
+        detail: { requestId, action: 'accepted', friend: response.data.friend } 
+      }));
+    }
+    
     return response.data;
   } catch (error) {
     console.error('❌ API: Error accepting friend request:', error.response?.data || error.message);
@@ -100,6 +118,23 @@ export const rejectFriendRequest = async (requestId) => {
     console.log('📤 API: Declining friend request:', requestId);
     const response = await api.put(`/api/friends/decline/${requestId}`);
     console.log('📥 API: Decline response:', response.data);
+    
+    // Invalidate friend request cache to trigger UI refresh
+    if (typeof window !== 'undefined') {
+      try {
+        const { default: intelligentCache } = await import('../lib/intelligentCache');
+        intelligentCache.delete('user:friend-requests');
+        intelligentCache.invalidateByTags(['friend-requests']);
+      } catch (cacheErr) {
+        console.debug('Cache invalidation skipped:', cacheErr.message);
+      }
+      
+      // Dispatch event to refresh friend request list
+      window.dispatchEvent(new CustomEvent('friendRequestRejected', { 
+        detail: { requestId } 
+      }));
+    }
+    
     return response.data;
   } catch (error) {
     console.error('❌ API: Error rejecting friend request:', error.response?.data || error.message);

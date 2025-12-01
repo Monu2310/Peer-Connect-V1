@@ -48,6 +48,30 @@ const Dashboard = () => {
     }
   };
 
+  // Listen for profile updates and refresh recommendations
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      console.log('Profile updated, refreshing Dashboard recommendations...');
+      // Re-fetch dashboard data to get updated recommendations
+      const refreshData = async () => {
+        try {
+          const [friendRecs, activityRecs] = await Promise.all([
+            getFriendRecommendations(),
+            getActivityRecommendations(),
+          ]);
+          setRecommendedFriends(friendRecs.slice(0, 4));
+          setRecommendedActivities(activityRecs.slice(0, 3));
+        } catch (error) {
+          console.error('Failed to refresh recommendations:', error);
+        }
+      };
+      refreshData();
+    };
+    
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    return () => window.removeEventListener('profileUpdated', handleProfileUpdate);
+  }, []);
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       setIsLoading(true);

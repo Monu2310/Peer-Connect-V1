@@ -45,25 +45,25 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
     return senderId === userId;
   };
 
-  // Check if user has joined activity (prioritizing props, then localStorage)
+  // Check if user has joined activity (prioritizing props, then localStorage, then API)
   useEffect(() => {
-    // First check if hasJoined prop is provided (fastest path)
-    if (hasJoined === true) {
-      setHasJoinedActivity(true);
+    // PRIORITY 1: Check if hasJoined prop is explicitly provided (instant, no delay)
+    if (hasJoined !== undefined && hasJoined !== null) {
+      setHasJoinedActivity(Boolean(hasJoined));
       setIsCheckingParticipation(false);
-      localStorage.setItem(participationKey, 'true');
-      return;
+      localStorage.setItem(participationKey, String(hasJoined));
+      return; // EXIT - no API call needed
     }
     
-    // Next check localStorage for previously saved state
+    // PRIORITY 2: Check localStorage for cached state (very fast, ~1ms)
     const savedStatus = localStorage.getItem(participationKey);
-    if (savedStatus === 'true') {
-      setHasJoinedActivity(true);
+    if (savedStatus !== null) {
+      setHasJoinedActivity(savedStatus === 'true');
       setIsCheckingParticipation(false);
-      return;
+      return; // EXIT - no API call needed
     }
     
-    // Last resort: check with API
+    // PRIORITY 3: Last resort - check with API (slow, 200-500ms)
     const checkParticipation = async () => {
       if (!currentUser?.id || !activityId) {
         setIsCheckingParticipation(false);

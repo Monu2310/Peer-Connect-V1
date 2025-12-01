@@ -114,6 +114,22 @@ const CreateActivity = () => {
     try {
       const createdActivity = await createActivity(activityData);
       
+      // Invalidate activity caches to refresh lists across app
+      try {
+        const { default: intelligentCache } = await import('../lib/intelligentCache');
+        intelligentCache.invalidateByTags(['activities', 'activity-list']);
+        intelligentCache.delete('activities:all');
+      } catch (cacheErr) {
+        console.debug('Cache invalidation skipped:', cacheErr.message);
+      }
+      
+      // Dispatch event to refresh Activities page
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('activityCreated', { 
+          detail: { activityId: createdActivity._id } 
+        }));
+      }
+      
       // Show success message briefly before redirecting
       setError('');
       

@@ -1,5 +1,31 @@
 import api from './config';
 
+// Get AI-powered suggested peers based on comprehensive similarity scoring
+export const getSuggestedPeers = async (limit = 10) => {
+  try {
+    console.log('🤖 Fetching AI-suggested peers...');
+    const response = await api.get(`/api/recommendations/peers?limit=${limit}`);
+    console.log(`✅ Received ${response.data.length} peer suggestions`);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching suggested peers:', error.response?.data || error.message);
+    return [];
+  }
+};
+
+// Get detailed similarity score with a specific user
+export const getSimilarityWithUser = async (targetUserId) => {
+  try {
+    console.log('🤖 Calculating similarity with user:', targetUserId);
+    const response = await api.get(`/api/recommendations/similarity/${targetUserId}`);
+    console.log('✅ Similarity data:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error calculating similarity:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
 // Get activity recommendations
 export const getActivityRecommendations = async () => {
   try {

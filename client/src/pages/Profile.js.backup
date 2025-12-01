@@ -43,47 +43,12 @@ import {
   Sparkles
 } from 'lucide-react';
 import AvatarSelector from '../components/AvatarSelector';
+import NetflixStyleSelector from '../components/NetflixStyleSelector';
 import BeautifulBackground from '../components/effects/BeautifulBackground';
 import GlowOrb from '../components/effects/GlowOrb';
 import ParticleExplosion from '../components/effects/ParticleExplosion';
 import MagneticButton from '../components/effects/MagneticButton';
-
-// Simple Checkbox Group Component
-const SimpleCheckboxGroup = ({ label, options, selected, onChange }) => {
-  const toggleOption = (option) => {
-    if (selected.includes(option)) {
-      onChange(selected.filter(item => item !== option));
-    } else {
-      onChange([...selected, option]);
-    }
-  };
-
-  return (
-    <div>
-      <label className="block text-sm font-bold text-foreground mb-3">{label}</label>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-        {options.map((option) => {
-          const isSelected = selected.includes(option);
-          return (
-            <button
-              key={option}
-              type="button"
-              onClick={() => toggleOption(option)}
-              className={`px-3 py-2 text-sm font-medium rounded-lg border-2 transition-all ${
-                isSelected
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border/50 bg-card hover:border-primary/30 hover:bg-muted/50 text-muted-foreground'
-              }`}
-            >
-              {option}
-            </button>
-          );
-        })}
-      </div>
-      <p className="text-xs text-muted-foreground mt-2">{selected.length} selected</p>
-    </div>
-  );
-};
+// Removed unused visual effect imports (RippleEffect, TiltCard) to satisfy ESLint
 
 const Profile = () => {
   const { userId } = useParams();
@@ -101,7 +66,12 @@ const Profile = () => {
     favoriteSubjects: [],
     sports: [],
     musicGenres: [],
-    movieGenres: []
+    movieGenres: [],
+    favoriteMovies: [],
+    favoriteShows: [],
+    favoriteBooks: [],
+    favoriteMusic: [],
+    favoriteGames: []
   });
 
   const [joinedActivities, setJoinedActivities] = useState([]);
@@ -120,6 +90,8 @@ const Profile = () => {
   const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
+  const [showPreferencesSelector, setShowPreferencesSelector] = useState(false);
+  const [preferencesCategory, setPreferencesCategory] = useState('movies');
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -156,7 +128,12 @@ const Profile = () => {
         favoriteSubjects: currentUser.favoriteSubjects || [],
         sports: currentUser.sports || [],
         musicGenres: currentUser.musicGenres || [],
-        movieGenres: currentUser.movieGenres || []
+        movieGenres: currentUser.movieGenres || [],
+        favoriteMovies: currentUser.favoriteMovies || [],
+        favoriteShows: currentUser.favoriteShows || [],
+        favoriteBooks: currentUser.favoriteBooks || [],
+        favoriteMusic: currentUser.favoriteMusic || [],
+        favoriteGames: currentUser.favoriteGames || []
       });
     }
   }, [currentUser]);
@@ -183,7 +160,12 @@ const Profile = () => {
         favoriteSubjects: profileData.favoriteSubjects || [],
         sports: profileData.sports || [],
         musicGenres: profileData.musicGenres || [],
-        movieGenres: profileData.movieGenres || []
+        movieGenres: profileData.movieGenres || [],
+        favoriteMovies: profileData.favoriteMovies || [],
+        favoriteShows: profileData.favoriteShows || [],
+        favoriteBooks: profileData.favoriteBooks || [],
+        favoriteMusic: profileData.favoriteMusic || [],
+        favoriteGames: profileData.favoriteGames || []
       }));
 
       if (!isOwnProfile && currentUser) {
@@ -385,7 +367,12 @@ const Profile = () => {
         favoriteSubjects: Array.isArray(formData.favoriteSubjects) ? formData.favoriteSubjects : [],
         sports: Array.isArray(formData.sports) ? formData.sports : [],
         musicGenres: Array.isArray(formData.musicGenres) ? formData.musicGenres : [],
-        movieGenres: Array.isArray(formData.movieGenres) ? formData.movieGenres : []
+        movieGenres: Array.isArray(formData.movieGenres) ? formData.movieGenres : [],
+        favoriteMovies: Array.isArray(formData.favoriteMovies) ? formData.favoriteMovies : [],
+        favoriteShows: Array.isArray(formData.favoriteShows) ? formData.favoriteShows : [],
+        favoriteBooks: Array.isArray(formData.favoriteBooks) ? formData.favoriteBooks : [],
+        favoriteMusic: Array.isArray(formData.favoriteMusic) ? formData.favoriteMusic : [],
+        favoriteGames: Array.isArray(formData.favoriteGames) ? formData.favoriteGames : []
       };
 
       console.log('Saving profile with data:', dataToSend);
@@ -478,7 +465,39 @@ const Profile = () => {
     }
   };
 
+  const handlePreferencesSave = async (category, selected) => {
+    try {
+      setLoading(true);
+      
+      const categoryKey = category === 'movies' ? 'favoriteMovies' :
+                          category === 'shows' ? 'favoriteShows' :
+                          category === 'books' ? 'favoriteBooks' :
+                          category === 'music' ? 'favoriteMusic' :
+                          'favoriteGames';
+      
+      const updatedFormData = {
+        ...formData,
+        [categoryKey]: selected
+      };
+      
+      const updatedUserData = await updateUserProfile(updatedFormData);
+      
+      setFormData(updatedFormData);
+      updateAuthUserProfile(updatedUserData);
+      setSuccess(`${category.charAt(0).toUpperCase() + category.slice(1)} preferences saved!`);
+    } catch (err) {
+      setError('Failed to save preferences');
+    } finally {
+      setLoading(false);
+      setTimeout(() => setSuccess(''), 3000);
+      setTimeout(() => setError(''), 5000);
+    }
+  };
 
+  const openPreferencesSelector = (category) => {
+    setPreferencesCategory(category);
+    setShowPreferencesSelector(true);
+  };
 
   const handleAvatarUpload = async (file) => {
     if (file.size > 5 * 1024 * 1024) {
@@ -908,54 +927,70 @@ const Profile = () => {
             </div>
           </motion.div>
 
-          {/* Simple Preferences - Checkboxes */}
+          {/* Entertainment Preferences - Netflix Style */}
           {isOwnProfile && isEditing && (
             <motion.div variants={itemVariants} className="mb-8">
-              <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 space-y-6">
-                <div className="flex items-center gap-3">
+              <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-6">
                   <Sparkles className="h-6 w-6 text-primary" />
-                  <h3 className="text-xl font-semibold">Preferences</h3>
+                  <h3 className="text-xl font-semibold">Entertainment Preferences</h3>
                 </div>
-                
-                {/* Hobbies */}
-                <SimpleCheckboxGroup
-                  label="Hobbies"
-                  options={['Reading', 'Gaming', 'Photography', 'Cooking', 'Traveling', 'Sports', 'Music', 'Art', 'Writing', 'Fitness']}
-                  selected={formData.hobbies || []}
-                  onChange={(selected) => setFormData({...formData, hobbies: selected})}
-                />
-                
-                {/* Favorite Subjects */}
-                <SimpleCheckboxGroup
-                  label="Favorite Subjects"
-                  options={['Math', 'Science', 'History', 'Literature', 'Art', 'Music', 'Physics', 'Chemistry', 'Biology', 'Computer Science']}
-                  selected={formData.favoriteSubjects || []}
-                  onChange={(selected) => setFormData({...formData, favoriteSubjects: selected})}
-                />
-                
-                {/* Sports */}
-                <SimpleCheckboxGroup
-                  label="Sports"
-                  options={['Basketball', 'Football', 'Soccer', 'Tennis', 'Swimming', 'Running', 'Yoga', 'Gym', 'Cycling', 'Volleyball']}
-                  selected={formData.sports || []}
-                  onChange={(selected) => setFormData({...formData, sports: selected})}
-                />
-                
-                {/* Music Genres */}
-                <SimpleCheckboxGroup
-                  label="Music"
-                  options={['Pop', 'Rock', 'Hip Hop', 'Jazz', 'Classical', 'Electronic', 'Country', 'R&B', 'Indie', 'Metal']}
-                  selected={formData.musicGenres || []}
-                  onChange={(selected) => setFormData({...formData, musicGenres: selected})}
-                />
-                
-                {/* Movie Genres */}
-                <SimpleCheckboxGroup
-                  label="Movies/TV"
-                  options={['Action', 'Comedy', 'Drama', 'Horror', 'Sci-Fi', 'Romance', 'Thriller', 'Documentary', 'Animation', 'Fantasy']}
-                  selected={formData.movieGenres || []}
-                  onChange={(selected) => setFormData({...formData, movieGenres: selected})}
-                />
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                  <button
+                    onClick={() => openPreferencesSelector('movies')}
+                    className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-border/50 hover:border-primary/50 bg-card hover:bg-muted/30 transition-all duration-300 group"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                      <Film className="h-6 w-6 text-primary" />
+                    </div>
+                    <span className="font-semibold text-sm">Movies</span>
+                    <span className="text-xs text-muted-foreground">{formData.favoriteMovies?.length || 0} selected</span>
+                  </button>
+
+                  <button
+                    onClick={() => openPreferencesSelector('shows')}
+                    className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-border/50 hover:border-primary/50 bg-card hover:bg-muted/30 transition-all duration-300 group"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                      <Tv className="h-6 w-6 text-primary" />
+                    </div>
+                    <span className="font-semibold text-sm">TV Shows</span>
+                    <span className="text-xs text-muted-foreground">{formData.favoriteShows?.length || 0} selected</span>
+                  </button>
+
+                  <button
+                    onClick={() => openPreferencesSelector('books')}
+                    className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-border/50 hover:border-primary/50 bg-card hover:bg-muted/30 transition-all duration-300 group"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                      <Book className="h-6 w-6 text-primary" />
+                    </div>
+                    <span className="font-semibold text-sm">Books</span>
+                    <span className="text-xs text-muted-foreground">{formData.favoriteBooks?.length || 0} selected</span>
+                  </button>
+
+                  <button
+                    onClick={() => openPreferencesSelector('music')}
+                    className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-border/50 hover:border-primary/50 bg-card hover:bg-muted/30 transition-all duration-300 group"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                      <Music className="h-6 w-6 text-primary" />
+                    </div>
+                    <span className="font-semibold text-sm">Music</span>
+                    <span className="text-xs text-muted-foreground">{formData.favoriteMusic?.length || 0} selected</span>
+                  </button>
+
+                  <button
+                    onClick={() => openPreferencesSelector('games')}
+                    className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-border/50 hover:border-primary/50 bg-card hover:bg-muted/30 transition-all duration-300 group"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                      <Gamepad2 className="h-6 w-6 text-primary" />
+                    </div>
+                    <span className="font-semibold text-sm">Games</span>
+                    <span className="text-xs text-muted-foreground">{formData.favoriteGames?.length || 0} selected</span>
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}
@@ -1191,6 +1226,20 @@ const Profile = () => {
         username={formData.username}
       />
 
+      {/* Netflix-Style Preferences Selector */}
+      <NetflixStyleSelector
+        isOpen={showPreferencesSelector}
+        onClose={() => setShowPreferencesSelector(false)}
+        onSave={handlePreferencesSave}
+        category={preferencesCategory}
+        initialSelected={
+          preferencesCategory === 'movies' ? formData.favoriteMovies :
+          preferencesCategory === 'shows' ? formData.favoriteShows :
+          preferencesCategory === 'books' ? formData.favoriteBooks :
+          preferencesCategory === 'music' ? formData.favoriteMusic :
+          formData.favoriteGames
+        }
+      />
     </BeautifulBackground>
   );
 };

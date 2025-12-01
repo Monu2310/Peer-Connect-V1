@@ -38,12 +38,14 @@ router.put('/decline/:requestId', auth, friendController.declineFriendRequest);
 // @access  Private
 router.get('/', auth, friendController.getFriends);
 
+// @route   DELETE /api/friends/by-user/:userId
+// @desc    Remove friendship by other user's id
+// @access  Private
+router.delete('/by-user/:userId', auth, friendController.removeFriendByUser);
+
 // @route   DELETE /api/friends/:friendshipId
 // @desc    Remove a friend
 // @access  Private
 router.delete('/:friendshipId', auth, friendController.removeFriend);
 
 module.exports = router;
-
-// Added: route to remove friendship by other user's id
-router.delete('/by-user/:userId', auth, friendController.removeFriendByUser);

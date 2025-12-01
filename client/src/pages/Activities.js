@@ -48,6 +48,17 @@ const Activities = () => {
     }
   };
 
+  // Listen for activity creation events
+  useEffect(() => {
+    const handleActivityCreated = () => {
+      console.log('Activity created, refreshing list...');
+      setRefreshTrigger(prev => prev + 1);
+    };
+    
+    window.addEventListener('activityCreated', handleActivityCreated);
+    return () => window.removeEventListener('activityCreated', handleActivityCreated);
+  }, []);
+
   // Refresh when navigating back with refresh state
   useEffect(() => {
     if (location.state?.refresh) {
@@ -250,7 +261,7 @@ const Activities = () => {
         </motion.div>
 
         {/* Activities Grid or Empty State */}
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           {filteredActivities.length > 0 ? (
             <motion.div 
               key="activity-grid"

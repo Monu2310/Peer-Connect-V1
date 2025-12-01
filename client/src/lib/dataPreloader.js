@@ -9,6 +9,10 @@ class DataPreloader {
     this.isProcessing = false;
     this.maxConcurrentRequests = 4;
     this.lastPreloadTimestamps = new Map();
+    this.cooldowns = new Map();
+    this.maxRetries = 4;
+    this.baseRetryDelay = 1000; // ms
+    this.maxRetryDelay = 30000; // ms
     this.backgroundSyncHandles = new Map();
     this.preloadDelays = {
       immediate: 0,      // Critical data
@@ -57,23 +61,76 @@ class DataPreloader {
 
   // Execute a batch of requests in parallel
   async executeBatch(requests) {
-    const promises = requests.map(async (request) => {
-      try {
-        const result = await request.fn();
-        this.preloadCache.set(request.key, {
-          data: result.data,
-          timestamp: Date.now(),
-          ttl: 5 * 60 * 1000 // 5 minutes
-        });
-        console.log(`✅ Preloaded: ${request.key}`);
-        return { key: request.key, success: true, data: result.data };
-      } catch (error) {
-        console.warn(`❌ Failed to preload: ${request.key}`, error);
-        return { key: request.key, success: false, error };
-      }
-    });
-
+    const promises = requests.map(request => this.executeRequestWithRetries(request));
     return Promise.allSettled(promises);
+  }
+
+  // Execute single request with retries, exponential backoff and jitter
+  async executeRequestWithRetries(request) {
+    const attempt = async (req, attempts) => {
+      try {
+        // If this key is in cooldown, wait until cooldown expires and return skipped
+        const cooldownUntil = this.cooldowns.get(req.key);
+        if (cooldownUntil && Date.now() < cooldownUntil) {
+          const wait = cooldownUntil - Date.now();
+          console.debug(`Cooldown active for ${req.key}, delaying ${wait}ms`);
+          await new Promise(res => setTimeout(res, wait));
+          return { key: req.key, success: false, skipped: true };
+        }
+
+        const result = await req.fn();
+        // only set cache on success
+        if (result && result.data !== undefined) {
+          this.preloadCache.set(req.key, {
+            data: result.data,
+            timestamp: Date.now(),
+            ttl: 5 * 60 * 1000 // 5 minutes
+          });
+        }
+        console.log(`✅ Preloaded: ${req.key}`);
+        return { key: req.key, success: true, data: result.data };
+      } catch (error) {
+        const status = error?.response?.status;
+        // Do not evict existing cache on failures — keep last known good data
+        if (status === 429) {
+          // Rate limited: schedule a retry with exponential backoff + jitter
+          const nextAttempt = attempts + 1;
+          if (nextAttempt > this.maxRetries) {
+            console.warn(`429 and max retries exceeded for ${req.key}`);
+            // set a short cooldown to avoid immediate re-requests
+            this.cooldowns.set(req.key, Date.now() + 60000);
+            return { key: req.key, success: false, error };
+          }
+
+          const backoff = Math.min(this.baseRetryDelay * Math.pow(2, attempts), this.maxRetryDelay);
+          const jitter = Math.floor(Math.random() * 300) - 150; // +/-150ms
+          const delay = Math.max(200, backoff + jitter);
+          // set a cooldown so other callers know to defer
+          this.cooldowns.set(req.key, Date.now() + delay);
+          console.warn(`429 received for ${req.key}. Retrying in ${delay}ms (attempt ${nextAttempt})`);
+
+          await new Promise(res => setTimeout(res, delay));
+          return attempt(req, nextAttempt);
+        }
+
+        // For other transient errors, retry a few times
+        if (attempts < this.maxRetries && (!status || status >= 500)) {
+          const nextAttempt = attempts + 1;
+          const backoff = Math.min(this.baseRetryDelay * Math.pow(2, attempts), this.maxRetryDelay);
+          const jitter = Math.floor(Math.random() * 200);
+          const delay = backoff + jitter;
+          console.warn(`Transient error for ${req.key}. Retrying in ${delay}ms (attempt ${nextAttempt})`, error?.message || error);
+          await new Promise(res => setTimeout(res, delay));
+          return attempt(req, nextAttempt);
+        }
+
+        console.warn(`❌ Failed to preload: ${req.key}`, error);
+        return { key: req.key, success: false, error };
+      }
+    };
+
+    // start with attempt 0
+    return attempt(request, 0);
   }
 
   // Queue requests with priority handling

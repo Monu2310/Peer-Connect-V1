@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getFriends, getFriendRequests, sendFriendRequestById, acceptFriendRequest, rejectFriendRequest } from '../api/friendService';
+import intelligentCache from '../lib/intelligentCache';
 import { findUserByEmail } from '../api/userService';
 import { useAuth } from '../core/AuthContext';
 import { Button } from '../components/ui/button';
@@ -10,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { UserCheck, UserX, Mail, MessageSquare, Loader2, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BeautifulBackground from '../components/effects/BeautifulBackground';
+import SuggestedPeers from '../components/SuggestedPeers';
 
 const Friends = () => {
   const { currentUser } = useAuth();
@@ -38,6 +40,34 @@ const Friends = () => {
 
   useEffect(() => {
     fetchFriendsData();
+
+    // Listen for friendship changes from other parts of the app and refresh
+    const onFriendshipChanged = () => {
+      // Invalidate warmed friends cache to ensure fresh data
+      try { intelligentCache.delete('user:friends'); } catch (e) { /* ignore */ }
+      fetchFriendsData();
+    };
+    window.addEventListener('friendshipChanged', onFriendshipChanged);
+
+    const onFriendRequestSent = () => {
+      try { intelligentCache.delete('user:friends'); } catch (e) { /* ignore */ }
+      fetchFriendsData();
+      // also refresh friend requests
+      // fetchFriendsData already calls getFriendRequests
+    };
+    window.addEventListener('friendRequestSent', onFriendRequestSent);
+
+    const onFriendRequestRejected = () => {
+      try { intelligentCache.delete('user:friends'); } catch (e) { /* ignore */ }
+      fetchFriendsData();
+    };
+    window.addEventListener('friendRequestRejected', onFriendRequestRejected);
+
+    return () => {
+      window.removeEventListener('friendshipChanged', onFriendshipChanged);
+      window.removeEventListener('friendRequestSent', onFriendRequestSent);
+      window.removeEventListener('friendRequestRejected', onFriendRequestRejected);
+    };
   }, []);
 
   const fetchFriendsData = async () => {
@@ -77,6 +107,12 @@ const Friends = () => {
       await sendFriendRequestById(targetUser._id);
       setNewFriendEmail('');
       setSuccess(`Friend request sent to ${targetUser.username}!`);
+      
+      // Invalidate cache and dispatch event immediately
+      try { intelligentCache.delete('user:friends'); } catch (e) { /* ignore */ }
+      if (typeof window !== 'undefined' && window.CustomEvent) {
+        window.dispatchEvent(new CustomEvent('friendRequestSent', { detail: { userId: targetUser._id } }));
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send friend request.');
     } finally {
@@ -96,11 +132,51 @@ const Friends = () => {
       
       // Optimistically remove from UI immediately
       setFriendRequests(prev => prev.filter(req => req._id !== requestId));
-      
+
       const result = await acceptFriendRequest(requestId);
       console.log('✅ Friend request accepted successfully:', result);
-      
-      // Re-fetch all data to update lists with server data
+
+      // Try to derive the new friend user from the response and update UI immediately
+      try {
+        let newFriendUser = null;
+        // Response may be a populated Friend doc: { requester, recipient, status }
+        if (result && result.requester && result.recipient) {
+          const requester = result.requester;
+          const recipient = result.recipient;
+          const recipientId = (recipient._id || recipient.id || recipient).toString();
+          const currentId = currentUser?.id || currentUser?._id;
+          // The new friend is the other user (the one who is NOT the current user)
+          newFriendUser = (recipientId === String(currentId)) ? requester : recipient;
+        } else if (result && result.friend) {
+          // older/alternative shape: { friend: { requester, recipient } }
+          const f = result.friend;
+          if (f && f.requester && f.recipient) {
+            const recipientId = (f.recipient._id || f.recipient.id || f.recipient).toString();
+            const currentId = currentUser?.id || currentUser?._id;
+            newFriendUser = (recipientId === String(currentId)) ? f.requester : f.recipient;
+          }
+        }
+
+        if (newFriendUser) {
+          // Add to friends list locally for immediate UX
+          setFriends(prev => {
+            // avoid duplicates
+            const exists = prev.some(u => (u._id || u.id || u) && String(u._id || u.id || u) === String(newFriendUser._id || newFriendUser.id || newFriendUser));
+            if (exists) return prev;
+            return [newFriendUser, ...prev];
+          });
+        }
+
+        // Invalidate warmed cache and notify other pages
+        try { intelligentCache.delete('user:friends'); } catch (e) { /* ignore */ }
+        if (typeof window !== 'undefined' && window.CustomEvent) {
+          window.dispatchEvent(new CustomEvent('friendshipChanged', { detail: { requestId, added: Boolean(newFriendUser) } }));
+        }
+      } catch (e) {
+        console.debug('Error applying optimistic friend update', e);
+      }
+
+      // Re-fetch all data to update lists with server data (ensure canonical state)
       await fetchFriendsData();
       setSuccess('Friend request accepted! They are now in your friends list.');
     } catch (err) {
@@ -127,6 +203,12 @@ const Friends = () => {
       
       await rejectFriendRequest(requestId);
       console.log('✅ Friend request declined successfully');
+      
+      // Invalidate cache and dispatch event immediately
+      try { intelligentCache.delete('user:friends'); } catch (e) { /* ignore */ }
+      if (typeof window !== 'undefined' && window.CustomEvent) {
+        window.dispatchEvent(new CustomEvent('friendRequestRejected', { detail: { requestId } }));
+      }
       
       // Re-fetch all data to ensure consistency
       await fetchFriendsData();
@@ -201,19 +283,22 @@ const Friends = () => {
 
           {/* Tabs */}
           <Tabs defaultValue="friends" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-muted/50 border border-border/30 p-1 rounded-xl mb-8">
+            <TabsList className="grid w-full grid-cols-4 bg-muted/50 border border-border/30 p-1 rounded-xl mb-8">
               <TabsTrigger value="friends" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm font-medium">
                 Friends ({friends.length})
               </TabsTrigger>
               <TabsTrigger value="requests" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm font-medium">
                 Requests ({friendRequests.length})
               </TabsTrigger>
+              <TabsTrigger value="suggested" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm font-medium">
+                Suggested
+              </TabsTrigger>
               <TabsTrigger value="add" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm font-medium">
                 Add Friend
               </TabsTrigger>
             </TabsList>
 
-            <AnimatePresence mode="wait">
+            <AnimatePresence>
               {/* Friends Tab */}
               <TabsContent value="friends" className="mt-0">
                 {friends.length === 0 ? (
@@ -231,8 +316,10 @@ const Friends = () => {
                   </motion.div>
                 ) : (
                   <motion.div key="friends-list" variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pb-12">
-                    {friends.filter(friend => friend && friend._id).map(friend => (
-                      <motion.div key={friend._id} variants={itemVariants} whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
+                    {friends.filter((friend) => friend && (friend._id || friend.id || friend.username)).map((friend, idx) => {
+                      const key = friend._id || friend.id || friend.username || `friend-${idx}`;
+                      return (
+                      <motion.div key={key} variants={itemVariants} whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
                         <div className="group relative bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300 hover:shadow-lg h-full">
                           
                           <div className="relative z-10">
@@ -262,7 +349,8 @@ const Friends = () => {
                           </div>
                         </div>
                       </motion.div>
-                    ))}
+                      );
+                    })}
                   </motion.div>
                 )}
               </TabsContent>
@@ -281,8 +369,11 @@ const Friends = () => {
                   </motion.div>
                 ) : (
                   <motion.div key="requests-list" variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pb-12">
-                    {friendRequests.filter(request => request && request._id && request.requester).map(request => (
-                      <motion.div key={request._id} variants={itemVariants} whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
+                    {friendRequests.filter((request) => request && (request._id || request.id || (request.requester && (request.requester._id || request.requester.id || request.requester.username)))).map((request, idx) => {
+                      const requester = request.requester || {};
+                      const key = request._id || request.id || requester._id || requester.id || requester.username || `request-${idx}`;
+                      return (
+                      <motion.div key={key} variants={itemVariants} whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
                         <div className="group relative bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300 hover:shadow-lg h-full">
                           
                           <div className="relative z-10">
@@ -308,9 +399,17 @@ const Friends = () => {
                           </div>
                         </div>
                       </motion.div>
-                    ))}
+                      );
+                    })}
                   </motion.div>
                 )}
+              </TabsContent>
+
+              {/* Suggested Peers Tab */}
+              <TabsContent value="suggested" className="mt-0">
+                <motion.div key="suggested-peers" variants={containerVariants} initial="hidden" animate="show">
+                  <SuggestedPeers limit={9} />
+                </motion.div>
               </TabsContent>
 
               {/* Add Friend Tab */}

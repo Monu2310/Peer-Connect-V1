@@ -216,10 +216,10 @@ exports.logout = (req, res) => {
   res.json({ message: 'Logged out successfully' });
 };
 
-// Firebase-based registration: trusts Firebase for password, we only store profile/meta
+  // Firebase-based registration: trusts Firebase for password, we only store profile/meta
 exports.firebaseRegister = async (req, res) => {
   try {
-    const { idToken, username } = req.body;
+    const { idToken, username, hobbies, favoriteSubjects, sports, musicGenres, movieGenres, major, graduationYear } = req.body;
 
     if (!idToken || !username) {
       return res.status(400).json({ message: 'idToken and username are required' });
@@ -257,13 +257,19 @@ exports.firebaseRegister = async (req, res) => {
         firebaseUid,
         // Generate a random password since Firebase handles auth; user won't use this directly
         password: Math.random().toString(36).slice(-12),
-        profilePicture: 'https://avatars.dicebear.com/api/identicon/' + finalUsername + '.svg'
+        profilePicture: 'https://avatars.dicebear.com/api/identicon/' + finalUsername + '.svg',
+        // Save ALL preference fields from signup
+        hobbies: Array.isArray(hobbies) ? hobbies : [],
+        favoriteSubjects: Array.isArray(favoriteSubjects) ? favoriteSubjects : [],
+        sports: Array.isArray(sports) ? sports : [],
+        musicGenres: Array.isArray(musicGenres) ? musicGenres : [],
+        movieGenres: Array.isArray(movieGenres) ? movieGenres : [],
+        major: major || '',
+        year: graduationYear ? graduationYear.toString() : ''
       });
 
       await user.save();
-    }
-
-    // We no longer issue a local JWT. The client should use the Firebase ID Token.
+    }    // We no longer issue a local JWT. The client should use the Firebase ID Token.
     // We return the user data so the client can store it.
     
     res.status(200).json({
@@ -273,6 +279,11 @@ exports.firebaseRegister = async (req, res) => {
         username: user.username,
         email: user.email,
         profilePicture: user.profilePicture,
+        bio: user.bio || '',
+        location: user.location || '',
+        major: user.major || '',
+        year: user.year || '',
+        interests: user.interests || [],
         hobbies: user.hobbies || [],
         favoriteSubjects: user.favoriteSubjects || [],
         sports: user.sports || [],
@@ -345,6 +356,11 @@ exports.firebaseLogin = async (req, res) => {
         username: user.username,
         email: user.email,
         profilePicture: user.profilePicture,
+        bio: user.bio || '',
+        location: user.location || '',
+        major: user.major || '',
+        year: user.year || '',
+        interests: user.interests || [],
         hobbies: user.hobbies || [],
         favoriteSubjects: user.favoriteSubjects || [],
         sports: user.sports || [],

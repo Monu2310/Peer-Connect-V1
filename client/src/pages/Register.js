@@ -1,26 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../core/AuthContext";
-import { motion, AnimatePresence } from "framer-motion";
-import { UserPlus, Mail, Eye, EyeOff, CheckCircle, X, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { UserPlus, Mail, Eye, EyeOff, CheckCircle, ArrowRight, Loader2 } from "lucide-react";
 import BeautifulBackground from "../components/effects/BeautifulBackground";
 import axios from "axios";
 import { API_URL } from "../api/config";
 
 const Register = () => {
-  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     username: "",
     email: "",
     password: "",
     passwordConfirm: "",
     major: "",
-    graduationYear: "",
-    hobbies: [],
-    favoriteSubjects: [],
-    sports: [],
-    musicGenres: [],
-    movieGenres: []
+    graduationYear: ""
   });
 
   const [loading, setLoading] = useState(false);
@@ -29,12 +23,11 @@ const Register = () => {
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [registrationComplete, setRegistrationComplete] = useState(false);
   const [verificationNotice, setVerificationNotice] = useState("");
-  const [serverStatus, setServerStatus] = useState('unknown'); // 'unknown', 'waking', 'ready'
+  const [serverStatus, setServerStatus] = useState('unknown');
 
   const { register, error, setError, currentUser } = useAuth();
   const navigate = useNavigate();
 
-  // Wake up server on mount
   useEffect(() => {
     const checkServerStatus = async () => {
       try {
@@ -44,23 +37,10 @@ const Register = () => {
         setServerStatus('unknown');
       }
     };
-    
     checkServerStatus();
   }, []);
 
-  const {
-    username,
-    email,
-    password,
-    passwordConfirm,
-    major,
-    graduationYear,
-    hobbies,
-    favoriteSubjects,
-    sports,
-    musicGenres,
-    movieGenres
-  } = formData;
+  const { username, email, password, passwordConfirm, major, graduationYear } = formData;
 
   useEffect(() => {
     if (currentUser) {
@@ -75,90 +55,47 @@ const Register = () => {
     setError("");
   };
 
-  const handleAddPreference = (e, category) => {
-    const value = e.target.value.trim();
-
-    if (e.key === "Enter" && value) {
-      e.preventDefault();
-      if (!formData[category].includes(value)) {
-        setFormData({
-          ...formData,
-          [category]: [...formData[category], value]
-        });
-      }
-      e.target.value = "";
-    }
-  };
-
-  const handleRemovePreference = (item, category) => {
-    setFormData({
-      ...formData,
-      [category]: formData[category].filter((i) => i !== item)
-    });
-  };
-
-  const nextStep = () => {
-    if (step === 1) {
-      if (!username || !email || !password) {
-        setFormError("Please enter all required fields");
-        return;
-      }
-
-      if (password !== passwordConfirm) {
-        setFormError("Passwords do not match");
-        return;
-      }
-
-      if (username.length < 3 || username.length > 20) {
-        setFormError("Username must be between 3 and 20 characters");
-        return;
-      }
-
-      if (password.length < 6) {
-        setFormError("Password must be at least 6 characters");
-        return;
-      }
-    }
-
-    setStep(step + 1);
-    setFormError("");
-  };
-
-  const prevStep = () => {
-    setStep(step - 1);
-    setFormError("");
-  };
-
   const onSubmit = async (e) => {
     e.preventDefault();
+
+    if (!username || !email || !password) {
+      setFormError("Please enter all required fields");
+      return;
+    }
+
+    if (password !== passwordConfirm) {
+      setFormError("Passwords do not match");
+      return;
+    }
+
+    if (username.length < 3 || username.length > 20) {
+      setFormError("Username must be between 3 and 20 characters");
+      return;
+    }
+
+    if (password.length < 6) {
+      setFormError("Password must be at least 6 characters");
+      return;
+    }
 
     setLoading(true);
     setRegistrationComplete(false);
     setVerificationNotice("");
 
-    // If server status isn't 'ready', try to wake it first
     if (serverStatus !== 'ready') {
       setServerStatus('waking');
       try {
-        // Try to ping the server to wake it up
         await axios.get(`${API_URL}/api/health`, { timeout: 5000 })
           .then(() => setServerStatus('ready'))
           .catch(() => {});
-      } catch (err) {
-        // Server wake-up failed, continue anyway
-      }
+      } catch (err) {}
     }
 
     try {
       const userData = {
         username,
         email,
-        password,
-        hobbies,
-        favoriteSubjects,
-        sports,
-        musicGenres,
-        movieGenres
+        password
       };
 
       if (major) userData.major = major;
@@ -169,10 +106,13 @@ const Register = () => {
 
       const response = await register(userData);
       setRegistrationComplete(true);
-      setVerificationNotice(response?.message || "We have sent a verification link to your email address.");
-      setStep(3);
+      setVerificationNotice(response?.message || "Account created! You can now set up your profile.");
+      
+      // Redirect to profile page after 2 seconds to let them set preferences
+      setTimeout(() => {
+        navigate("/profile");
+      }, 2000);
     } catch (err) {
-
       if (err.message.includes("already exists with this email")) {
         setFormError("This email is already registered. Please use another email or try logging in.");
       } else if (err.message.includes("Username is already taken")) {
@@ -203,18 +143,14 @@ const Register = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
         >
-          {/* Premium Glass Card */}
           <div className="relative backdrop-blur-2xl bg-card/90 dark:bg-card/95 rounded-3xl shadow-2xl border border-border/60 overflow-hidden">
-            {/* Premium accent */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-primary"></div>
 
-            {/* Main Content */}
             <div className="p-8 sm:p-10">
-              {/* Header */}
               <motion.div
-                variants={{ hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0, transition: { duration: 0.5 } } }}
-                initial="hidden"
-                animate="show"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
                 className="text-center mb-6"
               >
                 <div className="flex justify-center mb-3">
@@ -222,34 +158,12 @@ const Register = () => {
                     <UserPlus className="w-8 h-8 text-primary-foreground" strokeWidth={2.5} />
                   </div>
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight mb-2">Join PeerConnect</h1>
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground tracking-tight mb-2">Join PeerConnect</h1>
                 <p className="text-base text-muted-foreground font-semibold">
-                  Step {step} of 3
+                  Create your account in seconds
                 </p>
               </motion.div>
 
-              {/* Progress Bar */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.4 }}
-                className="mb-6"
-              >
-                <div className="flex gap-2">
-                  {[1, 2, 3].map((s) => (
-                    <div
-                      key={s}
-                      className={`h-2 rounded-full transition-all duration-500 flex-1 ${
-                        s <= step
-                          ? "bg-primary shadow-md"
-                          : "bg-muted"
-                      }`}
-                    />
-                  ))}
-                </div>
-              </motion.div>
-
-              {/* Error Message */}
               {(formError || error) && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -263,310 +177,150 @@ const Register = () => {
                 </motion.div>
               )}
 
-              {/* Form Steps */}
-              <AnimatePresence mode="wait">
+              {registrationComplete ? (
                 <motion.div
-                  key={`step-${step}`}
-                  initial={{ opacity: 0, x: 30 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -30 }}
-                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5 }}
+                  className="space-y-7 text-center py-4"
                 >
-                  {step === 1 && (
-                    <div className="space-y-5">
-                      {/* Username */}
-                      <div>
-                        <label className="block text-sm font-bold text-foreground mb-2 ml-1">Username</label>
-                        <input
-                          name="username"
-                          type="text"
-                          value={username}
-                          onChange={onChange}
-                          placeholder="Choose a unique username"
-                          className="w-full px-4 py-3.5 text-base rounded-xl border-2 border-border bg-input/60 backdrop-blur-sm text-foreground placeholder-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm"
-                        />
-                      </div>
-                      
-                      {/* Email */}
-                      <div>
-                        <label className="block text-sm font-bold text-foreground mb-2 ml-1">Email Address</label>
-                        <input
-                          name="email"
-                          type="email"
-                          value={email}
-                          onChange={onChange}
-                          placeholder="you@example.com"
-                          className="w-full px-4 py-3.5 text-base rounded-xl border-2 border-border bg-input/60 backdrop-blur-sm text-foreground placeholder-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm"
-                        />
-                      </div>
-                      
-                      {/* Password */}
-                      <div>
-                        <label className="block text-sm font-bold text-foreground mb-2 ml-1">Password</label>
-                        <div className="relative group">
-                          <input
-                            name="password"
-                            type={showPassword ? "text" : "password"}
-                            value={password}
-                            onChange={onChange}
-                            placeholder="Create a strong password"
-                            className="w-full px-4 py-3.5 pr-12 text-base rounded-xl border-2 border-border bg-input/60 backdrop-blur-sm text-foreground placeholder-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors focus:outline-none"
-                            aria-label={showPassword ? "Hide password" : "Show password"}
-                          >
-                            {showPassword ? <EyeOff className="w-5 h-5" strokeWidth={2.5} /> : <Eye className="w-5 h-5" strokeWidth={2.5} />}
-                          </button>
-                        </div>
-                      </div>
-                      
-                      {/* Confirm Password */}
-                      <div>
-                        <label className="block text-sm font-bold text-foreground mb-2 ml-1">Confirm Password</label>
-                        <div className="relative group">
-                          <input
-                            name="passwordConfirm"
-                            type={showPasswordConfirm ? "text" : "password"}
-                            value={passwordConfirm}
-                            onChange={onChange}
-                            placeholder="Re-enter your password"
-                            className="w-full px-4 py-3.5 pr-12 text-base rounded-xl border-2 border-border bg-input/60 backdrop-blur-sm text-foreground placeholder-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors focus:outline-none"
-                            aria-label={showPasswordConfirm ? "Hide password" : "Show password"}
-                          >
-                            {showPasswordConfirm ? <EyeOff className="w-5 h-5" strokeWidth={2.5} /> : <Eye className="w-5 h-5" strokeWidth={2.5} />}
-                          </button>
-                        </div>
-                      </div>
-                      
-                      {/* Major (Optional) */}
-                      <div>
-                        <label className="block text-sm font-bold text-foreground mb-2 ml-1">Program <span className="text-muted-foreground font-medium">(Optional)</span></label>
-                        <select
-                          name="major"
-                          value={major}
-                          onChange={onChange}
-                          className="w-full px-4 py-3.5 text-base rounded-xl border-2 border-border bg-input/60 backdrop-blur-sm text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm cursor-pointer"
-                        >
-                          <option value="">Select your program</option>
-                          <optgroup label="🎓 B.E. Programs">
-                            <option value="B.E. in Computer Science and Engineering">Computer Science and Engineering</option>
-                            <option value="B.E. in Electronics and Communication Engineering">Electronics and Communication Engineering</option>
-                            <option value="B.E. in Electrical Engineering">Electrical Engineering</option>
-                            <option value="B.E. in Mechanical Engineering">Mechanical Engineering</option>
-                            <option value="B.E. in Civil Engineering">Civil Engineering</option>
-                            <option value="B.E. in Chemical Engineering">Chemical Engineering</option>
-                            <option value="B.E. in Biotechnology">Biotechnology</option>
-                            <option value="B.E. in Production and Industrial Engineering">Production and Industrial Engineering</option>
-                            <option value="B.E. in Mechatronics Engineering">Mechatronics Engineering</option>
-                            <option value="B.E. in Computer Science and Business Systems">Computer Science and Business Systems</option>
-                            <option value="B.E. in Electronics and Computer Engineering">Electronics and Computer Engineering</option>
-                            <option value="B.E. in Aerospace Engineering">Aerospace Engineering</option>
-                          </optgroup>
-                          <optgroup label="🎓 B.Tech Programs">
-                            <option value="B.Tech in Computer Science and Engineering">Computer Science and Engineering</option>
-                            <option value="B.Tech in Electronics and Communication Engineering">Electronics and Communication Engineering</option>
-                            <option value="B.Tech in Electrical Engineering">Electrical Engineering</option>
-                            <option value="B.Tech in Mechanical Engineering">Mechanical Engineering</option>
-                            <option value="B.Tech in Civil Engineering">Civil Engineering</option>
-                            <option value="B.Tech in Chemical Engineering">Chemical Engineering</option>
-                          </optgroup>
-                          <optgroup label="📚 Other UG Programs">
-                            <option value="B.Arch in Architecture">B.Arch - Architecture</option>
-                            <option value="B.Sc in Mathematics and Computing">B.Sc - Mathematics and Computing</option>
-                            <option value="B.Sc in Physics">B.Sc - Physics</option>
-                            <option value="B.Sc in Chemistry">B.Sc - Chemistry</option>
-                            <option value="B.Sc in Biotechnology">B.Sc - Biotechnology</option>
-                            <option value="BBA">BBA - Business Administration</option>
-                            <option value="B.Com">B.Com - Commerce</option>
-                            <option value="BA in Economics">BA - Economics</option>
-                            <option value="BA in English">BA - English</option>
-                            <option value="BA in Psychology">BA - Psychology</option>
-                          </optgroup>
-                          <optgroup label="🎓 M.E. Programs">
-                            <option value="M.E. in Computer Science and Engineering">Computer Science and Engineering</option>
-                            <option value="M.E. in Electronics and Communication Engineering">Electronics and Communication Engineering</option>
-                            <option value="M.E. in Electrical Engineering">Electrical Engineering</option>
-                            <option value="M.E. in Mechanical Engineering">Mechanical Engineering</option>
-                            <option value="M.E. in Civil Engineering">Civil Engineering</option>
-                            <option value="M.E. in Chemical Engineering">Chemical Engineering</option>
-                            <option value="M.E. in Biotechnology">Biotechnology</option>
-                            <option value="M.E. in Software Engineering">Software Engineering</option>
-                            <option value="M.E. in VLSI Design">VLSI Design</option>
-                            <option value="M.E. in Power Systems">Power Systems</option>
-                            <option value="M.E. in Thermal Engineering">Thermal Engineering</option>
-                            <option value="M.E. in Structural Engineering">Structural Engineering</option>
-                          </optgroup>
-                          <optgroup label="📚 Other PG Programs">
-                            <option value="M.Sc in Mathematics">M.Sc - Mathematics</option>
-                            <option value="M.Sc in Physics">M.Sc - Physics</option>
-                            <option value="M.Sc in Chemistry">M.Sc - Chemistry</option>
-                            <option value="M.Sc in Biotechnology">M.Sc - Biotechnology</option>
-                            <option value="MBA">MBA - Business Administration</option>
-                            <option value="MCA">MCA - Computer Applications</option>
-                            <option value="M.Tech in Computer Science">M.Tech - Computer Science</option>
-                            <option value="M.Tech in Data Science">M.Tech - Data Science</option>
-                            <option value="M.Arch">M.Arch - Architecture</option>
-                          </optgroup>
-                          <optgroup label="🎓 Ph.D. Programs">
-                            <option value="Ph.D. in Engineering">Ph.D. - Engineering</option>
-                            <option value="Ph.D. in Sciences">Ph.D. - Sciences</option>
-                            <option value="Ph.D. in Management">Ph.D. - Management</option>
-                            <option value="Ph.D. in Liberal Arts">Ph.D. - Liberal Arts</option>
-                          </optgroup>
-                        </select>
-                      </div>
-                      
-                      {/* Graduation Year (Optional) */}
-                      <div>
-                        <label className="block text-sm font-bold text-foreground mb-2 ml-1">Graduation Year <span className="text-muted-foreground font-medium">(Optional)</span></label>
-                        <input
-                          name="graduationYear"
-                          type="number"
-                          value={graduationYear}
-                          onChange={onChange}
-                          placeholder="e.g., 2025"
-                          min="2020"
-                          max="2035"
-                          className="w-full px-4 py-3.5 text-base rounded-xl border-2 border-border bg-input/60 backdrop-blur-sm text-foreground placeholder-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                      </div>
+                  <div className="flex justify-center">
+                    <div className="h-20 w-20 rounded-2xl bg-primary flex items-center justify-center shadow-xl">
+                      <CheckCircle className="w-12 h-12 text-primary-foreground" strokeWidth={2.5} />
                     </div>
-                  )}
-
-                  {step === 2 && (
-                    <div className="space-y-5">
-                      <PreferenceInputGroup
-                        label="Hobbies"
-                        placeholder="e.g., Reading, Gaming, Photography"
-                        items={hobbies}
-                        onAdd={(e) => handleAddPreference(e, "hobbies")}
-                        onRemove={(item) => handleRemovePreference(item, "hobbies")}
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-bold text-foreground mb-3">Welcome!</h2>
+                    <p className="text-base text-muted-foreground leading-relaxed font-medium">
+                      {verificationNotice}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Redirecting to your profile...
+                    </p>
+                  </div>
+                </motion.div>
+              ) : (
+                <form onSubmit={onSubmit} className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-bold text-foreground mb-2 ml-1">Username</label>
+                    <input
+                      name="username"
+                      type="text"
+                      value={username}
+                      onChange={onChange}
+                      placeholder="Choose a unique username"
+                      className="w-full px-4 py-3.5 text-base rounded-xl border-2 border-border bg-input/60 backdrop-blur-sm text-foreground placeholder-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-bold text-foreground mb-2 ml-1">Email Address</label>
+                    <input
+                      name="email"
+                      type="email"
+                      value={email}
+                      onChange={onChange}
+                      placeholder="you@example.com"
+                      className="w-full px-4 py-3.5 text-base rounded-xl border-2 border-border bg-input/60 backdrop-blur-sm text-foreground placeholder-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-bold text-foreground mb-2 ml-1">Password</label>
+                    <div className="relative group">
+                      <input
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={onChange}
+                        placeholder="Create a strong password"
+                        className="w-full px-4 py-3.5 pr-12 text-base rounded-xl border-2 border-border bg-input/60 backdrop-blur-sm text-foreground placeholder-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm"
                       />
-                      <PreferenceInputGroup
-                        label="Favorite Subjects"
-                        placeholder="e.g., Mathematics, History, Biology"
-                        items={favoriteSubjects}
-                        onAdd={(e) => handleAddPreference(e, "favoriteSubjects")}
-                        onRemove={(item) => handleRemovePreference(item, "favoriteSubjects")}
-                      />
-                      <PreferenceInputGroup
-                        label="Sports & Activities"
-                        placeholder="e.g., Basketball, Swimming, Yoga"
-                        items={sports}
-                        onAdd={(e) => handleAddPreference(e, "sports")}
-                        onRemove={(item) => handleRemovePreference(item, "sports")}
-                      />
-                    </div>
-                  )}
-
-                  {step === 3 && (
-                    registrationComplete ? (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.5 }}
-                        className="space-y-7 text-center py-4"
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors focus:outline-none"
                       >
-                        <div className="flex justify-center">
-                          <div className="h-20 w-20 rounded-2xl bg-primary flex items-center justify-center shadow-xl">
-                            <CheckCircle className="w-12 h-12 text-primary-foreground" strokeWidth={2.5} />
-                          </div>
-                        </div>
-                        <div>
-                          <h2 className="text-3xl font-bold text-foreground mb-3">Check Your Email!</h2>
-                          <p className="text-base text-muted-foreground leading-relaxed font-medium">
-                            {verificationNotice || "We've sent a verification link to your email. Please verify your account before signing in."}
-                          </p>
-                        </div>
-                        <div className="space-y-4 pt-2">
-                          <p className="text-sm text-muted-foreground font-medium px-4">
-                            Didn't receive the email? Check your spam folder, or try logging in to resend the verification link.
-                          </p>
-                          <Link
-                            to="/login"
-                            className="inline-flex items-center justify-center w-full py-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 gap-2 group"
-                          >
-                            <span>Go to Login</span>
-                            <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" strokeWidth={2.5} />
-                          </Link>
-                        </div>
-                      </motion.div>
-                    ) : (
-                      <form onSubmit={onSubmit} className="space-y-5">
-                        <PreferenceInputGroup
-                          label="Music Genres"
-                          placeholder="e.g., Rock, Jazz, Hip-Hop"
-                          items={musicGenres}
-                          onAdd={(e) => handleAddPreference(e, "musicGenres")}
-                          onRemove={(item) => handleRemovePreference(item, "musicGenres")}
-                        />
-                        <PreferenceInputGroup
-                          label="Movies/TV Genres"
-                          placeholder="e.g., Action, Comedy, Sci-Fi"
-                          items={movieGenres}
-                          onAdd={(e) => handleAddPreference(e, "movieGenres")}
-                          onRemove={(item) => handleRemovePreference(item, "movieGenres")}
-                        />
-                        <button
-                          type="submit"
-                          disabled={loading}
-                          className="w-full py-4 mt-6 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2 group"
-                        >
-                          {loading ? (
-                            <>
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                              <span>{serverStatus === 'waking' ? 'Waking Server...' : 'Creating Account...'}</span>
-                            </>
-                          ) : (
-                            <>
-                              <span>Create Account</span>
-                              <CheckCircle className="w-5 h-5 transition-transform group-hover:scale-110" strokeWidth={2.5} />
-                            </>
-                          )}
-                        </button>
-                      </form>
-                    )
-                  )}
-              </motion.div>
-            </AnimatePresence>
+                        {showPassword ? <EyeOff className="w-5 h-5" strokeWidth={2.5} /> : <Eye className="w-5 h-5" strokeWidth={2.5} />}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-bold text-foreground mb-2 ml-1">Confirm Password</label>
+                    <div className="relative group">
+                      <input
+                        name="passwordConfirm"
+                        type={showPasswordConfirm ? "text" : "password"}
+                        value={passwordConfirm}
+                        onChange={onChange}
+                        placeholder="Re-enter your password"
+                        className="w-full px-4 py-3.5 pr-12 text-base rounded-xl border-2 border-border bg-input/60 backdrop-blur-sm text-foreground placeholder-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors focus:outline-none"
+                      >
+                        {showPasswordConfirm ? <EyeOff className="w-5 h-5" strokeWidth={2.5} /> : <Eye className="w-5 h-5" strokeWidth={2.5} />}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-bold text-foreground mb-2 ml-1">Program <span className="text-muted-foreground font-medium">(Optional)</span></label>
+                    <select
+                      name="major"
+                      value={major}
+                      onChange={onChange}
+                      className="w-full px-4 py-3.5 text-base rounded-xl border-2 border-border bg-input/60 backdrop-blur-sm text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm cursor-pointer"
+                    >
+                      <option value="">Select your program</option>
+                      <option value="Computer Science">Computer Science</option>
+                      <option value="Engineering">Engineering</option>
+                      <option value="Business">Business</option>
+                      <option value="Arts">Arts</option>
+                      <option value="Sciences">Sciences</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-bold text-foreground mb-2 ml-1">Graduation Year <span className="text-muted-foreground font-medium">(Optional)</span></label>
+                    <input
+                      name="graduationYear"
+                      type="number"
+                      value={graduationYear}
+                      onChange={onChange}
+                      placeholder="e.g., 2025"
+                      min="2020"
+                      max="2035"
+                      className="w-full px-4 py-3.5 text-base rounded-xl border-2 border-border bg-input/60 backdrop-blur-sm text-foreground placeholder-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm"
+                    />
+                  </div>
 
-              {/* Navigation Buttons */}
-              {!registrationComplete && (
-                <div className="flex gap-4 mt-8">
-                  {step > 1 && (
-                    <button
-                      type="button"
-                      onClick={prevStep}
-                      className="flex-1 py-4 rounded-xl border-2 border-secondary/40 bg-secondary/5 text-secondary font-bold hover:bg-secondary/10 hover:border-secondary/60 transition-all duration-300 flex items-center justify-center gap-2 shadow-sm hover:shadow-md group"
-                    >
-                      <ArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" strokeWidth={2.5} />
-                      <span>Back</span>
-                    </button>
-                  )}
-                  {step < 3 && (
-                    <button
-                      type="button"
-                      onClick={nextStep}
-                      className={`${step === 1 ? "w-full" : "flex-1"} py-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 group`}
-                    >
-                      <span>Continue</span>
-                      <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" strokeWidth={2.5} />
-                    </button>
-                  )}
-                </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-4 mt-6 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2 group"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>{serverStatus === 'waking' ? 'Waking Server...' : 'Creating Account...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Create Account</span>
+                        <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" strokeWidth={2.5} />
+                      </>
+                    )}
+                  </button>
+                </form>
               )}
             </div>
           </div>
 
-          {/* Footer Link */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -585,42 +339,5 @@ const Register = () => {
     </BeautifulBackground>
   );
 };
-
-// Premium Preference Input Component
-const PreferenceInputGroup = ({ label, placeholder, items, onAdd, onRemove }) => (
-  <div>
-    <label className="block text-sm font-bold text-foreground mb-2 ml-1">{label}</label>
-    {items.length > 0 && (
-      <div className="flex flex-wrap gap-2 mb-3">
-        {items.map((item, idx) => (
-          <motion.div
-            key={idx}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/15 border-2 border-primary/40 text-sm text-foreground font-semibold shadow-sm hover:shadow-md hover:bg-primary/20 transition-all"
-          >
-            <span>{item}</span>
-            <button 
-              type="button" 
-              onClick={() => onRemove(item)} 
-              className="text-muted-foreground hover:text-destructive transition-colors focus:outline-none"
-              aria-label={`Remove ${item}`}
-            >
-              <X className="w-4 h-4" strokeWidth={2.5} />
-            </button>
-          </motion.div>
-        ))}
-      </div>
-    )}
-    <input
-      type="text"
-      placeholder={placeholder}
-      onKeyPress={onAdd}
-      className="w-full px-4 py-3.5 text-base rounded-xl border-2 border-border bg-input/60 backdrop-blur-sm text-foreground placeholder-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm"
-    />
-    <p className="text-xs text-muted-foreground mt-2 ml-1 font-medium">Press Enter to add</p>
-  </div>
-);
 
 export default Register;
