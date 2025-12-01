@@ -354,7 +354,7 @@ class IntelligentCacheManager {
     const strategy = warmingStrategies[dataType];
     if (strategy) {
       strategy(data);
-      console.log(`🔥 Warmed cache for ${dataType}`);
+      console.log(`Warmed cache for ${dataType}`);
     }
   }
 

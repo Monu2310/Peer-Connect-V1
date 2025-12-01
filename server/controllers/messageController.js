@@ -193,13 +193,17 @@ exports.sendActivityMessage = async (req, res) => {
       .populate('sender', 'username profilePicture');
     
     // Format response to match socket.io format
+    const normalizedSenderId = populatedMessage?.sender?._id?.toString() || senderId?.toString();
     const formattedMessage = {
       _id: populatedMessage._id,
       roomId: `activity-${activityId}`,
+      activityId,
       content: populatedMessage.content,
       sender: {
-        id: senderId,
-        username: populatedMessage.senderName || populatedMessage.sender.username
+        id: normalizedSenderId,
+        _id: normalizedSenderId,
+        username: populatedMessage.senderName || populatedMessage?.sender?.username,
+        profilePicture: populatedMessage?.sender?.profilePicture || null
       },
       timestamp: populatedMessage.createdAt
     };
@@ -231,16 +235,22 @@ exports.getActivityMessages = async (req, res) => {
       .populate('sender', 'username profilePicture');
     
     // Format messages to match socket.io format
-    const formattedMessages = messages.map(msg => ({
-      _id: msg._id,
-      roomId: `activity-${activityId}`,
-      content: msg.content,
-      sender: {
-        id: msg.sender._id,
-        username: msg.senderName || msg.sender.username
-      },
-      timestamp: msg.createdAt
-    }));
+    const formattedMessages = messages.map(msg => {
+      const senderId = msg?.sender?._id?.toString();
+      return {
+        _id: msg._id,
+        roomId: `activity-${activityId}`,
+        activityId,
+        content: msg.content,
+        sender: {
+          id: senderId,
+          _id: senderId,
+          username: msg.senderName || msg?.sender?.username,
+          profilePicture: msg?.sender?.profilePicture || null
+        },
+        timestamp: msg.createdAt
+      };
+    });
     
     res.json(formattedMessages);
   } catch (err) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../core/AuthContext';
 import io from 'socket.io-client';
 import { API_URL } from '../api/config';
@@ -24,6 +24,11 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
   const [loadingMessages, setLoadingMessages] = useState(false);
   const messagesEndRef = useRef(null);
   const socketRef = useRef(null);
+  const lastErrorMessageRef = useRef(null);
+  
+  const SOCKET_ACTIVITY_EVENT = 'activity-message';
+  const SOCKET_CONFIRM_EVENT = 'activity-message-confirmation';
+  const SOCKET_ERROR_EVENT = 'activity-message-error';
   
   // Use the current user from props or from auth context
   const currentUser = parentCurrentUser || authCurrentUser;
@@ -34,6 +39,20 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
   // Local storage keys for caching messages and participation status
   const messagesKey = `activity_messages_${activityId}`;
   const participationKey = `activity_joined_${activityId}`;
+
+  const applyMessagesUpdate = useCallback((updater) => {
+    setMessages(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      if (next !== prev) {
+        try {
+          localStorage.setItem(messagesKey, JSON.stringify(next));
+        } catch (err) {
+          console.error('Failed to persist activity messages cache:', err);
+        }
+      }
+      return next;
+    });
+  }, [messagesKey]);
 
   // Function to check if a message is from the current user
   const isCurrentUser = (message) => {
@@ -104,13 +123,13 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
       if (savedMessages) {
         const parsed = JSON.parse(savedMessages);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessages(parsed);
+          applyMessagesUpdate(parsed);
         }
       }
     } catch (err) {
       console.error("Error loading cached messages:", err);
     }
-  }, [messagesKey]);
+  }, [messagesKey, applyMessagesUpdate]);
 
   // Initialize socket connection once
   useEffect(() => {
@@ -146,30 +165,26 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
       setConnectionError(false);
     }
     
-    // Handle socket connection events
-    const handleConnect = () => {
-      setIsConnected(true);
-      setConnectionError(false);
-      setLoadingMessages(true);
-      
-      // Join the activity chat room
-      socketRef.current.emit('join-activity-room', {
-        roomId,
-        userId: currentUser?.id,
-        username: currentUser?.username || currentUser?.name || currentUser?.email || "User"
-      }, (response) => {
-        // Get existing messages (regardless of join confirmation)
-        fetchMessages();
-      });
+    const fallbackToRestApi = async () => {
+      try {
+        const msgs = await getActivityMessages(activityId);
+        if (Array.isArray(msgs)) {
+          applyMessagesUpdate(msgs);
+        }
+      } catch (err) {
+        console.error("Failed to fetch messages via REST:", err);
+      } finally {
+        setLoadingMessages(false);
+      }
     };
-    
+
     const fetchMessages = () => {
-      // Set a timeout to prevent infinite loading state
+      if (!socketRef.current) return;
+
       const messageLoadingTimeout = setTimeout(() => {
         setLoadingMessages(false);
-        setMessages(prevMessages => {
+        applyMessagesUpdate(prevMessages => {
           if (prevMessages.length === 0) {
-            // Add a system message if we have no messages
             return [{
               _id: `system-${Date.now()}`,
               content: "Couldn't load messages. Please try refreshing the page.",
@@ -180,36 +195,32 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
           }
           return prevMessages;
         });
-      }, 8000); // 8 seconds timeout
-      
-      // First try socket method
-      socketRef.current.emit('get-activity-messages', roomId, (response) => {
+      }, 8000);
+
+      socketRef.current.emit('get-activity-messages', { roomId }, (response) => {
         clearTimeout(messageLoadingTimeout);
         setLoadingMessages(false);
-        
-        if (response && response.success && Array.isArray(response.messages)) {
-          setMessages(response.messages);
-          // Cache messages
-          localStorage.setItem(messagesKey, JSON.stringify(response.messages));
+        const payload = Array.isArray(response) ? response : response?.messages;
+        if (Array.isArray(payload)) {
+          applyMessagesUpdate(payload);
         } else {
-          // Fallback to REST API if socket fails
           fallbackToRestApi();
         }
       });
     };
-    
-    const fallbackToRestApi = async () => {
-      try {
-        const msgs = await getActivityMessages(activityId);
-        if (Array.isArray(msgs)) {
-          setMessages(msgs);
-          localStorage.setItem(messagesKey, JSON.stringify(msgs));
-        }
-      } catch (err) {
-        console.error("Failed to fetch messages via REST:", err);
-      } finally {
-        setLoadingMessages(false);
-      }
+
+    // Handle socket connection events
+    const handleConnect = () => {
+      setIsConnected(true);
+      setConnectionError(false);
+      setLoadingMessages(true);
+      
+      socketRef.current.emit('join-activity-room', {
+        roomId,
+        userId: currentUser?.id,
+        username: currentUser?.username || currentUser?.name || currentUser?.email || "User"
+      });
+      fetchMessages();
     };
 
     const handleDisconnect = () => {
@@ -223,24 +234,52 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
     };
 
     const handleNewMessage = (message) => {
-      if (message && message.activity === activityId) {
-        setMessages((prevMessages) => {
-          // Check if message already exists to prevent duplicates
-          const exists = prevMessages.some(m => m._id === message._id);
-          if (exists) return prevMessages;
-          
-          const newMessages = [...prevMessages, message];
-          // Update cache
-          localStorage.setItem(messagesKey, JSON.stringify(newMessages));
-          return newMessages;
-        });
+      if (!message) return;
+      const belongsToRoom = (message.roomId && message.roomId === roomId) ||
+        (message.activityId && String(message.activityId) === String(activityId)) ||
+        (message.activity && String(message.activity) === String(activityId));
+      if (!belongsToRoom) return;
+
+      applyMessagesUpdate((prevMessages) => {
+        const existingIndex = prevMessages.findIndex(m => m._id && message._id && m._id === message._id);
+        if (existingIndex !== -1) {
+          const next = [...prevMessages];
+          next[existingIndex] = { ...next[existingIndex], ...message, isOptimistic: false, error: false };
+          return next;
+        }
+
+        const optimisticIndex = prevMessages.findIndex(m => m.isOptimistic && isCurrentUser(m) && m.content === message.content);
+        if (optimisticIndex !== -1) {
+          const next = [...prevMessages];
+          next[optimisticIndex] = { ...message };
+          return next;
+        }
+
+        return [...prevMessages, message];
+      });
+    };
+
+    const handleMessageConfirmation = (payload) => {
+      if (payload?.message) {
+        handleNewMessage(payload.message);
       }
+    };
+
+    const handleMessageErrorEvent = () => {
+      const now = Date.now();
+      if (lastErrorMessageRef.current && now - lastErrorMessageRef.current < 300) {
+        return;
+      }
+      lastErrorMessageRef.current = now;
+      applyMessagesUpdate(prev => prev.map(m => m.isOptimistic ? { ...m, error: true } : m));
     };
 
     socketRef.current.on('connect', handleConnect);
     socketRef.current.on('disconnect', handleDisconnect);
     socketRef.current.on('connect_error', handleConnectError);
-    socketRef.current.on('new-activity-message', handleNewMessage);
+    socketRef.current.on(SOCKET_ACTIVITY_EVENT, handleNewMessage);
+    socketRef.current.on(SOCKET_CONFIRM_EVENT, handleMessageConfirmation);
+    socketRef.current.on(SOCKET_ERROR_EVENT, handleMessageErrorEvent);
 
     // If already connected, manually trigger join
     if (socketRef.current.connected) {
@@ -252,13 +291,23 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
         socketRef.current.off('connect', handleConnect);
         socketRef.current.off('disconnect', handleDisconnect);
         socketRef.current.off('connect_error', handleConnectError);
-        socketRef.current.off('new-activity-message', handleNewMessage);
+        socketRef.current.off(SOCKET_ACTIVITY_EVENT, handleNewMessage);
+        socketRef.current.off(SOCKET_CONFIRM_EVENT, handleMessageConfirmation);
+        socketRef.current.off(SOCKET_ERROR_EVENT, handleMessageErrorEvent);
         
-        // Leave the room when component unmounts
         socketRef.current.emit('leave-activity-room', { roomId, userId: currentUser?.id });
       }
     };
-  }, [roomId, currentUser, activityId, hasJoinedActivity, hasJoined, isCheckingParticipation, messagesKey, token]);
+  }, [
+    roomId,
+    currentUser,
+    activityId,
+    hasJoinedActivity,
+    hasJoined,
+    isCheckingParticipation,
+    token,
+    applyMessagesUpdate
+  ]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -287,22 +336,20 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
       isOptimistic: true
     };
 
-    setMessages(prev => [...prev, optimisticMessage]);
+    applyMessagesUpdate(prev => [...prev, optimisticMessage]);
 
     try {
       // Try sending via socket first
       if (socketRef.current && socketRef.current.connected) {
         socketRef.current.emit('send-activity-message', {
+          roomId,
           activityId,
           content: messageContent,
-          senderId: currentUser.id || currentUser._id
-        }, (response) => {
-          if (!response || !response.success) {
-            // If socket send fails, try REST API
-            sendViaRest(messageContent, tempId);
-          } else {
-            // Replace optimistic message with real one
-            setMessages(prev => prev.map(m => m._id === tempId ? response.message : m));
+          sender: {
+            id: currentUser.id || currentUser._id,
+            _id: currentUser.id || currentUser._id,
+            username: currentUser.username || currentUser.name || currentUser.email || 'You',
+            profilePicture: currentUser.profilePicture
           }
         });
       } else {
@@ -312,17 +359,17 @@ const ActivityGroupChat = ({ activityId, hasJoined, currentUser: parentCurrentUs
     } catch (err) {
       console.error("Error sending message:", err);
       // Mark message as failed
-      setMessages(prev => prev.map(m => m._id === tempId ? { ...m, error: true } : m));
+      applyMessagesUpdate(prev => prev.map(m => m._id === tempId ? { ...m, error: true } : m));
     }
   };
 
   const sendViaRest = async (content, tempId) => {
     try {
       const response = await sendActivityMessage(activityId, content);
-      setMessages(prev => prev.map(m => m._id === tempId ? response : m));
+      applyMessagesUpdate(prev => prev.map(m => m._id === tempId ? response : m));
     } catch (err) {
       console.error("REST API send failed:", err);
-      setMessages(prev => prev.map(m => m._id === tempId ? { ...m, error: true } : m));
+      applyMessagesUpdate(prev => prev.map(m => m._id === tempId ? { ...m, error: true } : m));
     }
   };
 

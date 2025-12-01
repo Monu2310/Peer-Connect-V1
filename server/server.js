@@ -7,6 +7,7 @@ const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
 const { performanceMiddleware, optimizeApiResponses } = require('./middleware/performance');
 const GroupMessage = require('./models/GroupMessage');
+const User = require('./models/User');
 
 // Import performance configurations
 const { dbConfig, queryOptimizer, connectionMonitor } = require('./config/database');
@@ -305,91 +306,101 @@ io.on('connection', (socket) => {
   });
   
   // Send message to activity group chat - now using MongoDB
-  socket.on('send-activity-message', async (messageData) => {
+  socket.on('send-activity-message', async (messageData = {}) => {
     try {
-      // Extract activity ID from the roomId (format: "activity-{activityId}")
-      const activityId = messageData.roomId.split('-')[1];
-      
-      // Make sure sender.id exists
-      if (!messageData.sender || !messageData.sender.id) {
-        console.error('Missing sender ID in message data:', messageData);
-        socket.emit('activity-message-error', { error: 'Invalid sender data' });
+      const roomId = messageData.roomId || messageData.roomID;
+      const activityId = messageData.activityId || (roomId ? roomId.split('-')[1] : null);
+      const senderId = messageData.sender?.id || messageData.senderId;
+      const content = messageData.content?.trim();
+
+      if (!roomId || !activityId || !senderId || !content) {
+        console.error('Invalid activity message payload:', messageData);
+        socket.emit('activity-message-error', { error: 'Invalid message payload' });
         return;
       }
-      
-      console.log(`Received message from ${messageData.sender.username} (${messageData.sender.id}) for activity ${activityId}`);
-      
-      // Create and save message to database - handling mongoose types safely
+
+      const senderUser = await User.findById(senderId).select('username profilePicture');
+      if (!senderUser) {
+        socket.emit('activity-message-error', { error: 'Sender not found' });
+        return;
+      }
+
+      const senderName = messageData.sender?.username || messageData.senderName || senderUser.username;
+
       const groupMessage = new GroupMessage({
         activityId,
-        sender: messageData.sender.id, // Mongoose will convert string ID to ObjectId
-        content: messageData.content,
-        senderName: messageData.sender.username || 'Unknown User'
+        sender: senderId,
+        content,
+        senderName
       });
-      
+
       const savedMessage = await groupMessage.save();
-      console.log(`Message saved to database with ID: ${savedMessage._id}`);
-      
-      // Create message object to send back to client with proper format
+
       const formattedMessage = {
         _id: savedMessage._id,
-        roomId: messageData.roomId,
+        roomId,
+        activityId,
         content: savedMessage.content,
         sender: {
-          id: messageData.sender.id, // Use original ID to maintain client-side references
-          username: savedMessage.senderName
+          id: senderUser._id.toString(),
+          _id: senderUser._id.toString(),
+          username: senderName,
+          profilePicture: messageData.sender?.profilePicture || senderUser.profilePicture
         },
         timestamp: savedMessage.createdAt
       };
-      
-      // Send confirmation to the sender
-      socket.emit('activity-message-confirmation', { 
+
+      socket.emit('activity-message-confirmation', {
         success: true,
         message: formattedMessage
       });
-      
-      // Broadcast to all clients in the activity room
-      io.to(messageData.roomId).emit('activity-message', formattedMessage);
-      console.log(`Message broadcast to room: ${messageData.roomId}`);
+
+      io.to(roomId).emit('activity-message', formattedMessage);
     } catch (err) {
       console.error('Error saving activity message:', err);
-      // Send error back to client
-      socket.emit('activity-message-error', { 
+      socket.emit('activity-message-error', {
         error: 'Failed to save message',
         details: err.message
       });
     }
   });
   
-  // Get activity messages history - now retrieving from MongoDB
-  socket.on('get-activity-messages', async (data, callback) => {
+  socket.on('get-activity-messages', async (data, callback = () => {}) => {
     try {
-      const { roomId } = data;
-      // Extract activity ID from roomId
-      const activityId = roomId.split('-')[1];
-      
-      // Get messages from database (limit to most recent 100)
+      const roomId = typeof data === 'string' ? data : data?.roomId;
+      const activityId = data?.activityId || (roomId ? roomId.split('-')[1] : null);
+
+      if (!roomId || !activityId) {
+        callback({ success: false, messages: [] });
+        return;
+      }
+
       const messages = await GroupMessage.find({ activityId })
         .sort({ createdAt: 1 })
         .limit(100)
         .populate('sender', 'username profilePicture');
-      
-      // Format messages for the client
-      const formattedMessages = messages.map(msg => ({
-        _id: msg._id,
-        roomId,
-        content: msg.content,
-        sender: {
-          id: msg.sender._id,
-          username: msg.senderName || msg.sender.username
-        },
-        timestamp: msg.createdAt
-      }));
-      
-      callback(formattedMessages);
+
+      const formattedMessages = messages.map(msg => {
+        const senderId = msg?.sender?._id?.toString();
+        return {
+          _id: msg._id,
+          roomId,
+          activityId,
+          content: msg.content,
+          sender: {
+            id: senderId,
+            _id: senderId,
+            username: msg.senderName || msg?.sender?.username,
+            profilePicture: msg?.sender?.profilePicture || null
+          },
+          timestamp: msg.createdAt
+        };
+      });
+
+      callback({ success: true, messages: formattedMessages });
     } catch (err) {
       console.error('Error retrieving activity messages:', err);
-      callback([]);
+      callback({ success: false, messages: [] });
     }
   });
   
