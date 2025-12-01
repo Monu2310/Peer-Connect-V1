@@ -11,10 +11,17 @@ const normalizeArrayForSimilarity = (values) => {
     .filter(Boolean);
 };
 
-const countOverlap = (arr1, arr2) => {
+const countOverlapRatio = (arr1, arr2) => {
   if (!arr1.length || !arr2.length) return 0;
   const set2 = new Set(arr2);
-  return arr1.filter(value => set2.has(value)).length;
+  let overlap = 0;
+  arr1.forEach(value => {
+    if (set2.has(value)) {
+      overlap += 1;
+    }
+  });
+  const denominator = Math.max(arr1.length, arr2.length);
+  return denominator > 0 ? overlap / denominator : 0;
 };
 
 const normalizeSingleValue = (value) => (
@@ -23,59 +30,46 @@ const normalizeSingleValue = (value) => (
 
 // Helper function to calculate preference similarity between users
 const calculateUserSimilarity = (user1Preferences, user2Preferences) => {
-  let similarity = 0;
-  let totalFields = 0;
+  let weightedScore = 0;
+  let totalWeight = 0;
 
-  const hobbies1 = normalizeArrayForSimilarity(user1Preferences.hobbies);
-  const hobbies2 = normalizeArrayForSimilarity(user2Preferences.hobbies);
-  if (hobbies1.length && hobbies2.length) {
-    similarity += countOverlap(hobbies1, hobbies2) * 2; // Weight hobbies higher
-    totalFields += Math.max(hobbies1.length, hobbies2.length);
-  }
+  const dimensionWeights = {
+    hobbies: 2,
+    sports: 1.5,
+    favoriteSubjects: 1.5,
+    musicGenres: 1,
+    movieGenres: 1,
+    interests: 1,
+    major: 0.75
+  };
 
-  const sports1 = normalizeArrayForSimilarity(user1Preferences.sports);
-  const sports2 = normalizeArrayForSimilarity(user2Preferences.sports);
-  if (sports1.length && sports2.length) {
-    similarity += countOverlap(sports1, sports2) * 1.5;
-    totalFields += Math.max(sports1.length, sports2.length);
-  }
+  const applyDimension = (key, valuesA, valuesB) => {
+    const weight = dimensionWeights[key];
+    if (!weight) return;
+    const normalizedA = normalizeArrayForSimilarity(valuesA);
+    const normalizedB = normalizeArrayForSimilarity(valuesB);
+    if (!normalizedA.length || !normalizedB.length) return;
+    totalWeight += weight;
+    weightedScore += countOverlapRatio(normalizedA, normalizedB) * weight;
+  };
 
-  const subjects1 = normalizeArrayForSimilarity(user1Preferences.favoriteSubjects);
-  const subjects2 = normalizeArrayForSimilarity(user2Preferences.favoriteSubjects);
-  if (subjects1.length && subjects2.length) {
-    similarity += countOverlap(subjects1, subjects2) * 1.5;
-    totalFields += Math.max(subjects1.length, subjects2.length);
-  }
-
-  const music1 = normalizeArrayForSimilarity(user1Preferences.musicGenres);
-  const music2 = normalizeArrayForSimilarity(user2Preferences.musicGenres);
-  if (music1.length && music2.length) {
-    similarity += countOverlap(music1, music2);
-    totalFields += Math.max(music1.length, music2.length);
-  }
-
-  const movies1 = normalizeArrayForSimilarity(user1Preferences.movieGenres);
-  const movies2 = normalizeArrayForSimilarity(user2Preferences.movieGenres);
-  if (movies1.length && movies2.length) {
-    similarity += countOverlap(movies1, movies2);
-    totalFields += Math.max(movies1.length, movies2.length);
-  }
-
-  const interests1 = normalizeArrayForSimilarity(user1Preferences.interests);
-  const interests2 = normalizeArrayForSimilarity(user2Preferences.interests);
-  if (interests1.length && interests2.length) {
-    similarity += countOverlap(interests1, interests2);
-    totalFields += Math.max(interests1.length, interests2.length);
-  }
+  applyDimension('hobbies', user1Preferences.hobbies, user2Preferences.hobbies);
+  applyDimension('sports', user1Preferences.sports, user2Preferences.sports);
+  applyDimension('favoriteSubjects', user1Preferences.favoriteSubjects, user2Preferences.favoriteSubjects);
+  applyDimension('musicGenres', user1Preferences.musicGenres, user2Preferences.musicGenres);
+  applyDimension('movieGenres', user1Preferences.movieGenres, user2Preferences.movieGenres);
+  applyDimension('interests', user1Preferences.interests, user2Preferences.interests);
 
   const major1 = normalizeSingleValue(user1Preferences.major);
   const major2 = normalizeSingleValue(user2Preferences.major);
-  if (major1 && major2 && major1 === major2) {
-    similarity += 3;
-    totalFields += 1;
+  if (major1 && major2) {
+    totalWeight += dimensionWeights.major;
+    if (major1 === major2) {
+      weightedScore += dimensionWeights.major;
+    }
   }
 
-  return totalFields > 0 ? (similarity / totalFields) * 100 : 0;
+  return totalWeight > 0 ? (weightedScore / totalWeight) * 100 : 0;
 };
 
 // Helper function to calculate relevance of activity to user
