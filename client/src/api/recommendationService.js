@@ -3,7 +3,7 @@ import api from './config';
 // Get AI-powered suggested peers based on comprehensive similarity scoring
 export const getSuggestedPeers = async (limit = 10) => {
   try {
-    console.log('🤖 Fetching AI-suggested peers...');
+    console.log('🤝 Fetching suggested peers...');
     const response = await api.get(`/api/recommendations/peers?limit=${limit}`);
     console.log(`✅ Received ${response.data.length} peer suggestions`);
     return response.data;

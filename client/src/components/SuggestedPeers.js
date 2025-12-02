@@ -119,9 +119,9 @@ const SuggestedPeers = ({ limit = 6 }) => {
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-6">
         <Sparkles className="h-5 w-5 text-primary" />
-        <h3 className="text-xl font-bold">AI-Suggested Peers</h3>
+        <h3 className="text-xl font-bold">Suggested Peers</h3>
         <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
-          ML-Powered
+          Matched
         </span>
       </div>
 
