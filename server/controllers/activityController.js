@@ -128,12 +128,13 @@ exports.getActivities = async (req, res) => {
       ];
     }
     
-    // Show all activities (including past ones) - users can see activity history
-    // Only filter if specifically requested
+    // Show all activities by default unless explicitly filtering past
     const { includePast } = req.query;
-    if (includePast !== 'true') {
-      // By default, show upcoming activities
-      query.date = { $gte: new Date() };
+    if (includePast === 'false') {
+      // Only exclude past activities if explicitly requested
+      const now = new Date();
+      now.setHours(0, 0, 0, 0); // Start of today
+      query.date = { $gte: now };
     }
     
     // Use lean() for better performance - returns plain objects instead of Mongoose documents
@@ -408,20 +409,18 @@ exports.getMyCreatedActivities = async (req, res) => {
   }
 };
 
-// Get activities joined by the current user (active only - upcoming/ongoing)
+// Get activities joined by the current user
 exports.getMyJoinedActivities = async (req, res) => {
   try {
     console.log('Activity Controller: getMyJoinedActivities - req.user.id:', req.user.id);
     const activities = await Activity.find({ 
-      participants: req.user.id,
-      status: { $in: ['upcoming', 'ongoing'] }, // Only active activities
-      date: { $gte: new Date() } // Only future/ongoing activities
+      participants: req.user.id
     })
       .sort({ date: -1 })
       .populate('creator', 'username profilePicture isDeleted')
       .populate('participants', 'username profilePicture isDeleted');
     
-    console.log('Activity Controller: getMyJoinedActivities - Found active joined activities:', activities.length);
+    console.log('Activity Controller: getMyJoinedActivities - Found joined activities:', activities.length);
     res.json(activities.map(decorateActivityUsers));
   } catch (err) {
     console.error(err.message);
