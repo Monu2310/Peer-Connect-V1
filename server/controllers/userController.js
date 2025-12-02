@@ -1,5 +1,8 @@
 const User = require('../models/User');
 const Friend = require('../models/Friend');
+const admin = require('../config/firebase');
+const crypto = require('crypto');
+const { DEFAULT_DELETED_AVATAR, DEFAULT_DELETED_NAME } = require('../utils/deletedUser');
 
 // Modern DiceBear avatar styles - funky and colorful options
 const funkyAvatarStyles = [
@@ -308,37 +311,71 @@ exports.deleteAccount = async (req, res) => {
       return res.status(400).json({ message: 'Email confirmation does not match' });
     }
     
-    // Delete all user's related data
-    const Friend = require('../models/Friend');
     const Activity = require('../models/Activity');
-    const Message = require('../models/Message');
     const GroupMessage = require('../models/GroupMessage');
-    
-    // Delete friendships
+
+    // Remove Render/Firebase credential
+    if (admin && admin.auth) {
+      try {
+        if (user.firebaseUid) {
+          await admin.auth().deleteUser(user.firebaseUid);
+        } else if (user.email) {
+          const fbUser = await admin.auth().getUserByEmail(user.email).catch(() => null);
+          if (fbUser) {
+            await admin.auth().deleteUser(fbUser.uid);
+          }
+        }
+      } catch (firebaseErr) {
+        console.warn('Firebase user cleanup failed:', firebaseErr.message);
+      }
+    }
+
+    // Sever friendships and participation ties
     await Friend.deleteMany({
       $or: [{ requester: userId }, { recipient: userId }]
     });
-    
-    // Remove user from activity participants and delete activities they created
+
     await Activity.updateMany(
       { participants: userId },
       { $pull: { participants: userId } }
     );
-    await Activity.deleteMany({ creator: userId });
-    
-    // Delete messages
-    await Message.deleteMany({
-      $or: [{ sender: userId }, { recipient: userId }]
-    });
-    await GroupMessage.deleteMany({ sender: userId });
-    
-    // Finally delete the user
-    await User.findByIdAndDelete(userId);
-    
-    console.log('User account deleted successfully:', user.email);
+
+    // Mark historical group messages with placeholder sender name
+    await GroupMessage.updateMany(
+      { sender: userId },
+      { $set: { senderName: DEFAULT_DELETED_NAME } }
+    );
+
+    // Scrub user credentials instead of removing document to preserve history references
+    const randomPassword = crypto.randomBytes(32).toString('hex');
+    const placeholderSuffix = user._id.toString().slice(-6);
+    const scrubbedEmail = `deleted+${user._id}@peerconnect.invalid`;
+    const scrubbedUsername = `deleted_user_${placeholderSuffix}`;
+
+    user.username = scrubbedUsername;
+    user.email = scrubbedEmail;
+    user.password = randomPassword; // Will be hashed by schema pre-save
+    user.firebaseUid = null;
+    user.profilePicture = DEFAULT_DELETED_AVATAR;
+    user.bio = 'Account deleted';
+    user.location = '';
+    user.major = '';
+    user.year = '';
+    user.interests = [];
+    user.hobbies = [];
+    user.favoriteSubjects = [];
+    user.sports = [];
+    user.musicGenres = [];
+    user.movieGenres = [];
+    user.isDeleted = true;
+    user.deletedAt = new Date();
+
+    await user.save();
+
+    console.log('User account anonymized successfully:', userId);
     res.json({ 
       message: 'Account deleted successfully',
-      deletedUser: user.email
+      anonymizedUserId: userId
     });
   } catch (err) {
     console.error('Error deleting account:', err.message);

@@ -1,5 +1,6 @@
 const Activity = require('../models/Activity');
 const User = require('../models/User');
+const { scrubUserForPublic, asDeletedUser } = require('../utils/deletedUser');
 
 // Function to get default image based on category
 const getDefaultImageForCategory = (category) => {
@@ -12,6 +13,25 @@ const getDefaultImageForCategory = (category) => {
   };
   
   return categoryImages[category] || categoryImages['Other'];
+};
+
+const decorateActivityUsers = (activityDoc) => {
+  if (!activityDoc) return activityDoc;
+  const plain = typeof activityDoc.toObject === 'function'
+    ? activityDoc.toObject({ virtuals: true })
+    : activityDoc;
+
+  const normalizeList = (list = []) => (
+    Array.isArray(list)
+      ? list.map(item => scrubUserForPublic(item) || asDeletedUser(null))
+      : []
+  );
+
+  return {
+    ...plain,
+    creator: scrubUserForPublic(plain.creator) || asDeletedUser(null),
+    participants: normalizeList(plain.participants)
+  };
 };
 
 // Create a new activity
@@ -75,7 +95,7 @@ exports.createActivity = async (req, res) => {
       .populate('participants', 'username profilePicture');
 
     console.log('Activity Controller: Created Activity:', populatedActivity.title);
-    res.status(201).json(populatedActivity);
+    res.status(201).json(decorateActivityUsers(populatedActivity));
   } catch (err) {
     console.error('Activity Controller: Error creating activity:', err);
     console.error('Error stack:', err.stack);
@@ -122,8 +142,8 @@ exports.getActivities = async (req, res) => {
       .sort({ date: 1 })
       .limit(parseInt(limit))
       .skip(parseInt(skip))
-      .populate('creator', 'username profilePicture')
-      .populate('participants', 'username profilePicture')
+      .populate('creator', 'username profilePicture isDeleted')
+      .populate('participants', 'username profilePicture isDeleted')
       .lean();
     
     // Get total count for pagination
@@ -131,7 +151,7 @@ exports.getActivities = async (req, res) => {
     
     console.log('Activity Controller: getActivities - Activities found:', activities.length);
     res.json({
-      activities,
+      activities: activities.map(decorateActivityUsers),
       total,
       limit: parseInt(limit),
       skip: parseInt(skip)
@@ -148,8 +168,8 @@ exports.getActivityById = async (req, res) => {
     console.log('Activity Controller: getActivityById - req.user.id:', req.user.id);
     console.log('Activity Controller: getActivityById - activityId:', req.params.activityId);
     const activity = await Activity.findById(req.params.activityId)
-      .populate('creator', 'username profilePicture bio')
-      .populate('participants', 'username profilePicture');
+      .populate('creator', 'username profilePicture bio isDeleted')
+      .populate('participants', 'username profilePicture isDeleted');
     
     if (!activity) {
       return res.status(404).json({ message: 'Activity not found' });
@@ -157,7 +177,7 @@ exports.getActivityById = async (req, res) => {
     
     console.log('Activity Controller: getActivityById - Activity Creator:', activity.creator._id);
     console.log('Activity Controller: getActivityById - Activity Participants:', activity.participants.map(p => p._id));
-    res.json(activity);
+    res.json(decorateActivityUsers(activity));
   } catch (err) {
     console.error(err.message);
     if (err.kind === 'ObjectId') {
@@ -204,11 +224,11 @@ exports.joinActivity = async (req, res) => {
     
     // Return updated activity with populated fields
     const updatedActivity = await Activity.findById(req.params.activityId)
-      .populate('creator', 'username profilePicture')
-      .populate('participants', 'username profilePicture');
+      .populate('creator', 'username profilePicture isDeleted')
+      .populate('participants', 'username profilePicture isDeleted');
     
     console.log('Activity Controller: joinActivity - User joined activity. New participants:', updatedActivity.participants.map(p => p._id));
-    res.json(updatedActivity);
+    res.json(decorateActivityUsers(updatedActivity));
   } catch (err) {
     console.error(err.message);
     if (err.kind === 'ObjectId') {
@@ -250,11 +270,11 @@ exports.leaveActivity = async (req, res) => {
     
     // Return updated activity with populated fields
     const updatedActivity = await Activity.findById(req.params.activityId)
-      .populate('creator', 'username profilePicture')
-      .populate('participants', 'username profilePicture');
+      .populate('creator', 'username profilePicture isDeleted')
+      .populate('participants', 'username profilePicture isDeleted');
     
     console.log('Activity Controller: leaveActivity - User left activity. New participants:', updatedActivity.participants.map(p => p._id));
-    res.json(updatedActivity);
+    res.json(decorateActivityUsers(updatedActivity));
   } catch (err) {
     console.error(err.message);
     if (err.kind === 'ObjectId') {
@@ -327,11 +347,11 @@ exports.updateActivity = async (req, res) => {
     
     // Return updated activity with populated fields
     const updatedActivity = await Activity.findById(req.params.activityId)
-      .populate('creator', 'username profilePicture')
-      .populate('participants', 'username profilePicture');
+      .populate('creator', 'username profilePicture isDeleted')
+      .populate('participants', 'username profilePicture isDeleted');
     
     console.log('Activity Controller: updateActivity - Updated Activity:', updatedActivity);
-    res.json(updatedActivity);
+    res.json(decorateActivityUsers(updatedActivity));
   } catch (err) {
     console.error(err.message);
     if (err.kind === 'ObjectId') {
@@ -377,11 +397,11 @@ exports.getMyCreatedActivities = async (req, res) => {
     console.log('Activity Controller: getMyCreatedActivities - req.user.id:', req.user.id);
     const activities = await Activity.find({ creator: req.user.id })
       .sort({ date: -1 })
-      .populate('creator', 'username profilePicture')
-      .populate('participants', 'username profilePicture');
+      .populate('creator', 'username profilePicture isDeleted')
+      .populate('participants', 'username profilePicture isDeleted');
     
     console.log('Activity Controller: getMyCreatedActivities - Found activities:', activities.length);
-    res.json(activities);
+    res.json(activities.map(decorateActivityUsers));
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
@@ -398,11 +418,11 @@ exports.getMyJoinedActivities = async (req, res) => {
       date: { $gte: new Date() } // Only future/ongoing activities
     })
       .sort({ date: -1 })
-      .populate('creator', 'username profilePicture')
-      .populate('participants', 'username profilePicture');
+      .populate('creator', 'username profilePicture isDeleted')
+      .populate('participants', 'username profilePicture isDeleted');
     
     console.log('Activity Controller: getMyJoinedActivities - Found active joined activities:', activities.length);
-    res.json(activities);
+    res.json(activities.map(decorateActivityUsers));
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');

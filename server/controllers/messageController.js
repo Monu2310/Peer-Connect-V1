@@ -2,10 +2,24 @@ const Message = require('../models/Message');
 const GroupMessage = require('../models/GroupMessage');
 const User = require('../models/User');
 const Activity = require('../models/Activity');
+const { scrubUserForPublic, asDeletedUser, DEFAULT_DELETED_NAME, DEFAULT_DELETED_AVATAR } = require('../utils/deletedUser');
 
 // Helper function to generate conversation ID consistently
 const generateConversationId = (userId1, userId2) => {
   return [userId1, userId2].sort().join('-');
+};
+
+const decorateMessageUsers = (messageDoc) => {
+  if (!messageDoc) return messageDoc;
+  const plain = typeof messageDoc.toObject === 'function'
+    ? messageDoc.toObject({ virtuals: true })
+    : messageDoc;
+
+  return {
+    ...plain,
+    sender: scrubUserForPublic(plain.sender) || asDeletedUser(null),
+    receiver: scrubUserForPublic(plain.receiver) || asDeletedUser(null)
+  };
 };
 
 // Send a message to another user
@@ -35,10 +49,10 @@ exports.sendMessage = async (req, res) => {
     
     // Populate sender info in the response
     const populatedMessage = await Message.findById(message._id)
-      .populate('sender', 'username profilePicture')
-      .populate('receiver', 'username profilePicture');
+      .populate('sender', 'username profilePicture isDeleted')
+      .populate('receiver', 'username profilePicture isDeleted');
     
-    res.status(201).json(populatedMessage);
+    res.status(201).json(decorateMessageUsers(populatedMessage));
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
@@ -57,10 +71,10 @@ exports.getConversation = async (req, res) => {
     // Find all messages in the conversation
     const messages = await Message.find({ conversationId })
       .sort({ createdAt: 1 })
-      .populate('sender', 'username profilePicture')
-      .populate('receiver', 'username profilePicture');
+      .populate('sender', 'username profilePicture isDeleted')
+      .populate('receiver', 'username profilePicture isDeleted');
     
-    res.json(messages);
+    res.json(messages.map(decorateMessageUsers));
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
@@ -80,26 +94,29 @@ exports.getConversations = async (req, res) => {
       ]
     })
       .sort({ createdAt: -1 })
-      .populate('sender', 'username profilePicture')
-      .populate('receiver', 'username profilePicture');
+      .populate('sender', 'username profilePicture isDeleted')
+      .populate('receiver', 'username profilePicture isDeleted');
     
     // Group messages by conversation and get the latest message of each conversation
     const conversations = {};
     
     messages.forEach(message => {
-      const otherUser = message.sender._id.toString() === currentUserId 
-        ? message.receiver._id.toString() 
-        : message.sender._id.toString();
+      const decorated = decorateMessageUsers(message);
+      const senderId = decorated.sender?._id ? decorated.sender._id.toString() : null;
+      const receiverId = decorated.receiver?._id ? decorated.receiver._id.toString() : null;
+      const otherUser = senderId === currentUserId 
+        ? receiverId 
+        : senderId;
       
       if (!conversations[otherUser]) {
         conversations[otherUser] = {
-          user: message.sender._id.toString() === currentUserId 
-            ? message.receiver 
-            : message.sender,
-          lastMessage: message,
-          unreadCount: message.receiver._id.toString() === currentUserId && !message.read ? 1 : 0
+          user: senderId === currentUserId 
+            ? decorated.receiver 
+            : decorated.sender,
+          lastMessage: decorated,
+          unreadCount: receiverId === currentUserId && !decorated.read ? 1 : 0
         };
-      } else if (message.receiver._id.toString() === currentUserId && !message.read) {
+      } else if (receiverId === currentUserId && !decorated.read) {
         conversations[otherUser].unreadCount += 1;
       }
     });
@@ -190,7 +207,7 @@ exports.sendActivityMessage = async (req, res) => {
     
     // Populate sender info for the response
     const populatedMessage = await GroupMessage.findById(groupMessage._id)
-      .populate('sender', 'username profilePicture');
+      .populate('sender', 'username profilePicture isDeleted');
     
     // Format response to match socket.io format
     const normalizedSenderId = populatedMessage?.sender?._id?.toString() || senderId?.toString();
@@ -202,8 +219,10 @@ exports.sendActivityMessage = async (req, res) => {
       sender: {
         id: normalizedSenderId,
         _id: normalizedSenderId,
-        username: populatedMessage.senderName || populatedMessage?.sender?.username,
-        profilePicture: populatedMessage?.sender?.profilePicture || null
+        username: populatedMessage.sender?.isDeleted ? DEFAULT_DELETED_NAME : (populatedMessage.senderName || populatedMessage?.sender?.username),
+        profilePicture: populatedMessage?.sender?.isDeleted 
+          ? DEFAULT_DELETED_AVATAR 
+          : (populatedMessage?.sender?.profilePicture || null)
       },
       timestamp: populatedMessage.createdAt
     };
@@ -232,7 +251,7 @@ exports.getActivityMessages = async (req, res) => {
     // Find all messages for the activity
     const messages = await GroupMessage.find({ activityId })
       .sort({ createdAt: 1 })
-      .populate('sender', 'username profilePicture');
+      .populate('sender', 'username profilePicture isDeleted');
     
     // Format messages to match socket.io format
     const formattedMessages = messages.map(msg => {
@@ -245,8 +264,8 @@ exports.getActivityMessages = async (req, res) => {
         sender: {
           id: senderId,
           _id: senderId,
-          username: msg.senderName || msg?.sender?.username,
-          profilePicture: msg?.sender?.profilePicture || null
+          username: msg?.sender?.isDeleted ? DEFAULT_DELETED_NAME : (msg.senderName || msg?.sender?.username),
+          profilePicture: msg?.sender?.isDeleted ? DEFAULT_DELETED_AVATAR : (msg?.sender?.profilePicture || null)
         },
         timestamp: msg.createdAt
       };

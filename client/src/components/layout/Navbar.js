@@ -203,7 +203,7 @@ const Navbar = () => {
                   className="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-primary/5 transition-all duration-200 group"
                 >
                   <Avatar className="h-9 w-9 ring-2 ring-primary transition-transform group-hover:scale-105">
-                    <AvatarImage src={currentUser?.profilePicture || '/avatar.svg'} alt={userDisplayName} />
+                    <AvatarImage src={currentUser?.profilePicture} alt={userDisplayName} />
                     <AvatarFallback className="bg-primary/20 text-primary">
                       {userInitials}
                     </AvatarFallback>
@@ -285,7 +285,7 @@ const Navbar = () => {
                   className="flex items-center gap-3 p-3 rounded-lg border border-primary/30 hover:bg-primary/5 transition-all duration-200 mb-3"
                 >
                   <Avatar className="h-10 w-10 ring-2 ring-primary">
-                    <AvatarImage src={currentUser?.profilePicture || '/avatar.svg'} alt={userDisplayName} />
+                    <AvatarImage src={currentUser?.profilePicture} alt={userDisplayName} />
                     <AvatarFallback className="bg-primary/20 text-primary">
                       {userInitials}
                     </AvatarFallback>

@@ -130,7 +130,7 @@ const Messages = () => {
                     <div className="relative flex items-center gap-4 flex-1 min-w-0">
                       {/* Avatar */}
                       <Avatar className="h-14 w-14 ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all flex-shrink-0">
-                        <AvatarImage src={conversation.user.profilePicture || '/avatar.svg'} />
+                        <AvatarImage src={conversation.user.profilePicture} />
                         <AvatarFallback className="bg-primary/20 text-lg font-semibold">
                           {conversation.user.username.charAt(0).toUpperCase()}
                         </AvatarFallback>

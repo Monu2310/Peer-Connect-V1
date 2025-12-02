@@ -265,7 +265,7 @@ const Conversation = () => {
             <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
           ) : (
             <Avatar className="h-10 w-10 ring-2 ring-background shadow-sm">
-              <AvatarImage src={recipient?.profilePicture || '/avatar.svg'} />
+              <AvatarImage src={recipient?.profilePicture} />
               <AvatarFallback className="bg-primary/10 text-primary font-bold">
                 {recipient?.username ? recipient.username.charAt(0).toUpperCase() : 'U'}
               </AvatarFallback>

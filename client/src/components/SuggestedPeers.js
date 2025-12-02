@@ -163,9 +163,9 @@ const SuggestedPeers = ({ limit = 6 }) => {
                   <div className="flex items-start gap-3">
                     <Link to={`/profile/${user._id}`}>
                       <Avatar className="h-14 w-14 ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all cursor-pointer">
-                        <AvatarImage src={user.profilePicture || '/avatar.svg'} alt={user.username} />
+                        <AvatarImage src={user.profilePicture} alt={user.username} />
                         <AvatarFallback className="bg-primary/20 font-semibold text-lg">
-                          {user.username?.charAt(0) || 'U'}
+                          {user.username?.charAt(0)?.toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>
                     </Link>

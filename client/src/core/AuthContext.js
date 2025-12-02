@@ -277,7 +277,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     if (typeof window !== 'undefined') {
-      return `${window.location.origin}/login`;
+      return `${window.location.origin}/auth/action`;
     }
 
     return undefined;
@@ -358,6 +358,9 @@ export const AuthProvider = ({ children }) => {
 
       const idToken = await fbUser.getIdToken();
 
+      // Build redirect URL once to ensure consistent action handler in all verification emails
+      const verificationRedirectUrl = getVerificationRedirectUrl();
+
       // Send verification email using REST API with retry logic
       retryCount = 0;
       while (retryCount < maxRetries) {
@@ -369,7 +372,8 @@ export const AuthProvider = ({ children }) => {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 requestType: 'VERIFY_EMAIL',
-                idToken: idToken
+                idToken: idToken,
+                continueUrl: verificationRedirectUrl
               })
             }
           );
@@ -403,21 +407,38 @@ export const AuthProvider = ({ children }) => {
         ...userData,
       };
 
-      await axios.post(`${API_URL}/api/auth/firebase-register`, minimalRegistration, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 60000 // Increased to 60s for Render cold starts
-      });
+      // Kick off backend sync but never block the UI on Render cold starts
+      (async () => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+        try {
+          await axios.post(`${API_URL}/api/auth/firebase-register`, minimalRegistration, {
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            signal: controller.signal,
+            timeout: 15000
+          });
+        } catch (syncErr) {
+          console.warn('Deferred backend registration failed, will rely on auto-provision during login:', syncErr.message);
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      })();
 
-      // Sign out the unverified user to prevent accessing the app before email confirmation
-      await signOut(auth);
+      // Fire-and-forget cleanup so we don't block the UI any longer
+      (async () => {
+        try {
+          await signOut(auth);
+        } catch (signOutErr) {
+          console.warn('Deferred signOut after registration failed:', signOutErr.message);
+        }
 
-      // Clear any lingering auth artifacts for good measure
-      setAuthToken(null);
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USER_DATA_KEY);
-      localStorage.removeItem(AUTH_TIMESTAMP_KEY);
+        setAuthToken(null);
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_DATA_KEY);
+        localStorage.removeItem(AUTH_TIMESTAMP_KEY);
+      })();
 
       return {
         success: true,
@@ -449,7 +470,12 @@ export const AuthProvider = ({ children }) => {
   // Password reset via Firebase email link
   const resetPassword = async (email) => {
     try {
-      await sendPasswordResetEmail(auth, email);
+      const actionHandlerUrl = getVerificationRedirectUrl();
+      const actionCodeSettings = actionHandlerUrl
+        ? { url: actionHandlerUrl, handleCodeInApp: true }
+        : undefined;
+
+      await sendPasswordResetEmail(auth, email, actionCodeSettings);
       return { success: true };
     } catch (err) {
       console.error('Password reset error:', err);
@@ -573,6 +599,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       if (!fbUser.emailVerified) {
+        const verificationRedirectUrl = getVerificationRedirectUrl();
         // Send verification email using REST API
         try {
           const verifyResponse = await fetch(
@@ -582,7 +609,8 @@ export const AuthProvider = ({ children }) => {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 requestType: 'VERIFY_EMAIL',
-                idToken: idToken
+                idToken: idToken,
+                continueUrl: verificationRedirectUrl
               })
             }
           );

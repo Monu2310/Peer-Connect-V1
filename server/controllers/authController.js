@@ -257,7 +257,7 @@ exports.firebaseRegister = async (req, res) => {
         firebaseUid,
         // Generate a random password since Firebase handles auth; user won't use this directly
         password: Math.random().toString(36).slice(-12),
-        profilePicture: 'https://avatars.dicebear.com/api/identicon/' + finalUsername + '.svg',
+        profilePicture: '',
         // Save ALL preference fields from signup
         hobbies: Array.isArray(hobbies) ? hobbies : [],
         favoriteSubjects: Array.isArray(favoriteSubjects) ? favoriteSubjects : [],

@@ -19,6 +19,9 @@ const redisConfig = process.env.REDIS_URL
       db: 0
     };
 
+const rawPrefix = process.env.REDIS_KEY_PREFIX || `pc:v1:${process.env.NODE_ENV || 'development'}`;
+const KEY_PREFIX = rawPrefix.endsWith(':') ? rawPrefix : `${rawPrefix}:`;
+
 // Primary Redis instance with error handling
 let redis;
 try {
@@ -62,12 +65,14 @@ class CacheManager {
   constructor() {
     this.redis = redis;
     this.fallback = fallbackCache;
+    this.prefixKey = (key = '') => `${KEY_PREFIX}${key}`;
   }
 
   async get(key) {
+    const namespacedKey = this.prefixKey(key);
     try {
       if (isRedisConnected) {
-        const result = await this.redis.get(key);
+        const result = await this.redis.get(namespacedKey);
         return result ? JSON.parse(result) : null;
       }
     } catch (error) {
@@ -75,46 +80,49 @@ class CacheManager {
     }
     
     // Fallback to memory cache
-    return this.fallback.get(key) || null;
+    return this.fallback.get(namespacedKey) || null;
   }
 
   async set(key, value, ttl = 600) {
+    const namespacedKey = this.prefixKey(key);
     const stringValue = JSON.stringify(value);
     
     try {
       if (isRedisConnected) {
-        await this.redis.setex(key, ttl, stringValue);
+        await this.redis.setex(namespacedKey, ttl, stringValue);
       }
     } catch (error) {
       console.warn('Redis set error:', error.message);
     }
     
     // Always set in fallback cache
-    this.fallback.set(key, value, ttl);
+    this.fallback.set(namespacedKey, value, ttl);
   }
 
   async del(key) {
+    const namespacedKey = this.prefixKey(key);
     try {
       if (isRedisConnected) {
-        await this.redis.del(key);
+        await this.redis.del(namespacedKey);
       }
     } catch (error) {
       console.warn('Redis del error:', error.message);
     }
     
-    this.fallback.del(key);
+    this.fallback.del(namespacedKey);
   }
 
   async exists(key) {
+    const namespacedKey = this.prefixKey(key);
     try {
       if (isRedisConnected) {
-        return await this.redis.exists(key);
+        return await this.redis.exists(namespacedKey);
       }
     } catch (error) {
       console.warn('Redis exists error:', error.message);
     }
     
-    return this.fallback.has(key);
+    return this.fallback.has(namespacedKey);
   }
 
   async flush() {
@@ -132,10 +140,11 @@ class CacheManager {
   // Multi-get for batch operations
   async mget(keys) {
     const results = {};
+    const namespacedKeys = keys.map(key => this.prefixKey(key));
     
     try {
       if (isRedisConnected) {
-        const values = await this.redis.mget(keys);
+        const values = await this.redis.mget(namespacedKeys);
         keys.forEach((key, index) => {
           results[key] = values[index] ? JSON.parse(values[index]) : null;
         });
@@ -146,8 +155,8 @@ class CacheManager {
     }
     
     // Fallback to memory cache
-    keys.forEach(key => {
-      results[key] = this.fallback.get(key) || null;
+    keys.forEach((key, index) => {
+      results[key] = this.fallback.get(namespacedKeys[index]) || null;
     });
     
     return results;
@@ -159,7 +168,7 @@ class CacheManager {
       if (isRedisConnected) {
         const pipeline = this.redis.pipeline();
         Object.entries(keyValuePairs).forEach(([key, value]) => {
-          pipeline.setex(key, ttl, JSON.stringify(value));
+          pipeline.setex(this.prefixKey(key), ttl, JSON.stringify(value));
         });
         await pipeline.exec();
       }
@@ -169,7 +178,7 @@ class CacheManager {
     
     // Always set in fallback cache
     Object.entries(keyValuePairs).forEach(([key, value]) => {
-      this.fallback.set(key, value, ttl);
+      this.fallback.set(this.prefixKey(key), value, ttl);
     });
   }
 }
@@ -209,5 +218,6 @@ module.exports = {
   cache,
   generateKey,
   TTL,
-  isRedisConnected: () => isRedisConnected
+  isRedisConnected: () => isRedisConnected,
+  KEY_PREFIX
 };

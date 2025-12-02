@@ -1,0 +1,31 @@
+const TIET_MAJORS = [
+  'B.E. Computer Engineering',
+  'B.E. Computer Science and Engineering',
+  'B.E. Computer Science (Data Science)',
+  'B.E. Computer Science (AI & ML)',
+  'B.E. Electronics and Communication Engineering',
+  'B.E. Electronics and Computer Engineering',
+  'B.E. Electrical Engineering',
+  'B.E. Instrumentation and Control Engineering',
+  'B.E. Mechanical Engineering',
+  'B.E. Mechatronics Engineering',
+  'B.E. Civil Engineering',
+  'B.E. Chemical Engineering',
+  'B.E. Petroleum Engineering',
+  'B.E. Biotechnology',
+  'B.E. Biomedical Engineering',
+  'B.E. Industrial and Production Engineering',
+  'B.E. Metallurgical and Materials Engineering',
+  'B.E. Environmental Engineering',
+  'B.Sc. (Hons.) Mathematics and Computing',
+  'B.Sc. (Hons.) Physics',
+  'B.Sc. (Hons.) Chemistry',
+  'BCA',
+  'BBA',
+  'MBA',
+  'MCA',
+  'M.E./M.Tech (select specializations)',
+  'Ph.D. Programmes'
+];
+
+export default TIET_MAJORS;

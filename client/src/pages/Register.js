@@ -2,10 +2,11 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../core/AuthContext";
 import { motion } from "framer-motion";
-import { UserPlus, Mail, Eye, EyeOff, CheckCircle, ArrowRight, Loader2 } from "lucide-react";
+import { UserPlus, Mail, Eye, EyeOff, CheckCircle, ArrowRight, Loader2, GraduationCap } from "lucide-react";
 import BeautifulBackground from "../components/effects/BeautifulBackground";
 import axios from "axios";
 import { API_URL } from "../api/config";
+import TIET_MAJORS from "../constants/tietMajors";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -23,6 +24,7 @@ const Register = () => {
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [registrationComplete, setRegistrationComplete] = useState(false);
   const [verificationNotice, setVerificationNotice] = useState("");
+  const [pendingEmail, setPendingEmail] = useState('');
   const [serverStatus, setServerStatus] = useState('unknown');
 
   const { register, error, setError, currentUser } = useAuth();
@@ -107,13 +109,9 @@ const Register = () => {
       setError("");
 
       const response = await register(userData);
+      setPendingEmail(email);
       setRegistrationComplete(true);
-      setVerificationNotice(response?.message || "Account created! You can now set up your profile.");
-      
-      // Redirect to profile page after 2 seconds to let them set preferences
-      setTimeout(() => {
-        navigate("/profile");
-      }, 2000);
+      setVerificationNotice(response?.message || "Verification email sent. Please check your inbox to activate your account.");
     } catch (err) {
       if (err.message.includes("already exists with this email")) {
         setFormError("This email is already registered. Please use another email or try logging in.");
@@ -192,12 +190,29 @@ const Register = () => {
                     </div>
                   </div>
                   <div>
-                    <h2 className="text-3xl font-bold text-foreground mb-3">Welcome!</h2>
+                    <h2 className="text-3xl font-bold text-foreground mb-3">Verify Your Email</h2>
                     <p className="text-base text-muted-foreground leading-relaxed font-medium">
-                      {verificationNotice}
+                      {verificationNotice || 'We just sent a confirmation link to your email.'}
                     </p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Redirecting to your profile...
+                    {pendingEmail && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Sent to <span className="font-semibold text-foreground">{pendingEmail}</span>
+                      </p>
+                    )}
+                    <p className="text-sm text-muted-foreground mt-3">
+                      Click the link in your inbox, then return and sign in.
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    <Link
+                      to="/login"
+                      className="inline-flex items-center justify-center w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold shadow-lg hover:bg-primary/90 transition-all gap-2"
+                    >
+                      Go to Login
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
+                    <p className="text-xs text-muted-foreground">
+                      Didn&apos;t get the email? Check spam or try logging in to resend it automatically.
                     </p>
                   </div>
                 </motion.div>
@@ -270,21 +285,39 @@ const Register = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-bold text-foreground mb-2 ml-1">Program <span className="text-muted-foreground font-medium">(Optional)</span></label>
-                    <select
-                      name="major"
-                      value={major}
-                      onChange={onChange}
-                      className="w-full px-4 py-3.5 text-base rounded-xl border-2 border-border bg-input/60 backdrop-blur-sm text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm cursor-pointer"
-                    >
-                      <option value="">Select your program</option>
-                      <option value="Computer Science">Computer Science</option>
-                      <option value="Engineering">Engineering</option>
-                      <option value="Business">Business</option>
-                      <option value="Arts">Arts</option>
-                      <option value="Sciences">Sciences</option>
-                      <option value="Other">Other</option>
-                    </select>
+                    <label className="block text-sm font-bold text-foreground mb-2 ml-1 flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-primary" />
+                      Program <span className="text-muted-foreground font-medium">(Optional)</span>
+                    </label>
+                    <div className="relative group">
+                      <select
+                        name="major"
+                        value={major}
+                        onChange={onChange}
+                        className="w-full appearance-none px-4 py-3.5 text-base rounded-xl border-2 border-border bg-gradient-to-r from-primary/5 via-card to-card text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-300 font-medium shadow-sm cursor-pointer pr-12"
+                      >
+                        <option value="">Select your program</option>
+                        {TIET_MAJORS.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-muted-foreground group-focus-within:text-primary">
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                    {major && (
+                      <p className="text-xs text-primary mt-2 font-semibold">Selected: {major}</p>
+                    )}
                   </div>
                   
                   <div>

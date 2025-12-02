@@ -438,8 +438,10 @@ const ActivityDetail = () => {
                                     <div key={participant._id} className="flex items-center justify-between group p-2 rounded-lg hover:bg-accent/50 transition-colors">
                                       <Link to={`/profile/${participant._id}`} className="flex items-center gap-3 flex-1">
                                         <Avatar className="h-10 w-10 border border-border">
-                                          <AvatarImage src={participant.profilePicture || '/avatar.svg'} />
-                                          <AvatarFallback>{participant.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                                          <AvatarImage src={participant.profilePicture} />
+                                          <AvatarFallback>
+                                            {participant?.username?.charAt(0)?.toUpperCase() || '?'}
+                                          </AvatarFallback>
                                         </Avatar>
                                         <div>
                                           <p className="font-medium text-sm group-hover:text-primary transition-colors">{participant.username}</p>
@@ -536,7 +538,7 @@ const ActivityDetail = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-wrap gap-4 pt-4 border-t border-border/50">
+                <div className={`flex flex-wrap gap-4 pt-4 border-t border-border/50 ${!isCreator ? 'justify-center' : ''}`}>
                   {isCreator ? (
                     <>
                       <Button asChild variant="outline" className="flex-1 sm:flex-none" disabled={isActivityPast}>

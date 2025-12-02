@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser');
 const { performanceMiddleware, optimizeApiResponses } = require('./middleware/performance');
 const GroupMessage = require('./models/GroupMessage');
 const User = require('./models/User');
+const { scrubUserForPublic, DEFAULT_DELETED_NAME, DEFAULT_DELETED_AVATAR } = require('./utils/deletedUser');
 
 // Import performance configurations
 const { dbConfig, queryOptimizer, connectionMonitor } = require('./config/database');
@@ -319,13 +320,14 @@ io.on('connection', (socket) => {
         return;
       }
 
-      const senderUser = await User.findById(senderId).select('username profilePicture');
+      const senderUser = await User.findById(senderId).select('username profilePicture isDeleted');
       if (!senderUser) {
         socket.emit('activity-message-error', { error: 'Sender not found' });
         return;
       }
 
-      const senderName = messageData.sender?.username || messageData.senderName || senderUser.username;
+      const safeSender = scrubUserForPublic(senderUser);
+      const senderName = messageData.sender?.username || messageData.senderName || safeSender.username || DEFAULT_DELETED_NAME;
 
       const groupMessage = new GroupMessage({
         activityId,
@@ -345,7 +347,7 @@ io.on('connection', (socket) => {
           id: senderUser._id.toString(),
           _id: senderUser._id.toString(),
           username: senderName,
-          profilePicture: messageData.sender?.profilePicture || senderUser.profilePicture
+          profilePicture: messageData.sender?.profilePicture || safeSender.profilePicture || DEFAULT_DELETED_AVATAR
         },
         timestamp: savedMessage.createdAt
       };
@@ -378,10 +380,11 @@ io.on('connection', (socket) => {
       const messages = await GroupMessage.find({ activityId })
         .sort({ createdAt: 1 })
         .limit(100)
-        .populate('sender', 'username profilePicture');
+        .populate('sender', 'username profilePicture isDeleted');
 
       const formattedMessages = messages.map(msg => {
         const senderId = msg?.sender?._id?.toString();
+        const safeSender = scrubUserForPublic(msg.sender);
         return {
           _id: msg._id,
           roomId,
@@ -390,8 +393,8 @@ io.on('connection', (socket) => {
           sender: {
             id: senderId,
             _id: senderId,
-            username: msg.senderName || msg?.sender?.username,
-            profilePicture: msg?.sender?.profilePicture || null
+            username: safeSender.isDeleted ? DEFAULT_DELETED_NAME : (msg.senderName || safeSender.username),
+            profilePicture: safeSender.isDeleted ? DEFAULT_DELETED_AVATAR : (safeSender.profilePicture || null)
           },
           timestamp: msg.createdAt
         };

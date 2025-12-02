@@ -327,12 +327,16 @@ const Friends = () => {
                           <div className="relative z-10">
                             <div className="flex items-center gap-4 mb-5">
                               <Avatar className="h-14 w-14 ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all">
-                                <AvatarImage src={friend?.profilePicture || '/avatar.svg'} />
-                                <AvatarFallback className="bg-primary/20 font-semibold">{friend?.username?.charAt(0) || 'U'}</AvatarFallback>
+                                <AvatarImage src={friend?.profilePicture} />
+                                <AvatarFallback className="bg-primary/20 font-semibold">
+                                  {friend?.username?.charAt(0)?.toUpperCase() || 'U'}
+                                </AvatarFallback>
                               </Avatar>
                               <div className="min-w-0 flex-1">
                                 <p className="font-semibold text-base truncate group-hover:text-primary transition-colors">{friend?.username || 'Unknown'}</p>
-                                <p className="text-xs text-muted-foreground">{friend?.major || 'No major'}</p>
+                                {friend?.major ? (
+                                  <p className="text-xs text-muted-foreground">{friend.major}</p>
+                                ) : null}
                               </div>
                             </div>
                             
@@ -381,12 +385,16 @@ const Friends = () => {
                           <div className="relative z-10">
                             <div className="flex items-center gap-4 mb-6">
                               <Avatar className="h-14 w-14 ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all">
-                                <AvatarImage src={request?.requester?.profilePicture || '/avatar.svg'} />
-                                <AvatarFallback className="bg-primary/20 font-semibold">{request?.requester?.username?.charAt(0) || 'U'}</AvatarFallback>
+                                <AvatarImage src={request?.requester?.profilePicture} />
+                                <AvatarFallback className="bg-primary/20 font-semibold">
+                                  {request?.requester?.username?.charAt(0)?.toUpperCase() || 'U'}
+                                </AvatarFallback>
                               </Avatar>
                               <div className="min-w-0 flex-1">
                                 <p className="font-semibold text-base truncate group-hover:text-primary transition-colors">{request?.requester?.username || 'Unknown'}</p>
-                                <p className="text-xs text-muted-foreground">{request?.requester?.major || 'No major'}</p>
+                                {request?.requester?.major ? (
+                                  <p className="text-xs text-muted-foreground">{request.requester.major}</p>
+                                ) : null}
                               </div>
                             </div>
                             

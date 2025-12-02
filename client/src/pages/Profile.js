@@ -27,7 +27,6 @@ import {
   XCircle, 
   MapPin, 
   FileText, 
-  Heart, 
   User, 
   Loader2, 
   Clock,
@@ -40,13 +39,15 @@ import {
   Book,
   Music,
   Gamepad2,
-  Sparkles
+  Sparkles,
+  GraduationCap
 } from 'lucide-react';
 import AvatarSelector from '../components/AvatarSelector';
 import BeautifulBackground from '../components/effects/BeautifulBackground';
 import GlowOrb from '../components/effects/GlowOrb';
 import ParticleExplosion from '../components/effects/ParticleExplosion';
 import MagneticButton from '../components/effects/MagneticButton';
+import TIET_MAJORS from '../constants/tietMajors';
 
 // Simple Checkbox Group Component
 const SimpleCheckboxGroup = ({ label, options, selected, onChange }) => {
@@ -129,7 +130,8 @@ const buildProfilePayload = (state = {}) => ({
   email: state.email || '',
   bio: state.bio || '',
   location: state.location || '',
-  profilePicture: state.profilePicture || '/avatar.svg',
+  major: state.major || '',
+  profilePicture: state.profilePicture || '',
   interests: sanitizePreferenceArray(state.interests),
   hobbies: sanitizePreferenceArray(state.hobbies),
   favoriteSubjects: sanitizePreferenceArray(state.favoriteSubjects),
@@ -138,7 +140,7 @@ const buildProfilePayload = (state = {}) => ({
   movieGenres: sanitizePreferenceArray(state.movieGenres)
 });
 
-const Profile = () => {
+function Profile() {
   const { userId } = useParams();
   const { currentUser, updateUserProfile: updateAuthUserProfile, loading: authLoading } = useAuth();
   const isOwnProfile = !userId || userId === currentUser?.id;
@@ -148,6 +150,7 @@ const Profile = () => {
     email: '',
     bio: '',
     location: '',
+    major: '',
     interests: [],
     profilePicture: '',
     hobbies: [],
@@ -203,8 +206,9 @@ const Profile = () => {
         email: currentUser.email || '',
         bio: currentUser.bio || '',
         location: currentUser.location || '',
+        major: currentUser.major || '',
         interests: currentUser.interests || [],
-        profilePicture: currentUser.profilePicture || '/avatar.svg',
+        profilePicture: currentUser.profilePicture || '',
         hobbies: currentUser.hobbies || [],
         favoriteSubjects: currentUser.favoriteSubjects || [],
         sports: currentUser.sports || [],
@@ -230,8 +234,9 @@ const Profile = () => {
         email: profileData.email || prev.email || currentUser?.email || '',
         bio: profileData.bio || '',
         location: profileData.location || '',
+        major: profileData.major || '',
         interests: profileData.interests || [],
-        profilePicture: profileData.profilePicture || prev.profilePicture || currentUser?.profilePicture || '/avatar.svg',
+        profilePicture: profileData.profilePicture || prev.profilePicture || currentUser?.profilePicture || '',
         hobbies: profileData.hobbies || [],
         favoriteSubjects: profileData.favoriteSubjects || [],
         sports: profileData.sports || [],
@@ -404,13 +409,6 @@ const Profile = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleRemoveInterest = (interest) => {
-    setFormData(prev => ({
-      ...prev,
-      interests: prev.interests.filter(i => i !== interest)
-    }));
   };
 
   const handleSubmit = async (e) => {
@@ -787,7 +785,7 @@ const Profile = () => {
               <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
                 <div className="relative">
                   <Avatar key={formData.profilePicture} className="h-24 w-24 md:h-32 md:w-32 ring-4 ring-primary/20">
-                    <AvatarImage src={formData.profilePicture || '/avatar.svg'} alt={formData.username} />
+                    <AvatarImage src={formData.profilePicture} alt={formData.username} />
                     <AvatarFallback className="text-2xl bg-primary/20">
                       {(() => {
                         const name = formData.username || '';
@@ -844,15 +842,27 @@ const Profile = () => {
           </motion.div>
 
           {/* Stats Grid */}
-          <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
             <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
                   <Activity className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Activities</p>
-                  <p className="text-2xl font-bold">{joinedActivities.length + createdActivities.length}</p>
+                  <p className="text-sm text-muted-foreground">Joined Activities</p>
+                  <p className="text-2xl font-bold">{joinedActivities.length}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                  <Award className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Hosted Activities</p>
+                  <p className="text-2xl font-bold">{createdActivities.length}</p>
                 </div>
               </div>
             </div>
@@ -870,15 +880,47 @@ const Profile = () => {
             </div>
 
             <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 mb-4">
                 <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
-                  <MapPin className="h-6 w-6 text-primary" />
+                  <GraduationCap className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Location</p>
-                  <p className="text-lg font-semibold truncate">{formData.location || 'Not set'}</p>
+                  <p className="text-sm text-muted-foreground">Program</p>
+                  <p className="text-xs text-muted-foreground/80">TIET, Patiala offerings</p>
                 </div>
               </div>
+              {isOwnProfile && isEditing ? (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <select
+                      name="major"
+                      value={formData.major}
+                      onChange={handleChange}
+                      className="w-full appearance-none px-4 py-3 rounded-xl border border-border/60 bg-muted/30 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-primary/20"
+                    >
+                      <option value="">Select your degree</option>
+                      {TIET_MAJORS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                    <GraduationCap className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Choose the exact TIET programme you belong to.</p>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="px-3 py-1 rounded-full text-sm font-semibold bg-primary/10 text-primary border border-primary/20">
+                    {formData.major || (isOwnProfile ? 'Add your major' : 'Not shared')}
+                  </span>
+                  {isOwnProfile && !isEditing ? (
+                    <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
+                      Edit
+                    </Button>
+                  ) : null}
+                </div>
+              )}
             </div>
           </motion.div>
 
@@ -899,52 +941,6 @@ const Profile = () => {
                 />
               ) : (
                 <p className="text-muted-foreground">{formData.bio || 'No bio yet.'}</p>
-              )}
-            </div>
-
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Heart className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-semibold">Interests</h3>
-              </div>
-              {isEditing ? (
-                <div>
-                  <Input
-                    placeholder="Add interest (press Enter)"
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && e.target.value.trim()) {
-                        e.preventDefault();
-                        setFormData(prev => ({
-                          ...prev,
-                          interests: [...prev.interests, e.target.value.trim()]
-                        }));
-                        e.target.value = '';
-                      }
-                    }}
-                  />
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {formData.interests.map((interest, idx) => (
-                      <span key={idx} className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-medium bg-primary/10 text-primary border border-primary/20">
-                        {interest}
-                        <button onClick={() => handleRemoveInterest(interest)} className="ml-2">
-                          <XCircle className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {formData.interests.length > 0 ? (
-                    formData.interests.map((interest, idx) => (
-                      <span key={idx} className="px-3 py-1 rounded-lg text-sm font-medium bg-primary/10 text-primary border border-primary/20">
-                        {interest}
-                      </span>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground">No interests added.</p>
-                  )}
-                </div>
               )}
             </div>
           </motion.div>
@@ -1177,12 +1173,14 @@ const Profile = () => {
                         className="flex items-center gap-3 p-3 rounded-xl border border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-md"
                       >
                         <Avatar className="h-10 w-10">
-                          <AvatarImage src={friend.profilePicture || '/avatar.svg'} />
-                          <AvatarFallback>{friend.username.charAt(0)}</AvatarFallback>
+                          <AvatarImage src={friend.profilePicture} />
+                          <AvatarFallback>{friend.username?.charAt(0)?.toUpperCase() || '?'}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate">{friend.username}</p>
-                          <p className="text-xs text-muted-foreground truncate">{friend.major || 'No major'}</p>
+                          {friend.major ? (
+                            <p className="text-xs text-muted-foreground truncate">{friend.major}</p>
+                          ) : null}
                         </div>
                       </Link>
                     ))}
@@ -1278,6 +1276,6 @@ const Profile = () => {
 
     </BeautifulBackground>
   );
-};
+}
 
 export default Profile;

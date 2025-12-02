@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import BeautifulBackground from '../components/effects/BeautifulBackground';
 import { CheckCircle, AlertCircle, Loader2, MailCheck } from 'lucide-react';
@@ -7,8 +7,13 @@ const VerifyEmail = () => {
   const location = useLocation();
   const [status, setStatus] = useState('verifying'); // verifying | success | error
   const [message, setMessage] = useState('Verifying your email, please wait...');
+  const hasProcessedRef = useRef(false);
 
   useEffect(() => {
+    if (hasProcessedRef.current) {
+      return;
+    }
+
     const params = new URLSearchParams(location.search);
     const oobCode = params.get('oobCode');
     const mode = params.get('mode');
@@ -92,6 +97,7 @@ const VerifyEmail = () => {
       }
     };
 
+    hasProcessedRef.current = true;
     verify();
   }, [location.search]);
 
